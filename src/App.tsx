@@ -67,7 +67,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">Pro Crypto Futures</h1>
-              <p className="text-xs text-[var(--color-text-secondary)]">Analysis Dashboard</p>
+              <p className="text-xs text-[var(--color-golden)] font-semibold">by Anh Duc Trader</p>
             </div>
           </div>
 
