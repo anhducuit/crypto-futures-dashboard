@@ -53,7 +53,7 @@ export const PositionCalculator: React.FC<PositionCalculatorProps> = ({
 
     // Calculate split entries for no-stoploss mode
     const splitEntries = mode === 'no-stoploss' && entry > 0
-        ? calculateSplitEntries(wallet, entry, swingLow || entry * 0.9, leverage)
+        ? calculateSplitEntries(wallet, entry, swingLow || entry * 0.9)
         : null;
 
     return (
@@ -69,8 +69,8 @@ export const PositionCalculator: React.FC<PositionCalculatorProps> = ({
                     <button
                         onClick={() => setMode('stoploss')}
                         className={`flex-1 py-2 px-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-all ${mode === 'stoploss'
-                                ? 'bg-[var(--color-golden)] text-black'
-                                : 'text-[var(--color-text-secondary)] hover:text-white'
+                            ? 'bg-[var(--color-golden)] text-black'
+                            : 'text-[var(--color-text-secondary)] hover:text-white'
                             }`}
                     >
                         <Shield size={16} />
@@ -79,8 +79,8 @@ export const PositionCalculator: React.FC<PositionCalculatorProps> = ({
                     <button
                         onClick={() => setMode('no-stoploss')}
                         className={`flex-1 py-2 px-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-all ${mode === 'no-stoploss'
-                                ? 'bg-red-500 text-white'
-                                : 'text-[var(--color-text-secondary)] hover:text-white'
+                            ? 'bg-red-500 text-white'
+                            : 'text-[var(--color-text-secondary)] hover:text-white'
                             }`}
                     >
                         <Zap size={16} />

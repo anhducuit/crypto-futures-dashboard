@@ -115,7 +115,6 @@ function App() {
               previousPrice={previousPrice}
               priceDirection={priceDirection}
               symbol={symbol}
-              isConnected={isConnected}
               error={error}
               onManualPrice={setManualPrice}
             />
@@ -133,7 +132,6 @@ function App() {
             <TradingRecommendation
               maAnalysis={maAnalysis}
               emaTrends={emaTrends}
-              currentPrice={currentPrice}
               onDirectionChange={setDirection}
             />
 

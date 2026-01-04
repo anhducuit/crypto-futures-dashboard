@@ -115,7 +115,6 @@ export function calculateSplitEntries(
     walletBalance: number,
     entryPrice: number,
     swingLow: number,
-    leverage: number
 ): { entry1: { price: number; amount: number }; entry2: { price: number; amount: number } } {
     // Entry 1: 5% of wallet at current price
     const entry1Amount = walletBalance * 0.05;

@@ -15,7 +15,7 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
     onReconnect
 }) => {
     const [inputValue, setInputValue] = useState(symbol);
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const debounceRef = useRef<any>(null);
 
     useEffect(() => {
         setInputValue(symbol);
@@ -78,8 +78,8 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
                             onSymbolChange(sym);
                         }}
                         className={`px-3 py-1.5 text-sm rounded-lg transition-all ${symbol === sym
-                                ? 'bg-[var(--color-golden)] text-black font-semibold'
-                                : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+                            ? 'bg-[var(--color-golden)] text-black font-semibold'
+                            : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
                             }`}
                     >
                         {sym}

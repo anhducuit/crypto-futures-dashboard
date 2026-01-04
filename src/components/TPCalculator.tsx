@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Target, DollarSign, Gauge, TrendingUp, TrendingDown, Banknote, PiggyBank, Info } from 'lucide-react';
-import { formatNumber, formatCurrency } from '../utils/calculations';
+import { formatNumber } from '../utils/calculations';
 
 interface TPCalculatorProps {
     currentPrice: number | null;
@@ -125,8 +125,8 @@ export const TPCalculator: React.FC<TPCalculatorProps> = ({
 
                 {/* Direction Indicator */}
                 <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-lg ${direction === 'long'
-                        ? 'bg-green-500/10 border border-green-500/30'
-                        : 'bg-red-500/10 border border-red-500/30'
+                    ? 'bg-green-500/10 border border-green-500/30'
+                    : 'bg-red-500/10 border border-red-500/30'
                     }`}>
                     {direction === 'long' ? (
                         <TrendingUp size={18} className="text-green-500" />

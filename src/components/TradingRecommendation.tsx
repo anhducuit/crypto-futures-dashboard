@@ -24,14 +24,12 @@ interface TrendBias {
 interface TradingRecommendationProps {
     maAnalysis: MAAnalysis | null;
     emaTrends: TrendBias[];
-    currentPrice: number | null;
     onDirectionChange: (direction: 'long' | 'short') => void;
 }
 
 export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
     maAnalysis,
     emaTrends,
-    currentPrice,
     onDirectionChange
 }) => {
     // Calculate EMA bias
@@ -98,10 +96,10 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
             <div className="space-y-4">
                 {/* Main Recommendation */}
                 <div className={`p-5 rounded-xl text-center ${recommendation === 'long'
-                        ? 'bg-gradient-to-br from-green-500/20 to-green-600/10 border-2 border-green-500/50'
-                        : recommendation === 'short'
-                            ? 'bg-gradient-to-br from-red-500/20 to-red-600/10 border-2 border-red-500/50'
-                            : 'bg-gradient-to-br from-gray-500/20 to-gray-600/10 border-2 border-gray-500/50'
+                    ? 'bg-gradient-to-br from-green-500/20 to-green-600/10 border-2 border-green-500/50'
+                    : recommendation === 'short'
+                        ? 'bg-gradient-to-br from-red-500/20 to-red-600/10 border-2 border-red-500/50'
+                        : 'bg-gradient-to-br from-gray-500/20 to-gray-600/10 border-2 border-gray-500/50'
                     }`}>
                     <div className="flex items-center justify-center gap-3 mb-3">
                         {recommendation === 'long' ? (
@@ -114,10 +112,10 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
                     </div>
 
                     <div className={`text-3xl font-bold mb-2 ${recommendation === 'long'
-                            ? 'text-green-500'
-                            : recommendation === 'short'
-                                ? 'text-red-500'
-                                : 'text-yellow-500'
+                        ? 'text-green-500'
+                        : recommendation === 'short'
+                            ? 'text-red-500'
+                            : 'text-yellow-500'
                         }`}>
                         {recommendation === 'long' ? 'NÊN LONG' : recommendation === 'short' ? 'NÊN SHORT' : 'CHỜ ĐỢI'}
                     </div>
@@ -134,8 +132,8 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
                     <button
                         onClick={() => onDirectionChange(recommendation as 'long' | 'short')}
                         className={`w-full py-3 rounded-lg font-bold text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] ${recommendation === 'long'
-                                ? 'bg-gradient-to-r from-green-600 to-green-500 shadow-lg shadow-green-500/25'
-                                : 'bg-gradient-to-r from-red-600 to-red-500 shadow-lg shadow-red-500/25'
+                            ? 'bg-gradient-to-r from-green-600 to-green-500 shadow-lg shadow-green-500/25'
+                            : 'bg-gradient-to-r from-red-600 to-red-500 shadow-lg shadow-red-500/25'
                             }`}
                     >
                         {recommendation === 'long' ? <TrendingUp size={20} /> : <TrendingDown size={20} />}

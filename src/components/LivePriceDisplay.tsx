@@ -7,7 +7,6 @@ interface LivePriceDisplayProps {
     previousPrice: number | null;
     priceDirection: 'up' | 'down' | null;
     symbol: string;
-    isConnected: boolean;
     error: string | null;
     onManualPrice: (price: number) => void;
 }
@@ -17,7 +16,6 @@ export const LivePriceDisplay: React.FC<LivePriceDisplayProps> = ({
     previousPrice,
     priceDirection,
     symbol,
-    isConnected,
     error,
     onManualPrice
 }) => {
@@ -70,10 +68,10 @@ export const LivePriceDisplay: React.FC<LivePriceDisplayProps> = ({
                     <div
                         ref={priceRef}
                         className={`text-4xl md:text-5xl font-bold mb-3 rounded-lg py-3 transition-colors ${flashClass} ${priceDirection === 'up'
-                                ? 'text-green-500'
-                                : priceDirection === 'down'
-                                    ? 'text-red-500'
-                                    : 'text-white'
+                            ? 'text-green-500'
+                            : priceDirection === 'down'
+                                ? 'text-red-500'
+                                : 'text-white'
                             }`}
                     >
                         ${formatNumber(price, getDecimals(price))}

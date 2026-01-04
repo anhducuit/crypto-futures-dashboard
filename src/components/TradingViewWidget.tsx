@@ -12,7 +12,6 @@ declare global {
 
 export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol }) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const scriptLoadedRef = useRef(false);
 
     useEffect(() => {
         const loadWidget = () => {

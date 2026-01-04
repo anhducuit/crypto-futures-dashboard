@@ -1,6 +1,5 @@
-import React from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, Target } from 'lucide-react';
-import { formatNumber, formatCurrency } from '../utils/calculations';
+import { formatNumber } from '../utils/calculations';
 
 interface TimeframeData {
     timeframe: string;
