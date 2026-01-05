@@ -19,9 +19,36 @@ interface MAAnalysis {
         trend: 'bullish' | 'bearish' | 'neutral';
         swingHigh: number;
         swingLow: number;
+        rsi: number;
+        avgVolume: number;
+        currentVolume: number;
+        volumeRatio: number; // current / average
+        priceGap: number;    // % distance from MA
     }[];
     overallBias: 'long' | 'short' | 'neutral';
     confidence: number;
+}
+
+// Calculate RSI (Relative Strength Index)
+function calculateRSI(closes: number[], period: number = 14): number {
+    if (closes.length <= period) return 50;
+
+    let gains = 0;
+    let losses = 0;
+
+    for (let i = closes.length - period; i < closes.length; i++) {
+        const difference = closes[i] - closes[i - 1];
+        if (difference >= 0) {
+            gains += difference;
+        } else {
+            losses -= difference;
+        }
+    }
+
+    if (losses === 0) return 100;
+
+    const rs = gains / losses;
+    return 100 - (100 / (1 + rs));
 }
 
 // Calculate Simple Moving Average
@@ -118,8 +145,15 @@ export function useBinanceKlines(symbol: string) {
                     }));
 
                     const closes = klines.map(k => k.close);
+                    const volumes = klines.map(k => k.volume);
                     const ma20 = calculateSMA(closes, 20);
                     const currentPrice = closes[closes.length - 1];
+                    const currentVolume = volumes[volumes.length - 1];
+                    const avgVolume = calculateSMA(volumes, 20);
+                    const volumeRatio = avgVolume > 0 ? currentVolume / avgVolume : 1;
+                    const rsi = calculateRSI(closes, 14);
+                    const priceGap = ((currentPrice - ma20) / ma20) * 100;
+
                     const { swingHigh, swingLow } = findSwingPoints(klines);
 
                     // Determine trend based on price vs MA
@@ -141,7 +175,12 @@ export function useBinanceKlines(symbol: string) {
                         currentPrice,
                         trend,
                         swingHigh,
-                        swingLow
+                        swingLow,
+                        rsi,
+                        avgVolume,
+                        currentVolume,
+                        volumeRatio,
+                        priceGap
                     });
                 } catch (e: any) {
                     if (e.name === 'AbortError') {

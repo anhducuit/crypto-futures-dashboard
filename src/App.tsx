@@ -12,6 +12,7 @@ import { PositionCalculator } from './components/PositionCalculator';
 import { TPCalculator } from './components/TPCalculator';
 import { TradingViewWidget } from './components/TradingViewWidget';
 import { TradingRecommendation } from './components/TradingRecommendation';
+import { VolumeAnalysis } from './components/VolumeAnalysis';
 import './index.css';
 
 function App() {
@@ -134,6 +135,9 @@ function App() {
               maAnalysis={maAnalysis}
               onDirectionChange={setDirection}
             />
+
+            {/* Volume Analysis Section */}
+            <VolumeAnalysis maAnalysis={maAnalysis} />
 
             {/* Moving Averages Analysis */}
             <MovingAveragesPanel
