@@ -45,22 +45,24 @@ export const VolumeAnalysis: React.FC<VolumeAnalysisProps> = ({ maAnalysis }) =>
                     const isWeak = tf.volumeRatio < 0.7;
 
                     return (
-                        <div key={tf.timeframe} className="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/50 hover:border-slate-600 transition-all">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-sm font-medium text-slate-300">{tf.label}</span>
-                                {isSurge ? (
-                                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">
-                                        <TrendingUp size={10} /> ĐỘT BIẾN
-                                    </span>
-                                ) : isWeak ? (
-                                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/20">
-                                        <TrendingDown size={10} /> YẾU
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-slate-500/10 text-slate-400 rounded-full border border-slate-500/20">
-                                        <Minus size={10} />ỔN ĐỊNH
-                                    </span>
-                                )}
+                        <div key={tf.timeframe} className="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/50 hover:border-slate-600 transition-all flex flex-col gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-bold text-slate-400 bg-slate-700/30 px-2 py-0.5 rounded-md uppercase tracking-wider">{tf.label}</span>
+                                <div className="ml-auto">
+                                    {isSurge ? (
+                                        <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md border border-emerald-500/20 whitespace-nowrap">
+                                            <TrendingUp size={10} /> ĐỘT BIẾN
+                                        </span>
+                                    ) : isWeak ? (
+                                        <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 bg-rose-500/10 text-rose-400 rounded-md border border-rose-500/20 whitespace-nowrap">
+                                            <TrendingDown size={10} /> YẾU
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 bg-slate-500/10 text-slate-400 rounded-md border border-slate-500/20 whitespace-nowrap">
+                                            <Minus size={10} /> ỔN ĐỊNH
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="space-y-2">
