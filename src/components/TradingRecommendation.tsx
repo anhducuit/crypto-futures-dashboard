@@ -14,15 +14,8 @@ interface MAAnalysis {
     confidence: number;
 }
 
-interface TrendBias {
-    timeframe: string;
-    label: string;
-    bias: 'bullish' | 'bearish' | 'neutral';
-}
-
 interface TradingRecommendationProps {
     maAnalysis: MAAnalysis | null;
-    emaTrends: TrendBias[];
     onDirectionChange: (direction: 'long' | 'short') => void;
 }
 
