@@ -17,6 +17,7 @@ import './index.css';
 function App() {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [direction, setDirection] = useState<'long' | 'short'>('long');
+  const [entryPrice, setEntryPrice] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Selected swing data from MA panel
@@ -131,7 +132,6 @@ function App() {
             {/* Trading Recommendation */}
             <TradingRecommendation
               maAnalysis={maAnalysis}
-              emaTrends={emaTrends}
               onDirectionChange={setDirection}
             />
 
@@ -167,12 +167,15 @@ function App() {
               currentPrice={currentPrice}
               direction={direction}
               swingLow={selectedSwing?.low}
+              entryPrice={entryPrice}
+              onEntryChange={setEntryPrice}
             />
 
             {/* TP Calculator */}
             <TPCalculator
-              currentPrice={currentPrice}
               direction={direction}
+              entryPrice={entryPrice}
+              onEntryChange={setEntryPrice}
             />
           </div>
         </div>

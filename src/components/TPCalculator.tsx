@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Target, DollarSign, Gauge, TrendingUp, TrendingDown, Banknote, PiggyBank, Info } from 'lucide-react';
 import { formatNumber } from '../utils/calculations';
 
 interface TPCalculatorProps {
-    currentPrice: number | null;
     direction: 'long' | 'short';
+    entryPrice: string;
+    onEntryChange: (price: string) => void;
 }
 
 /**
@@ -49,18 +50,11 @@ function calculateFuturesTP(
 }
 
 export const TPCalculator: React.FC<TPCalculatorProps> = ({
-    currentPrice,
-    direction
+    direction,
+    entryPrice,
+    onEntryChange
 }) => {
-    const [entryPrice, setEntryPrice] = useState<string>('');
     const [leverage, setLeverage] = useState<number>(10);
-
-    // Auto-fill entry price when current price changes
-    useEffect(() => {
-        if (currentPrice) {
-            setEntryPrice(currentPrice.toString());
-        }
-    }, [currentPrice]);
 
     const entry = parseFloat(entryPrice) || 0;
     const targets = entry > 0 ? calculateFuturesTP(entry, leverage, direction) : null;
@@ -98,8 +92,8 @@ export const TPCalculator: React.FC<TPCalculatorProps> = ({
                         <input
                             type="number"
                             value={entryPrice}
-                            onChange={(e) => setEntryPrice(e.target.value)}
-                            placeholder="Entry Price"
+                            onChange={(e) => onEntryChange(e.target.value)}
+                            placeholder="Nhập giá"
                             step="any"
                         />
                     </div>

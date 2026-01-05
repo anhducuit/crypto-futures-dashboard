@@ -15,7 +15,7 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
     onReconnect
 }) => {
     const [inputValue, setInputValue] = useState(symbol);
-    const debounceRef = useRef<any>(null);
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         setInputValue(symbol);

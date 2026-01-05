@@ -20,21 +20,26 @@ export function calculateFibonacciLevels(swingHigh: number, swingLow: number, di
     }
 }
 
-// Liquidation Price Calculator
+// Liquidation Price Calculator (Binance Cross Margin Style)
 export function calculateLiquidationPrice(
     entryPrice: number,
-    leverage: number,
+    quantity: number,
+    walletBalance: number,
     direction: 'long' | 'short',
     maintenanceMarginRate: number = 0.004 // 0.4% default for Binance
 ): number {
-    // Simplified liquidation formula
-    // For Long: Liquidation Price = Entry Price * (1 - 1/Leverage + MMR)
-    // For Short: Liquidation Price = Entry Price * (1 + 1/Leverage - MMR)
+    if (quantity === 0) return 0;
+
+    // Binance Cross Margin Liquidation Formula:
+    // For Long: Liq = (Entry * Qty - WalletBalance) / (Qty * (1 - MMR))
+    // For Short: Liq = (Entry * Qty + WalletBalance) / (Qty * (1 + MMR))
 
     if (direction === 'long') {
-        return entryPrice * (1 - (1 / leverage) + maintenanceMarginRate);
+        const liq = (entryPrice * quantity - walletBalance) / (quantity * (1 - maintenanceMarginRate));
+        return Math.max(0, liq);
     } else {
-        return entryPrice * (1 + (1 / leverage) - maintenanceMarginRate);
+        const liq = (entryPrice * quantity + walletBalance) / (quantity * (1 + maintenanceMarginRate));
+        return liq;
     }
 }
 
