@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShieldCheck, Mail, Lock, LogIn, Bitcoin, Zap, DollarSign, Dog, Wallet, Coins, TrendingUp, TrendingDown } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, LogIn, Zap, DollarSign, Dog, Wallet, Bitcoin, TrendingUp, TrendingDown, Coins } from 'lucide-react';
 
 interface Bubble {
     id: number;
@@ -10,7 +10,7 @@ interface Bubble {
     vy: number;
     size: number;
     symbol: string;
-    change: number;
+    change: string;
     color: 'green' | 'red';
     icon: React.ReactNode;
 }
@@ -37,26 +37,25 @@ export const Auth: React.FC = () => {
     const [err, setErr] = useState<string | null>(null);
     const [bubbles, setBubbles] = useState<Bubble[]>([]);
     const containerRef = useRef<HTMLDivElement>(null);
-    const requestRef = useRef<number>();
+    const requestRef = useRef<number>(0);
 
     // Initialize bubbles
     useEffect(() => {
         const initialBubbles: Bubble[] = COINS.map((coin, index) => ({
             id: index,
-            x: Math.random() * 80 + 10, // percentage
-            y: Math.random() * 80 + 10, // percentage
+            x: Math.random() * 80 + 10,
+            y: Math.random() * 80 + 10,
             vx: (Math.random() - 0.5) * 0.05,
             vy: (Math.random() - 0.5) * 0.05,
-            size: Math.random() * 60 + 80, // size in px
+            size: Math.random() * 60 + 80,
             symbol: coin.symbol,
-            change: (Math.random() * 10 * (coin.color === 'green' ? 1 : -1)).toFixed(2) as any,
+            change: (Math.random() * 10 * (coin.color === 'green' ? 1 : -1)).toFixed(2),
             color: coin.color as 'green' | 'red',
             icon: coin.icon,
         }));
         setBubbles(initialBubbles);
     }, []);
 
-    // Animation Loop
     const animate = () => {
         setBubbles((prevBubbles) => {
             return prevBubbles.map((bubble) => {
@@ -65,7 +64,6 @@ export const Auth: React.FC = () => {
                 let newVX = bubble.vx;
                 let newVY = bubble.vy;
 
-                // Bounce off walls
                 if (newX <= 0 || newX >= 100) newVX *= -1;
                 if (newY <= 0 || newY >= 100) newVY *= -1;
 
@@ -109,7 +107,6 @@ export const Auth: React.FC = () => {
 
     return (
         <div className="relative min-h-screen flex items-center justify-center p-4 bg-[#050505] overflow-hidden">
-            {/* Crypto Bubbles Background */}
             <div className="bubble-container" ref={containerRef}>
                 {bubbles.map((bubble) => (
                     <div
@@ -138,46 +135,45 @@ export const Auth: React.FC = () => {
                 ))}
             </div>
 
-            {/* Login Card */}
             <div className="glass-morphism gold-glow max-w-md w-full p-8 rounded-2xl relative z-10 mx-auto">
                 <div className="text-center mb-8">
                     <div className="inline-flex p-3 bg-gradient-to-br from-[var(--color-golden)] to-yellow-600 rounded-xl mb-4 shadow-lg shadow-yellow-500/20">
                         <ShieldCheck size={32} className="text-black" />
                     </div>
                     <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">CRYPTO PORTAL</h2>
-                    <p className="text-slate-400 text-sm">Hệ thống Trading Pro - Anh Duc Trader</p>
+                    <p className="text-slate-400 text-sm font-medium tracking-wide">Hệ thống Trading Pro - Anh Duc Trader</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2 ml-1">
-                            Email Truy Cập
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
+                            Email truy cập
                         </label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                        <div className="relative group">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[var(--color-golden)] transition-colors" size={18} />
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@email.com"
-                                className="pl-10 w-full bg-slate-900/50 border border-slate-700/50 focus:border-[var(--color-golden)] focus:ring-1 focus:ring-[var(--color-golden)] transition-all rounded-xl"
+                                className="pl-12 pr-4 py-3.5 w-full bg-[#08080a] border border-slate-800 focus:border-[var(--color-golden)] focus:ring-2 focus:ring-[var(--color-golden)]/10 transition-all rounded-xl text-white placeholder:text-slate-600 outline-none"
                                 required
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase mb-2 ml-1">
-                            Mật Khẩu
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
+                            Mật khẩu bảo mật
                         </label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                        <div className="relative group">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[var(--color-golden)] transition-colors" size={18} />
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="pl-10 w-full bg-slate-900/50 border border-slate-700/50 focus:border-[var(--color-golden)] focus:ring-1 focus:ring-[var(--color-golden)] transition-all rounded-xl"
+                                className="pl-12 pr-4 py-3.5 w-full bg-[#08080a] border border-slate-800 focus:border-[var(--color-golden)] focus:ring-2 focus:ring-[var(--color-golden)]/10 transition-all rounded-xl text-white placeholder:text-slate-600 outline-none"
                                 required
                             />
                         </div>
@@ -212,7 +208,6 @@ export const Auth: React.FC = () => {
                 </form>
             </div>
 
-            {/* Footer */}
             <div className="absolute bottom-6 text-center w-full z-10 px-4">
                 <p className="text-slate-600 text-[10px] tracking-widest uppercase">
                     © 2026 Anh Duc Trader • Secure Access Required
