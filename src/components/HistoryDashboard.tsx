@@ -18,6 +18,7 @@ export const HistoryDashboard: React.FC = () => {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const ITEMS_PER_PAGE = 20;
@@ -37,6 +38,10 @@ export const HistoryDashboard: React.FC = () => {
                 query = query.eq('timeframe', filter);
             }
 
+            if (statusFilter !== 'All') {
+                query = query.eq('status', statusFilter);
+            }
+
             const { data, error, count } = await query;
             if (error) throw error;
             setHistory(data || []);
@@ -52,11 +57,16 @@ export const HistoryDashboard: React.FC = () => {
         fetchHistory();
         const interval = setInterval(fetchHistory, 15000);
         return () => clearInterval(interval);
-    }, [filter, page]);
+    }, [filter, statusFilter, page]);
 
     const handleFilterChange = (newFilter: string) => {
         setFilter(newFilter);
         setPage(1); // Reset to page 1 on filter change
+    };
+
+    const handleStatusFilterChange = (newStatus: string) => {
+        setStatusFilter(newStatus);
+        setPage(1);
     };
 
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -94,6 +104,17 @@ export const HistoryDashboard: React.FC = () => {
                         <option value="15 Phút">15m</option>
                         <option value="1 Giờ">1h</option>
                         <option value="4 Giờ">4h</option>
+                    </select>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => handleStatusFilterChange(e.target.value)}
+                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
+                    >
+                        <option value="All">Status</option>
+                        <option value="SUCCESS">WIN</option>
+                        <option value="FAILED">LOSS</option>
+                        <option value="PENDING">PENDING</option>
                     </select>
                 </div>
             </div>
