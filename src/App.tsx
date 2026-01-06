@@ -2,8 +2,10 @@
  * Copyright © 2026 Anh Duc Trader. All rights reserved.
  * Unauthorized copying, distribution, or use of this file is strictly prohibited.
  */
-import { useState, useCallback } from 'react';
-import { Activity, BarChart2, Menu, X } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Activity, BarChart2, Menu, X, LogOut } from 'lucide-react';
+import { supabase } from './lib/supabase';
+import { Auth } from './components/Auth';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
 import { useBinanceKlines } from './hooks/useBinanceKlines';
 import { SymbolInput } from './components/SymbolInput';
@@ -27,6 +29,25 @@ function App() {
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [entryPrice, setEntryPrice] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Selected swing data from MA panel
   const [selectedSwing, setSelectedSwing] = useState<{
@@ -64,6 +85,22 @@ function App() {
     setSelectedSwing({ high: swingHigh, low: swingLow, timeframe });
   }, []);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[var(--color-golden)]/30 border-t-[var(--color-golden)] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
       {/* Header */}
@@ -86,6 +123,13 @@ function App() {
                 {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
               </span>
             </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
+              title="Đăng xuất"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
 
           <button
