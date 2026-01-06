@@ -40,6 +40,10 @@ export const HistoryDashboard: React.FC = () => {
 
             if (statusFilter !== 'All') {
                 query = query.eq('status', statusFilter);
+                // If filtering by WIN/LOSS, we only want actionable signals (LONG/SHORT)
+                if (statusFilter === 'SUCCESS' || statusFilter === 'FAILED') {
+                    query = query.neq('signal', 'NEUTRAL');
+                }
             }
 
             const { data, error, count } = await query;
