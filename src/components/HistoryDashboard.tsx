@@ -1,3 +1,6 @@
+/**
+ * Copyright © 2026 Anh Duc Trader. All rights reserved.
+ */
 import React, { useEffect, useState } from 'react';
 import { History, CheckCircle2, XCircle, Clock, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';

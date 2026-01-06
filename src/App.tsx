@@ -1,3 +1,7 @@
+/**
+ * Copyright © 2026 Anh Duc Trader. All rights reserved.
+ * Unauthorized copying, distribution, or use of this file is strictly prohibited.
+ */
 import { useState, useCallback } from 'react';
 import { Activity, BarChart2, Menu, X } from 'lucide-react';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
@@ -194,8 +198,8 @@ function App() {
 
       {/* Footer */}
       <footer className="mt-8 py-4 border-t border-[var(--color-border)] text-center text-sm text-[var(--color-text-secondary)]">
-        <p>Pro Crypto Futures Analysis Dashboard • Dữ liệu real-time từ Binance</p>
-        <p className="text-xs mt-1 opacity-70">⚠️ Đây là công cụ hỗ trợ phân tích. Không phải lời khuyên đầu tư.</p>
+        <p>© 2026 Anh Duc Trader. All rights reserved.</p>
+        <p className="text-xs mt-1 opacity-70">⚠️ Đây là công cụ hỗ trợ phân tích độc quyền. Không phải lời khuyên đầu tư.</p>
       </footer>
     </div>
   );

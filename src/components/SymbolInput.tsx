@@ -48,7 +48,7 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
                     value={inputValue}
                     onChange={handleInputChange}
                     placeholder="Nhập Symbol (VD: BTCUSDT)"
-                    className="pl-10 pr-12 w-full uppercase"
+                    className="pl-12 pr-12 w-full uppercase"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     {isConnected ? (
