@@ -18,16 +18,16 @@ interface Bubble {
 const COINS = [
     { symbol: 'BTC', name: 'Bitcoin', icon: <Bitcoin size={24} />, color: 'green' },
     { symbol: 'ETH', name: 'Ethereum', icon: <div className="font-black text-xs">ETH</div>, color: 'green' },
-    { symbol: 'SOL', name: 'Solana', icon: <Zap size={20} />, color: 'red' },
+    { symbol: 'SOL', name: 'Solana', icon: <Zap size={20} />, color: 'green' },
     { symbol: 'BNB', name: 'Binance', icon: <Coins size={20} />, color: 'green' },
-    { symbol: 'XRP', name: 'XRP', icon: <Wallet size={20} />, color: 'red' },
+    { symbol: 'XRP', name: 'XRP', icon: <Wallet size={20} />, color: 'green' },
     { symbol: 'DOGE', name: 'Dogecoin', icon: <Dog size={24} />, color: 'green' },
     { symbol: 'USDT', name: 'Tether', icon: <DollarSign size={20} />, color: 'green' },
-    { symbol: 'ADA', name: 'Cardano', icon: <Coins size={18} />, color: 'red' },
-    { symbol: 'DOT', name: 'Polkadot', icon: <Coins size={18} />, color: 'green' },
+    { symbol: 'ADA', name: 'Cardano', icon: <Coins size={18} />, color: 'green' },
     { symbol: 'LINK', name: 'Chainlink', icon: <div className="font-black text-[10px]">LINK</div>, color: 'green' },
-    { symbol: 'MATIC', name: 'Polygon', icon: <Zap size={18} />, color: 'red' },
+    { symbol: 'MATIC', name: 'Polygon', icon: <Zap size={18} />, color: 'green' },
     { symbol: 'AVAX', name: 'Avalanche', icon: <TrendingUp size={20} />, color: 'green' },
+    { symbol: 'DOT', name: 'Polkadot', icon: <Coins size={18} />, color: 'green' },
 ];
 
 export const Auth: React.FC = () => {
@@ -38,6 +38,7 @@ export const Auth: React.FC = () => {
     const [bubbles, setBubbles] = useState<Bubble[]>([]);
     const containerRef = useRef<HTMLDivElement>(null);
     const requestRef = useRef<number>(0);
+    const wsRef = useRef<WebSocket | null>(null);
 
     // Initialize bubbles
     useEffect(() => {
@@ -49,11 +50,44 @@ export const Auth: React.FC = () => {
             vy: (Math.random() - 0.5) * 0.05,
             size: Math.random() * 60 + 80,
             symbol: coin.symbol,
-            change: (Math.random() * 10 * (coin.color === 'green' ? 1 : -1)).toFixed(2),
-            color: coin.color as 'green' | 'red',
+            change: '0.00',
+            color: 'green',
             icon: coin.icon,
         }));
         setBubbles(initialBubbles);
+
+        // Setup WebSocket for Real-time Data
+        const streams = COINS.map(c => `${c.symbol.toLowerCase()}usdt@ticker`).join('/');
+        const wsUrl = `wss://fstream.binance.com/ws/${streams}`;
+
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const symbol = data.s.replace('USDT', '');
+                const changeP = parseFloat(data.P).toFixed(2);
+                const isPositive = parseFloat(data.P) >= 0;
+
+                setBubbles(prev => prev.map(b => {
+                    if (b.symbol === symbol) {
+                        return {
+                            ...b,
+                            change: changeP,
+                            color: isPositive ? 'green' : 'red'
+                        };
+                    }
+                    return b;
+                }));
+            } catch (e) {
+                console.error('WS Error:', e);
+            }
+        };
+
+        return () => {
+            if (wsRef.current) wsRef.current.close();
+        };
     }, []);
 
     const animate = () => {
@@ -64,8 +98,8 @@ export const Auth: React.FC = () => {
                 let newVX = bubble.vx;
                 let newVY = bubble.vy;
 
-                if (newX <= 0 || newX >= 100) newVX *= -1;
-                if (newY <= 0 || newY >= 100) newVY *= -1;
+                if (newX <= 5 || newX >= 95) newVX *= -1;
+                if (newY <= 5 || newY >= 95) newVY *= -1;
 
                 return {
                     ...bubble,
@@ -111,7 +145,7 @@ export const Auth: React.FC = () => {
                 {bubbles.map((bubble) => (
                     <div
                         key={bubble.id}
-                        className={`crypto-bubble bubble-${bubble.color}`}
+                        className={`crypto-bubble bubble-${bubble.color} transition-colors duration-500`}
                         style={{
                             left: `${bubble.x}%`,
                             top: `${bubble.y}%`,
