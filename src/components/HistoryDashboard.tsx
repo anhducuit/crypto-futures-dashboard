@@ -57,8 +57,9 @@ export const HistoryDashboard: React.FC = () => {
         }
     };
 
-    const successRate = history.length > 0
-        ? (history.filter(i => i.status === 'SUCCESS').length / history.filter(i => i.status !== 'PENDING').length * 100) || 0
+    const successRate = history.filter(i => i.signal !== 'NEUTRAL').length > 0
+        ? (history.filter(i => i.status === 'SUCCESS' && i.signal !== 'NEUTRAL').length /
+            history.filter(i => i.status !== 'PENDING' && i.signal !== 'NEUTRAL').length * 100) || 0
         : 0;
 
     return (
@@ -102,8 +103,11 @@ export const HistoryDashboard: React.FC = () => {
                             >
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
-                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${item.signal === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                            {item.signal}
+                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${item.signal === 'LONG' ? 'bg-green-500/20 text-green-400' :
+                                                item.signal === 'SHORT' ? 'bg-red-500/20 text-red-400' :
+                                                    'bg-slate-500/20 text-slate-400'
+                                            }`}>
+                                            {item.signal === 'NEUTRAL' ? 'SIDELINES' : item.signal}
                                         </span>
                                         <span className="text-xs font-bold">{item.symbol}</span>
                                         <span className="text-[10px] text-slate-500">{item.timeframe}</span>

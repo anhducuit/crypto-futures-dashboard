@@ -27,7 +27,9 @@ export function useHistoryAccuracy(currentPrice: number | null, symbol: string) 
                 for (const signal of pendingSignals) {
                     let newStatus: 'SUCCESS' | 'FAILED' | null = null;
 
-                    if (signal.signal === 'LONG') {
+                    if (signal.signal === 'NEUTRAL') {
+                        newStatus = 'SUCCESS';
+                    } else if (signal.signal === 'LONG') {
                         if (currentPrice >= signal.target_price) newStatus = 'SUCCESS';
                         else if (currentPrice <= signal.stop_loss) newStatus = 'FAILED';
                     } else if (signal.signal === 'SHORT') {
