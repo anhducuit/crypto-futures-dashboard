@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShieldCheck, Mail, Lock, LogIn, Zap, DollarSign, Dog, Wallet } from 'lucide-react';
-
-// Using local assets generated
-const BTC_ICON = 'C:/Users/PC/.gemini/antigravity/brain/4966686e-ef79-4119-9d2a-da79a6d44685/bitcoin_3d_icon_1767680227664.png';
-const ETH_ICON = 'C:/Users/PC/.gemini/antigravity/brain/4966686e-ef79-4119-9d2a-da79a6d44685/ethereum_3d_icon_1767680249787.png';
+import { ShieldCheck, Mail, Lock, LogIn, Zap, DollarSign, Dog, Wallet, Bitcoin } from 'lucide-react';
 
 export const Auth: React.FC = () => {
     const [loading, setLoading] = useState(false);
@@ -33,14 +29,29 @@ export const Auth: React.FC = () => {
 
     return (
         <div className="auth-bg min-h-screen flex items-center justify-center p-4">
-            {/* Background Decorations - Floating 3D Icons and Coins */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {/* 3D Generated Icons */}
-                <div className="absolute top-[10%] left-[15%] w-32 h-32 animate-float-slow opacity-40">
-                    <img src={`file:///${BTC_ICON}`} alt="BTC" className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" />
+                {/* Bitcoin (BTC) - Large Styled Icon */}
+                <div className="absolute top-[8%] left-[12%] animate-float-slow opacity-40">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 p-1 shadow-[0_0_40px_rgba(251,191,36,0.4)]">
+                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/20">
+                            <Bitcoin className="text-yellow-500" size={56} />
+                            <span className="text-xs font-black text-white tracking-widest mt-1">BITCOIN</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="absolute top-[20%] right-[15%] w-28 h-28 animate-float-medium opacity-40">
-                    <img src={`file:///${ETH_ICON}`} alt="ETH" className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]" />
+
+                {/* Ethereum (ETH) - Large Styled Icon */}
+                <div className="absolute top-[18%] right-[10%] animate-float-medium opacity-40">
+                    <div className="w-28 h-28 rounded-full bg-gradient-to-br from-purple-400 via-purple-500 to-blue-500 p-1 shadow-[0_0_40px_rgba(168,85,247,0.3)]">
+                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/20">
+                            <div className="relative">
+                                <ShieldCheck className="text-purple-400" size={48} />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-[10px] font-black text-white mt-1">ETH</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Styled CSS Coins */}
