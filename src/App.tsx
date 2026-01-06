@@ -15,6 +15,7 @@ import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
 import { useHistoryAccuracy } from './hooks/useHistoryAccuracy';
+import { useBackgroundBTCTracker } from './hooks/useBackgroundBTCTracker';
 import './index.css';
 
 function App() {
@@ -54,6 +55,9 @@ function App() {
     { timeframe: '1W', label: 'Weekly', bias: 'bullish' as const },
     { timeframe: '1M', label: 'Monthly', bias: 'neutral' as const },
   ]);
+
+  // Background BTC Tracking (Global)
+  useBackgroundBTCTracker();
 
   // Background Accuracy Tracking
   useHistoryAccuracy(currentPrice, symbol);

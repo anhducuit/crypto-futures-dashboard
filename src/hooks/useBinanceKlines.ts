@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase';
 
 interface KlineData {
     openTime: number;
@@ -86,61 +85,12 @@ export function useBinanceKlines(symbol: string) {
 
     // Track current symbol to prevent stale data updates
     const currentSymbolRef = useRef(symbol);
-    const lastSavedRef = useRef<Record<string, number>>({}); // timeframe -> timestamp
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Update ref when symbol changes
     useEffect(() => {
         currentSymbolRef.current = symbol;
-        lastSavedRef.current = {}; // Reset history tracking when symbol changes
     }, [symbol]);
-
-    // Save signal to Supabase
-    const saveSignal = async (
-        tfLabel: string,
-        signal: 'LONG' | 'SHORT',
-        price: number,
-        rsi: number,
-        volRatio: number,
-        priceGap: number
-    ) => {
-        try {
-            const key = `${symbol}_${tfLabel}`;
-            const now = Date.now();
-
-            // To prevent spamMING, only save once per 1 hour for each timeframe and signal type
-            // (or if signal changed significantLY, but for now let's use time-based cooldown)
-            if (lastSavedRef.current[key] && now - lastSavedRef.current[key] < 3600000) {
-                return;
-            }
-
-            // Calculate simple target and stoploss (0.5% / 0.3%)
-            const target_price = signal === 'LONG' ? price * 1.005 : price * 0.995;
-            const stop_loss = signal === 'LONG' ? price * 0.997 : price * 1.003;
-
-            const { error: saveError } = await supabase
-                .from('trading_history')
-                .insert([{
-                    symbol: symbol.toUpperCase(),
-                    timeframe: tfLabel,
-                    signal,
-                    price_at_signal: price,
-                    rsi,
-                    volume_ratio: volRatio,
-                    price_gap: priceGap,
-                    status: 'PENDING',
-                    target_price,
-                    stop_loss
-                }]);
-
-            if (saveError) throw saveError;
-
-            lastSavedRef.current[key] = now;
-            console.log(`Saved signal for ${tfLabel}: ${signal}`);
-        } catch (e) {
-            console.error('Failed to auto-save signal:', e);
-        }
-    };
 
     const fetchKlines = useCallback(async (targetSymbol: string) => {
         if (!targetSymbol || targetSymbol.length < 3) return;
@@ -233,15 +183,7 @@ export function useBinanceKlines(symbol: string) {
                         priceGap
                     });
 
-                    // Auto-save logic: Check for clear signals
-                    // Threshold: RSI extremes + MA confirmation + Vol boost OR simple Trend confirmation
-                    if (trend !== 'neutral') {
-                        const signalType = trend === 'bullish' ? 'LONG' : 'SHORT';
-                        // Additional filter: only save if it's a "quality" signal (e.g. not just hovering near MA)
-                        if (Math.abs(priceGap) > 0.8) {
-                            saveSignal(tf.label, signalType, currentPrice, rsi, volumeRatio, priceGap);
-                        }
-                    }
+                    // Auto-save logic was moved to useBackgroundBTCTracker
                 } catch (e: any) {
                     if (e.name === 'AbortError') {
                         console.log(`Fetch aborted for ${normalizedSymbol} ${tf.interval}`);
