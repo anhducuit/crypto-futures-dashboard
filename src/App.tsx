@@ -21,7 +21,6 @@ import { TradingViewWidget } from './components/TradingViewWidget';
 import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
-import { useHistoryAccuracy } from './hooks/useHistoryAccuracy';
 import { TradeMonitor } from './components/TradeMonitor';
 import './index.css';
 
@@ -77,9 +76,6 @@ function App() {
 
   // EMA Trend Bias (Dynamic from higher timeframes)
   const { trends: emaTrends } = useEMATrendBias(symbol);
-
-  // Background Accuracy Tracking
-  useHistoryAccuracy(currentPrice, symbol);
 
   // Background Trade Monitor (Checks PENDING trades)
   // This will run independent of the current symbol to check ALL pending history
