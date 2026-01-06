@@ -156,14 +156,19 @@ export function useBinanceKlines(symbol: string) {
 
                     const { swingHigh, swingLow } = findSwingPoints(klines);
 
-                    // Determine trend based on price vs MA
+                    // Determine trend based on price vs MA (Timeframe sensitive)
                     let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral';
                     const priceVsMa = ((currentPrice - ma20) / ma20) * 100;
 
-                    if (priceVsMa > 0.5) {
+                    // Dynamic threshold based on interval
+                    let threshold = 0.5; // Default for 1h, 4h
+                    if (tf.interval === '1m') threshold = 0.1;
+                    else if (tf.interval === '15m') threshold = 0.2;
+
+                    if (priceVsMa > threshold) {
                         trend = 'bullish';
                         bullishCount++;
-                    } else if (priceVsMa < -0.5) {
+                    } else if (priceVsMa < -threshold) {
                         trend = 'bearish';
                         bearishCount++;
                     }
