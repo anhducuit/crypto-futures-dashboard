@@ -13,6 +13,8 @@ import { TPCalculator } from './components/TPCalculator';
 import { TradingViewWidget } from './components/TradingViewWidget';
 import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
+import { HistoryDashboard } from './components/HistoryDashboard';
+import { useHistoryAccuracy } from './hooks/useHistoryAccuracy';
 import './index.css';
 
 function App() {
@@ -52,6 +54,9 @@ function App() {
     { timeframe: '1W', label: 'Weekly', bias: 'bullish' as const },
     { timeframe: '1M', label: 'Monthly', bias: 'neutral' as const },
   ]);
+
+  // Background Accuracy Tracking
+  useHistoryAccuracy(currentPrice, symbol);
 
   // Handle swing selection from MA panel
   const handleSelectSwing = useCallback((swingHigh: number, swingLow: number, timeframe: string) => {
@@ -151,9 +156,14 @@ function App() {
             <EMATrendBias trends={emaTrends} />
           </div>
 
-          {/* Center - TradingView Chart */}
-          <div className="lg:col-span-5 space-y-4">
-            <TradingViewWidget symbol={symbol} />
+          {/* Center - TradingView Chart & History */}
+          <div className="lg:col-span-5 space-y-4 flex flex-col min-h-0">
+            <div className="flex-shrink-0">
+              <TradingViewWidget symbol={symbol} />
+            </div>
+            <div className="flex-1 min-h-[400px]">
+              <HistoryDashboard />
+            </div>
           </div>
 
           {/* Right Sidebar - Calculators */}
