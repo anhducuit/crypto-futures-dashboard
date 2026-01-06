@@ -34,7 +34,7 @@ export function useBinanceWebSocket(symbol: string) {
         if (!targetSymbol) return;
 
         const normalizedSymbol = targetSymbol.toLowerCase().replace('/', '');
-        const wsUrl = `wss://stream.binance.com:9443/ws/${normalizedSymbol}@trade`;
+        const wsUrl = `wss://fstream.binance.com/ws/${normalizedSymbol}@trade`;
 
         try {
             // Close existing connection

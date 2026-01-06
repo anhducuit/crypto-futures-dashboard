@@ -28,7 +28,7 @@ export function useEMATrendBias(symbol: string) {
             for (const tf of tfConfigs) {
                 try {
                     const response = await fetch(
-                        `https://api.binance.com/api/v3/klines?symbol=${normalizedSymbol}&interval=${tf.interval}&limit=50`
+                        `https://fapi.binance.com/fapi/v1/klines?symbol=${normalizedSymbol}&interval=${tf.interval}&limit=50`
                     );
 
                     if (!response.ok) continue;

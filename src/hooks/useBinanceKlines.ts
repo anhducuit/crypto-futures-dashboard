@@ -119,7 +119,7 @@ export function useBinanceKlines(symbol: string) {
 
                 try {
                     const response = await fetch(
-                        `https://api.binance.com/api/v3/klines?symbol=${normalizedSymbol}&interval=${tf.interval}&limit=${tf.limit}`,
+                        `https://fapi.binance.com/fapi/v1/klines?symbol=${normalizedSymbol}&interval=${tf.interval}&limit=${tf.limit}`,
                         { signal: abortControllerRef.current?.signal }
                     );
 
