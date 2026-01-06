@@ -9,8 +9,8 @@ select
     $$
     select
       net.http_post(
-        url:='https://YOUR_PROJECT_REF.supabase.co/functions/v1/check-trades',
-        headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb,
+        url:='https://tnmagcatofooeshzdhac.supabase.co/functions/v1/check-trades',
+        headers:='{"Content-Type": "application/json", "Authorization": "Bearer sb_publishable_8M9n5vsFXwrzf39f0oY9DA_uByjBK4g"}'::jsonb,
         body:='{}'::jsonb
       ) as request_id;
     $$

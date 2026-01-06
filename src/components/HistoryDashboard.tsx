@@ -64,7 +64,11 @@ export const HistoryDashboard: React.FC = () => {
 
     useEffect(() => {
         fetchHistory();
-        const interval = setInterval(fetchHistory, 15000);
+        fetchStats();
+        const interval = setInterval(() => {
+            fetchHistory();
+            fetchStats();
+        }, 15000);
         return () => clearInterval(interval);
     }, [filter, statusFilter, page]);
 
@@ -90,10 +94,39 @@ export const HistoryDashboard: React.FC = () => {
         }
     };
 
-    const successRate = history.filter(i => i.signal !== 'NEUTRAL').length > 0
-        ? (history.filter(i => i.status === 'SUCCESS' && i.signal !== 'NEUTRAL').length /
-            history.filter(i => i.status !== 'PENDING' && i.signal !== 'NEUTRAL').length * 100) || 0
-        : 0;
+    const [successRate, setSuccessRate] = useState(0);
+
+    const fetchStats = async () => {
+        try {
+            // Count total actionable trades (excluding NEUTRAL)
+            let totalQuery = supabase
+                .from('trading_history')
+                .select('*', { count: 'exact', head: true })
+                .neq('signal', 'NEUTRAL')
+                .neq('status', 'PENDING');
+
+            // Count total SUCCESS trades
+            let successQuery = supabase
+                .from('trading_history')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'SUCCESS')
+                .neq('signal', 'NEUTRAL');
+
+            if (filter !== 'All') {
+                totalQuery = totalQuery.eq('timeframe', filter);
+                successQuery = successQuery.eq('timeframe', filter);
+            }
+
+            const [totalRes, successRes] = await Promise.all([totalQuery, successQuery]);
+
+            const totalActionable = totalRes.count || 0;
+            const totalSuccess = successRes.count || 0;
+
+            setSuccessRate(totalActionable > 0 ? (totalSuccess / totalActionable) * 100 : 0);
+        } catch (e) {
+            console.error('Error fetching stats:', e);
+        }
+    };
 
     return (
         <div className="card h-full flex flex-col">
