@@ -20,8 +20,9 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol }) 
             // Clear any existing widget
             containerRef.current.innerHTML = '';
 
-            // Format symbol for TradingView (e.g., BTCUSDT -> BINANCE:BTCUSDT)
-            const formattedSymbol = symbol ? `BINANCE:${symbol.toUpperCase()}` : 'BINANCE:BTCUSDT';
+            // Format symbol for TradingView Perpetual Futures (e.g., BTCUSDT -> BINANCE:BTCUSDT.P)
+            const cleanSymbol = symbol ? symbol.toUpperCase().replace('/', '') : 'BTCUSDT';
+            const formattedSymbol = `BINANCE:${cleanSymbol}.P`;
 
             // Create widget container
             const widgetContainer = document.createElement('div');
