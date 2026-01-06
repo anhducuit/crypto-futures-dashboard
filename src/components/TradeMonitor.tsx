@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 
 interface PendingTrade {
     id: string;
+    created_at: string;
     symbol: string;
     signal: 'LONG' | 'SHORT' | 'NEUTRAL';
     target_price: number;
@@ -43,6 +44,9 @@ export const TradeMonitor = () => {
                 }
 
                 console.log(`TradeMonitor: Monitoring ${tradesRef.current.length} pending trades`);
+
+                // Run Audit on remaining trades to check for past Wicks
+                auditTrades(tradesRef.current);
             }
         } catch (e) {
             console.error('Fetch error:', e);
@@ -64,10 +68,79 @@ export const TradeMonitor = () => {
         }
     };
 
+    // Audit Pending Trades (Check Historical Candles)
+    const auditTrades = async (trades: PendingTrade[]) => {
+        const groupedTrades = trades.reduce((acc, trade) => {
+            if (!acc[trade.symbol]) acc[trade.symbol] = [];
+            acc[trade.symbol].push(trade);
+            return acc;
+        }, {} as Record<string, PendingTrade[]>);
+
+        for (const symbol in groupedTrades) {
+            try {
+                // Fetch last 1000 candles (approx 16 hours of 1m data) to cover recent history
+                // Ideally we use startTime based on the oldest trade, but last 1000 1m candles is a safe simple batch
+                const res = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=1m&limit=1000`);
+                const data = await res.json();
+
+                if (!Array.isArray(data)) continue;
+
+                const candles = data.map((c: any) => ({
+                    openTime: c[0],
+                    high: parseFloat(c[2]),
+                    low: parseFloat(c[3]),
+                    closeTime: c[6]
+                }));
+
+                for (const trade of groupedTrades[symbol]) {
+                    const tradeTime = new Date(trade.created_at).getTime();
+
+                    // Filter candles that happened AFTER trade creation
+                    const relevantCandles = candles.filter(c => c.closeTime >= tradeTime);
+
+                    let newStatus: 'SUCCESS' | 'FAILED' | 'PENDING' = 'PENDING';
+                    let triggerPrice = 0;
+
+                    for (const candle of relevantCandles) {
+                        if (trade.signal === 'LONG') {
+                            if (candle.high >= trade.target_price) {
+                                newStatus = 'SUCCESS';
+                                triggerPrice = trade.target_price;
+                                break;
+                            }
+                            if (candle.low <= trade.stop_loss) {
+                                newStatus = 'FAILED';
+                                triggerPrice = trade.stop_loss;
+                                break;
+                            }
+                        } else if (trade.signal === 'SHORT') {
+                            if (candle.low <= trade.target_price) {
+                                newStatus = 'SUCCESS';
+                                triggerPrice = trade.target_price;
+                                break;
+                            }
+                            if (candle.high >= trade.stop_loss) {
+                                newStatus = 'FAILED';
+                                triggerPrice = trade.stop_loss;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (newStatus !== 'PENDING') {
+                        await updateTradeStatus(trade, newStatus, triggerPrice);
+                    }
+                }
+            } catch (err) {
+                console.error(`Audit error for ${symbol}:`, err);
+            }
+        }
+    };
+
     // Initial Fetch & Poll
     useEffect(() => {
         fetchTrades();
-        const pollInterval = setInterval(fetchTrades, 15000); // Refresh list every 15s in case new trades appear
+        const pollInterval = setInterval(fetchTrades, 30000); // Check every 30s
         return () => clearInterval(pollInterval);
     }, []);
 
