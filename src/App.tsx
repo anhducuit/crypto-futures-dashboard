@@ -22,6 +22,7 @@ import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
 import { useHistoryAccuracy } from './hooks/useHistoryAccuracy';
+import { TradeMonitor } from './components/TradeMonitor';
 import './index.css';
 
 function App() {
@@ -80,6 +81,10 @@ function App() {
   // Background Accuracy Tracking
   useHistoryAccuracy(currentPrice, symbol);
 
+  // Background Trade Monitor (Checks PENDING trades)
+  // This will run independent of the current symbol to check ALL pending history
+  const tradeMonitor = session ? <TradeMonitor /> : null;
+
   // Handle swing selection from MA panel
   const handleSelectSwing = useCallback((swingHigh: number, swingLow: number, timeframe: string) => {
     setSelectedSwing({ high: swingHigh, low: swingLow, timeframe });
@@ -103,6 +108,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      {tradeMonitor}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
         <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between">

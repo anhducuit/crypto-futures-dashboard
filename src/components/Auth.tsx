@@ -28,6 +28,23 @@ const COINS = [
     { symbol: 'MATIC', name: 'Polygon', icon: <Zap size={18} />, color: 'green' },
     { symbol: 'AVAX', name: 'Avalanche', icon: <TrendingUp size={20} />, color: 'green' },
     { symbol: 'DOT', name: 'Polkadot', icon: <Coins size={18} />, color: 'green' },
+    { symbol: 'UNI', name: 'Uniswap', icon: <div className="font-black text-[10px]">UNI</div>, color: 'green' },
+    { symbol: 'LTC', name: 'Litecoin', icon: <div className="font-black text-[10px]">LTC</div>, color: 'green' },
+    { symbol: 'ATOM', name: 'Cosmos', icon: <Zap size={18} />, color: 'green' },
+    { symbol: 'NEAR', name: 'NEAR Protocol', icon: <div className="font-black text-[10px]">NEAR</div>, color: 'green' },
+    { symbol: 'ETC', name: 'Ethereum Classic', icon: <div className="font-black text-[10px]">ETC</div>, color: 'green' },
+    { symbol: 'FIL', name: 'Filecoin', icon: <div className="font-black text-[10px]">FIL</div>, color: 'green' },
+    { symbol: 'AAVE', name: 'Aave', icon: <div className="font-black text-[10px]">AAVE</div>, color: 'green' },
+    { symbol: 'ALGO', name: 'Algorand', icon: <div className="font-black text-[10px]">ALGO</div>, color: 'green' },
+    { symbol: 'XMR', name: 'Monero', icon: <div className="font-black text-[10px]">XMR</div>, color: 'green' },
+    { symbol: 'EOS', name: 'EOS', icon: <div className="font-black text-[10px]">EOS</div>, color: 'green' },
+    { symbol: 'XTZ', name: 'Tezos', icon: <div className="font-black text-[10px]">XTZ</div>, color: 'green' },
+    { symbol: 'THETA', name: 'Theta', icon: <div className="font-black text-[10px]">THETA</div>, color: 'green' },
+    { symbol: 'VET', name: 'VeChain', icon: <div className="font-black text-[10px]">VET</div>, color: 'green' },
+    { symbol: 'SAND', name: 'The Sandbox', icon: <div className="font-black text-[10px]">SAND</div>, color: 'green' },
+    { symbol: 'MANA', name: 'Decentraland', icon: <div className="font-black text-[10px]">MANA</div>, color: 'green' },
+    { symbol: 'APE', name: 'ApeCoin', icon: <div className="font-black text-[10px]">APE</div>, color: 'green' },
+    { symbol: 'QNT', name: 'Quant', icon: <div className="font-black text-[10px]">QNT</div>, color: 'green' },
 ];
 
 export const Auth: React.FC = () => {

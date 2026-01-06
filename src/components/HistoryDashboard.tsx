@@ -15,6 +15,8 @@ interface HistoryItem {
     status: 'PENDING' | 'SUCCESS' | 'FAILED';
     rsi: number;
     volume_ratio: number;
+    target_price?: number;
+    stop_loss?: number;
 }
 
 export const HistoryDashboard: React.FC = () => {
@@ -183,11 +185,11 @@ export const HistoryDashboard: React.FC = () => {
                                         <>
                                             <div className="flex justify-between">
                                                 <span className="text-slate-500">Target:</span>
-                                                <span className="text-green-500/80">${(item as any).target_price}</span>
+                                                <span className="text-green-500/80">${item.target_price}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-slate-500">StopLoss:</span>
-                                                <span className="text-red-500/80">${(item as any).stop_loss}</span>
+                                                <span className="text-red-500/80">${item.stop_loss}</span>
                                             </div>
                                         </>
                                     )}
