@@ -338,6 +338,75 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 30px rgba(234, 179, 8, 0.15);
 }
 
+/* CryptoBubbles Inspired Styles */
+.bubble-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: #050505;
+  z-index: 0;
+}
+
+.crypto-bubble {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: transform 0.2s ease-out, box-shadow 0.3s ease;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.crypto-bubble:active {
+  cursor: grabbing;
+}
+
+.bubble-green {
+  background: radial-gradient(circle at center, rgba(34, 197, 94, 0.1) 0%, rgba(5, 5, 5, 1) 70%);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.2), inset 0 0 15px rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.bubble-red {
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.1) 0%, rgba(5, 5, 5, 1) 70%);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), inset 0 0 15px rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.bubble-glow-green {
+  border: 3px solid #22c55e;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+}
+
+.bubble-glow-red {
+  border: 3px solid #ef4444;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+}
+
+.bubble-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.bubble-symbol {
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.bubble-change {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+  opacity: 0.9;
+}
+
 .auth-bg {
   background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f14 100%);
   overflow: hidden;
