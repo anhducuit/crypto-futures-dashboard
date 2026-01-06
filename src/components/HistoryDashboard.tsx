@@ -67,7 +67,7 @@ export const HistoryDashboard: React.FC = () => {
             <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <History size={16} className="text-[var(--color-golden)]" />
-                    LỊCH SỬ ĐỀ XUẤT (SUPABASE)
+                    LỊCH SỬ ĐỀ XUẤT (BITCOIN)
                 </div>
                 <div className="flex gap-2">
                     <select
@@ -104,8 +104,8 @@ export const HistoryDashboard: React.FC = () => {
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
                                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${item.signal === 'LONG' ? 'bg-green-500/20 text-green-400' :
-                                                item.signal === 'SHORT' ? 'bg-red-500/20 text-red-400' :
-                                                    'bg-slate-500/20 text-slate-400'
+                                            item.signal === 'SHORT' ? 'bg-red-500/20 text-red-400' :
+                                                'bg-slate-500/20 text-slate-400'
                                             }`}>
                                             {item.signal === 'NEUTRAL' ? 'SIDELINES' : item.signal}
                                         </span>
@@ -128,9 +128,27 @@ export const HistoryDashboard: React.FC = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex justify-between text-[10px]">
-                                    <span className="text-slate-500">Giá: ${item.price_at_signal}</span>
-                                    <span className="text-slate-500">{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Entry:</span>
+                                        <span className="text-slate-300">${item.price_at_signal}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Time:</span>
+                                        <span className="text-slate-300">{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    {item.signal !== 'NEUTRAL' && (
+                                        <>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Target:</span>
+                                                <span className="text-green-500/80">${(item as any).target_price}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">StopLoss:</span>
+                                                <span className="text-red-500/80">${(item as any).stop_loss}</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}
