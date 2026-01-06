@@ -126,5 +126,12 @@ export const TradeMonitor = () => {
         };
     }, []);
 
-    return null;
+    return (
+        <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 rounded-full border border-slate-800 shadow-xl backdrop-blur-sm">
+            <div className={`w-2 h-2 rounded-full ${wsRef.current?.readyState === 1 ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <span className="text-[10px] font-mono text-slate-400">
+                BOT: {tradesRef.current.length} PENDING
+            </span>
+        </div>
+    );
 };
