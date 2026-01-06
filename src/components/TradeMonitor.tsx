@@ -28,11 +28,39 @@ export const TradeMonitor = () => {
             }
 
             if (trades) {
-                tradesRef.current = trades as PendingTrade[];
-                console.log(`TradeMonitor: Monitoring ${trades.length} pending trades`);
+                const pendingTrades = trades as PendingTrade[];
+                tradesRef.current = pendingTrades;
+
+                // Fast-track: Process NEUTRAL signals immediately
+                const neutralTrades = pendingTrades.filter(t => t.signal === 'NEUTRAL');
+                for (const trade of neutralTrades) {
+                    await updateTradeStatus(trade, 'SUCCESS', 0);
+                }
+
+                // Remove processed neutrals from monitoring list
+                if (neutralTrades.length > 0) {
+                    tradesRef.current = pendingTrades.filter(t => t.signal !== 'NEUTRAL');
+                }
+
+                console.log(`TradeMonitor: Monitoring ${tradesRef.current.length} pending trades`);
             }
         } catch (e) {
             console.error('Fetch error:', e);
+        }
+    };
+
+    const updateTradeStatus = async (trade: PendingTrade, status: 'SUCCESS' | 'FAILED', price: number) => {
+        const { error } = await supabase
+            .from('trading_history')
+            .update({ status })
+            .eq('id', trade.id);
+
+        if (error) {
+            console.error(`Failed to update trade ${trade.id}:`, error);
+        } else {
+            console.log(`TradeMonitor: Trade ${trade.symbol} ${status}! (Price: ${price})`);
+            // Remove from local ref to prevent double updates
+            tradesRef.current = tradesRef.current.filter(t => t.id !== trade.id);
         }
     };
 
@@ -62,11 +90,8 @@ export const TradeMonitor = () => {
                     const trades = tradesRef.current;
                     if (trades.length === 0) return;
 
-                    // Convert array to map for faster lookup if needed, but array iteration is fine for <100 trades
-                    // Data format: { s: symbol, c: current_price, ... }
-
                     data.forEach(async (ticker: any) => {
-                        const symbol = ticker.s; // e.g., BTCUSDT
+                        const symbol = ticker.s;
                         const currentPrice = parseFloat(ticker.c);
 
                         // Find pending trades for this symbol
@@ -75,9 +100,7 @@ export const TradeMonitor = () => {
                         for (const trade of matchingTrades) {
                             let newStatus: 'SUCCESS' | 'FAILED' | 'PENDING' = 'PENDING';
 
-                            if (trade.signal === 'NEUTRAL') {
-                                newStatus = 'SUCCESS';
-                            } else if (trade.signal === 'LONG') {
+                            if (trade.signal === 'LONG') {
                                 if (currentPrice >= trade.target_price) newStatus = 'SUCCESS';
                                 else if (currentPrice <= trade.stop_loss) newStatus = 'FAILED';
                             } else if (trade.signal === 'SHORT') {
@@ -86,21 +109,7 @@ export const TradeMonitor = () => {
                             }
 
                             if (newStatus !== 'PENDING') {
-                                // Optimistically remove from ref to prevent double update attempts
-                                tradesRef.current = tradesRef.current.filter(t => t.id !== trade.id);
-
-                                // Update Supabase
-                                const { error } = await supabase
-                                    .from('trading_history')
-                                    .update({ status: newStatus })
-                                    .eq('id', trade.id);
-
-                                if (error) {
-                                    console.error(`Failed to update trade ${trade.id}:`, error);
-                                    // Add back if failed? Or just let next fetch pick it up
-                                } else {
-                                    console.log(`TradeMonitor: Trade ${trade.symbol} ${newStatus}! (Price: ${currentPrice})`);
-                                }
+                                await updateTradeStatus(trade, newStatus, currentPrice);
                             }
                         }
                     });
