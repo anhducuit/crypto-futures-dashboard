@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Coins, ShieldCheck, Mail, Lock, LogIn, TrendingUp, Cpu, Globe } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, LogIn, Zap, DollarSign, Dog, Wallet } from 'lucide-react';
+
+// Using local assets generated
+const BTC_ICON = 'C:/Users/PC/.gemini/antigravity/brain/4966686e-ef79-4119-9d2a-da79a6d44685/bitcoin_3d_icon_1767680227664.png';
+const ETH_ICON = 'C:/Users/PC/.gemini/antigravity/brain/4966686e-ef79-4119-9d2a-da79a6d44685/ethereum_3d_icon_1767680249787.png';
 
 export const Auth: React.FC = () => {
     const [loading, setLoading] = useState(false);
@@ -29,24 +33,57 @@ export const Auth: React.FC = () => {
 
     return (
         <div className="auth-bg min-h-screen flex items-center justify-center p-4">
-            {/* Background Decorations - Floating Icons */}
+            {/* Background Decorations - Floating 3D Icons and Coins */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <Coins
-                    className="absolute top-[10%] left-[15%] text-[var(--color-golden)] opacity-20 animate-float-slow"
-                    size={64}
-                />
-                <TrendingUp
-                    className="absolute top-[60%] left-[10%] text-green-500 opacity-15 animate-float-medium"
-                    size={48}
-                />
-                <Cpu
-                    className="absolute top-[20%] right-[15%] text-blue-500 opacity-20 animate-float-fast"
-                    size={56}
-                />
-                <Globe
-                    className="absolute bottom-[15%] right-[20%] text-purple-500 opacity-15 animate-float-slow"
-                    size={72}
-                />
+                {/* 3D Generated Icons */}
+                <div className="absolute top-[10%] left-[15%] w-32 h-32 animate-float-slow opacity-40">
+                    <img src={`file:///${BTC_ICON}`} alt="BTC" className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(251,191,36,0.5)]" />
+                </div>
+                <div className="absolute top-[20%] right-[15%] w-28 h-28 animate-float-medium opacity-40">
+                    <img src={`file:///${ETH_ICON}`} alt="ETH" className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]" />
+                </div>
+
+                {/* Styled CSS Coins */}
+                {/* Solana */}
+                <div className="absolute top-[60%] left-[8%] animate-float-fast opacity-30">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-cyan-400 p-0.5 shadow-lg shadow-purple-500/20">
+                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/10">
+                            <Zap className="text-purple-400" size={32} />
+                            <span className="text-[10px] font-black text-white/80">SOL</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* USDT */}
+                <div className="absolute bottom-[15%] right-[20%] animate-float-slow opacity-30">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-400 p-0.5 shadow-lg shadow-green-500/20">
+                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/10">
+                            <DollarSign className="text-green-400" size={28} />
+                            <span className="text-[10px] font-black text-white/80">USDT</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* DOGE */}
+                <div className="absolute bottom-[25%] left-[20%] animate-float-medium opacity-20">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-600 to-yellow-400 p-0.5 shadow-lg shadow-yellow-500/20">
+                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/10">
+                            <Dog className="text-yellow-500" size={32} />
+                            <span className="text-[10px] font-black text-white/80">DOGE</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* XRP */}
+                <div className="absolute top-[40%] right-[8%] animate-float-slow opacity-25">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-600 to-slate-400 p-0.5 shadow-lg shadow-blue-500/20">
+                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center border border-white/10">
+                            <Wallet className="text-blue-400" size={28} />
+                            <span className="text-[10px] font-black text-white/80">XRP</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="absolute top-1/4 right-1/3 w-32 h-32 bg-yellow-500/10 rounded-full blur-[100px]"></div>
                 <div className="absolute bottom-1/4 left-1/3 w-40 h-40 bg-blue-500/10 rounded-full blur-[100px]"></div>
             </div>
