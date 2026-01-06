@@ -7,6 +7,7 @@ import { LivePriceDisplay } from './components/LivePriceDisplay';
 import { DirectionSelector } from './components/DirectionSelector';
 import { MovingAveragesPanel } from './components/MovingAveragesPanel';
 import { EMATrendBias } from './components/EMATrendBias';
+import { useEMATrendBias } from './hooks/useEMATrendBias';
 import { FibonacciCalculator } from './components/FibonacciCalculator';
 import { PositionCalculator } from './components/PositionCalculator';
 import { TPCalculator } from './components/TPCalculator';
@@ -48,12 +49,8 @@ function App() {
     refetch: refetchMA
   } = useBinanceKlines(symbol);
 
-  // EMA Trend Bias - Simulated based on MA data (can be enhanced)
-  const [emaTrends] = useState([
-    { timeframe: '1D', label: 'Daily', bias: 'bullish' as const },
-    { timeframe: '1W', label: 'Weekly', bias: 'bullish' as const },
-    { timeframe: '1M', label: 'Monthly', bias: 'neutral' as const },
-  ]);
+  // EMA Trend Bias (Dynamic from higher timeframes)
+  const { trends: emaTrends } = useEMATrendBias(symbol);
 
   // Background Accuracy Tracking
   useHistoryAccuracy(currentPrice, symbol);
