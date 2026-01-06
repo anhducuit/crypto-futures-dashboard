@@ -25,7 +25,7 @@ export const HistoryDashboard: React.FC = () => {
                 .from('trading_history')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(20);
+                .limit(50);
 
             if (filter !== 'All') {
                 query = query.eq('timeframe', filter);
