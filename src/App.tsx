@@ -14,6 +14,7 @@ import { DirectionSelector } from './components/DirectionSelector';
 import { MovingAveragesPanel } from './components/MovingAveragesPanel';
 import { EMATrendBias } from './components/EMATrendBias';
 import { useEMATrendBias } from './hooks/useEMATrendBias';
+import { useSignalGenerator } from './hooks/useSignalGenerator';
 import { FibonacciCalculator } from './components/FibonacciCalculator';
 import { PositionCalculator } from './components/PositionCalculator';
 import { TPCalculator } from './components/TPCalculator';
@@ -78,8 +79,10 @@ function App() {
   const { trends: emaTrends } = useEMATrendBias(symbol);
 
   // Background Trade Monitor (Checks PENDING trades)
-  // This will run independent of the current symbol to check ALL pending history
   const tradeMonitor = session ? <TradeMonitor /> : null;
+
+  // Automated Signal Generator
+  useSignalGenerator(symbol, maAnalysis, currentPrice || 0);
 
   // Handle swing selection from MA panel
   const handleSelectSwing = useCallback((swingHigh: number, swingLow: number, timeframe: string) => {
