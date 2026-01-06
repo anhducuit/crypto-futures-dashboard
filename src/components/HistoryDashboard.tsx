@@ -18,22 +18,29 @@ export const HistoryDashboard: React.FC = () => {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const ITEMS_PER_PAGE = 20;
 
     const fetchHistory = async () => {
         try {
+            const from = (page - 1) * ITEMS_PER_PAGE;
+            const to = from + ITEMS_PER_PAGE - 1;
+
             let query = supabase
                 .from('trading_history')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .range(from, to);
 
             if (filter !== 'All') {
                 query = query.eq('timeframe', filter);
             }
 
-            const { data, error } = await query;
+            const { data, error, count } = await query;
             if (error) throw error;
             setHistory(data || []);
+            if (count !== null) setTotalCount(count);
         } catch (e) {
             console.error('Error fetching history:', e);
         } finally {
@@ -43,9 +50,16 @@ export const HistoryDashboard: React.FC = () => {
 
     useEffect(() => {
         fetchHistory();
-        const interval = setInterval(fetchHistory, 15000); // Polling for updates
+        const interval = setInterval(fetchHistory, 15000);
         return () => clearInterval(interval);
-    }, [filter]);
+    }, [filter, page]);
+
+    const handleFilterChange = (newFilter: string) => {
+        setFilter(newFilter);
+        setPage(1); // Reset to page 1 on filter change
+    };
+
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
     const deleteItem = async (id: string) => {
         try {
@@ -72,7 +86,7 @@ export const HistoryDashboard: React.FC = () => {
                 <div className="flex gap-2">
                     <select
                         value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
+                        onChange={(e) => handleFilterChange(e.target.value)}
                         className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
                     >
                         <option value="All">All</option>
@@ -152,6 +166,45 @@ export const HistoryDashboard: React.FC = () => {
                                 </div>
                             </div>
                         ))}
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-1 py-4 border-t border-slate-800 mt-4">
+                                <button
+                                    onClick={() => setPage(1)}
+                                    disabled={page === 1}
+                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                                >
+                                    Đầu
+                                </button>
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                                >
+                                    Trước
+                                </button>
+
+                                <span className="px-3 text-[10px] text-slate-400">
+                                    Trang <span className="text-[var(--color-golden)] font-bold">{page}</span> / {totalPages}
+                                </span>
+
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                                >
+                                    Sau
+                                </button>
+                                <button
+                                    onClick={() => setPage(totalPages)}
+                                    disabled={page === totalPages}
+                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                                >
+                                    Cuối
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
