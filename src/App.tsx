@@ -212,7 +212,7 @@ function App() {
               <TradingViewWidget symbol={symbol} />
             </div>
             <div className="flex-1 min-h-[400px]">
-              <HistoryDashboard />
+              <HistoryDashboard symbol={symbol} />
             </div>
           </div>
 

@@ -19,7 +19,11 @@ interface HistoryItem {
     stop_loss?: number;
 }
 
-export const HistoryDashboard: React.FC = () => {
+interface HistoryDashboardProps {
+    symbol?: string;
+}
+
+export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) => {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
@@ -38,6 +42,11 @@ export const HistoryDashboard: React.FC = () => {
                 .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false })
                 .range(from, to);
+
+            // Filter by symbol if provided
+            if (symbol) {
+                query = query.eq('symbol', symbol);
+            }
 
             if (filter !== 'All') {
                 query = query.eq('timeframe', filter);
@@ -70,7 +79,7 @@ export const HistoryDashboard: React.FC = () => {
             fetchStats();
         }, 15000);
         return () => clearInterval(interval);
-    }, [filter, statusFilter, page]);
+    }, [filter, statusFilter, page, symbol]);
 
     const handleFilterChange = (newFilter: string) => {
         setFilter(newFilter);
@@ -112,6 +121,11 @@ export const HistoryDashboard: React.FC = () => {
                 .eq('status', 'SUCCESS')
                 .neq('signal', 'NEUTRAL');
 
+            if (symbol) {
+                totalQuery = totalQuery.eq('symbol', symbol);
+                successQuery = successQuery.eq('symbol', symbol);
+            }
+
             if (filter !== 'All') {
                 totalQuery = totalQuery.eq('timeframe', filter);
                 successQuery = successQuery.eq('timeframe', filter);
@@ -133,7 +147,7 @@ export const HistoryDashboard: React.FC = () => {
             <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <History size={16} className="text-[var(--color-golden)]" />
-                    LỊCH SỬ ĐỀ XUẤT (BITCOIN)
+                    LỊCH SỬ ĐỀ XUẤT ({symbol || 'ALL'})
                 </div>
                 <div className="flex gap-2">
                     <select
