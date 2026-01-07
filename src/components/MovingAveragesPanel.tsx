@@ -54,7 +54,7 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
             <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <BarChart3 size={16} className="text-[var(--color-golden)]" />
-                    PHÂN TÍCH MA (SMA 20)
+                    PHÂN TÍCH MA ĐA KHUNG
                 </div>
                 <button
                     onClick={onRefresh}
@@ -91,17 +91,50 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div>
-                                    <span className="text-[var(--color-text-secondary)]">MA20: </span>
-                                    <span className="text-white font-mono">${formatNumber(tf.ma20, getDecimals(tf.ma20))}</span>
-                                </div>
-                                <div>
-                                    <span className="text-[var(--color-text-secondary)]">Giá: </span>
-                                    <span className={`font-mono ${tf.currentPrice > tf.ma20 ? 'text-green-400' : 'text-red-400'}`}>
-                                        ${formatNumber(tf.currentPrice, getDecimals(tf.currentPrice))}
-                                    </span>
-                                </div>
+                                {tf.timeframe === '1h' ? (
+                                    <>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA20: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma20, getDecimals(tf.ma20))}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA50: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma50 || 0, getDecimals(tf.ma50 || 0))}</span>
+                                        </div>
+                                    </>
+                                ) : tf.timeframe === '15m' ? (
+                                    <>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA12: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma12 || 0, getDecimals(tf.ma12 || 0))}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA26: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma26 || 0, getDecimals(tf.ma26 || 0))}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA20: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma20, getDecimals(tf.ma20))}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">Giá: </span>
+                                            <span className={`font-mono ${tf.currentPrice > tf.ma20 ? 'text-green-400' : 'text-red-400'}`}>
+                                                ${formatNumber(tf.currentPrice, getDecimals(tf.currentPrice))}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
+
+                            {tf.timeframe === '15m' && tf.cross && tf.cross !== 'none' && (
+                                <div className={`text-xs font-bold text-center py-1 rounded ${tf.cross === 'bullish_cross' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                    }`}>
+                                    {tf.cross === 'bullish_cross' ? 'GOLDEN CROSS (MA12 > MA26)' : 'DEATH CROSS (MA12 < MA26)'}
+                                </div>
+                            )}
 
                             <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
                                 <div className="text-xs">
