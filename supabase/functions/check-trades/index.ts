@@ -132,12 +132,24 @@ Deno.serve(async (req) => {
                             const lows = data.map((x: any) => parseFloat(x[3]));
 
                             if (cfg.interval === '1m') {
+                                const ma7Array = calculateSMAArray(closes, 7);
+                                const ma25Array = calculateSMAArray(closes, 25);
+                                const ma7_curr = ma7Array[ma7Array.length - 1];
+                                const ma25_curr = ma25Array[ma25Array.length - 1];
+                                const ma7_prev = ma7Array[ma7Array.length - 2];
+                                const ma25_prev = ma25Array[ma25Array.length - 2];
+
+                                let cross = 'NONE';
+                                if (ma7_prev <= ma25_prev && ma7_curr > ma25_curr) cross = 'BULLISH_CROSS';
+                                if (ma7_prev >= ma25_prev && ma7_curr < ma25_curr) cross = 'BEARISH_CROSS';
+
                                 analyses['1m'] = {
                                     close: closes[closes.length - 1],
                                     rsi: calculateRSI(closes),
                                     sma20: calculateSMA(closes, 20),
                                     swingHigh: Math.max(...highs),
-                                    swingLow: Math.min(...lows)
+                                    swingLow: Math.min(...lows),
+                                    cross
                                 };
                             } else if (cfg.interval === '1h') {
                                 const ma20 = calculateSMA(closes, 20);
@@ -157,17 +169,17 @@ Deno.serve(async (req) => {
                         const h1 = analyses['1h'];
                         const m1 = analyses['1m'];
 
-                        // Simulation of Strategy Logic
+                        // Simulation of Strategy Logic (MA7/MA25 Cross)
                         if (h1.trend === 'BULLISH') {
-                            if (m1.close > m1.sma20) {
-                                if (m1.rsi < 75) signal = 'LONG';
+                            if (m1.cross === 'BULLISH_CROSS') {
+                                if (m1.rsi < 85) signal = 'LONG';
                                 else reason = `RSI_TOO_HIGH (${m1.rsi.toFixed(1)})`;
-                            } else reason = "PRICE_BELOW_SMA20 (1m)";
+                            } else reason = `NO_MA_CROSS (Last: ${m1.cross})`;
                         } else if (h1.trend === 'BEARISH') {
-                            if (m1.close < m1.sma20) {
-                                if (m1.rsi > 25) signal = 'SHORT';
+                            if (m1.cross === 'BEARISH_CROSS') {
+                                if (m1.rsi > 15) signal = 'SHORT';
                                 else reason = `RSI_TOO_LOW (${m1.rsi.toFixed(1)})`;
-                            } else reason = "PRICE_ABOVE_SMA20 (1m)";
+                            } else reason = `NO_MA_CROSS (Last: ${m1.cross})`;
                         }
                     }
 
@@ -405,7 +417,20 @@ Deno.serve(async (req) => {
 
                 // 1m Scalp
                 if (cfg.interval === '1m') {
+                    const ma7Array = calculateSMAArray(closes, 7);
+                    const ma25Array = calculateSMAArray(closes, 25);
+
+                    const ma7_curr = ma7Array[ma7Array.length - 1];
+                    const ma25_curr = ma25Array[ma25Array.length - 1];
+                    const ma7_prev = ma7Array[ma7Array.length - 2];
+                    const ma25_prev = ma25Array[ma25Array.length - 2];
+
+                    let cross = 'NONE';
+                    if (ma7_prev <= ma25_prev && ma7_curr > ma25_curr) cross = 'BULLISH_CROSS';
+                    if (ma7_prev >= ma25_prev && ma7_curr < ma25_curr) cross = 'BEARISH_CROSS';
+
                     analyses['1m'] = {
+                        cross: cross,
                         close: closes[closes.length - 1],
                         rsi: calculateRSI(closes),
                         sma20: calculateSMA(closes, 20),
@@ -446,13 +471,20 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // Fallback: 1m Scalp
+            // Fallback: 1m Scalp (Strict Technical Analysis: MA7/MA25 Cross)
             if (!signal && tf1m) {
-                // Highly aggressive RSI (85/15) to match client-side sensitivity and capture momentum
-                if (tf1h.trend === 'BULLISH' && tf1m.close > tf1m.sma20 && tf1m.rsi < 85) {
-                    signal = 'LONG'; activeTf = '1m';
-                } else if (tf1h.trend === 'BEARISH' && tf1m.close < tf1m.sma20 && tf1m.rsi > 15) {
-                    signal = 'SHORT'; activeTf = '1m';
+                // We scalp in direction of 1H Major Trend
+                // Long: MA7 crosses above MA25 + Bullish 1H Trend
+                if (tf1h.trend === 'BULLISH' && tf1m.cross === 'BULLISH_CROSS') {
+                    if (tf1m.rsi < 85) { // Protect from extreme overbought
+                        signal = 'LONG'; activeTf = '1m';
+                    }
+                }
+                // Short: MA7 crosses below MA25 + Bearish 1H Trend
+                else if (tf1h.trend === 'BEARISH' && tf1m.cross === 'BEARISH_CROSS') {
+                    if (tf1m.rsi > 15) { // Protect from extreme oversold
+                        signal = 'SHORT'; activeTf = '1m';
+                    }
                 }
             }
 
