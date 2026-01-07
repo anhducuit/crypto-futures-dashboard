@@ -15,13 +15,13 @@ export interface MAAnalysis {
         timeframe: string;
         label: string;
         ma20: number;
-        ma50?: number; // For 1H
+        ma50?: number; // For 1H, 4H
+        ma200?: number; // For 4H
         ma12?: number; // For 15m
         ma26?: number; // For 15m
-        cross?: 'bullish_cross' | 'bearish_cross' | 'none'; // For 15m
-
+        cross?: 'bullish_cross' | 'bearish_cross' | 'golden_cross' | 'death_cross' | 'none';
         currentPrice: number;
-        trend: 'bullish' | 'bearish' | 'neutral'; // 1H: Based on MA20/50. Others: MA20
+        trend: 'bullish' | 'bearish' | 'neutral';
         swingHigh: number;
         swingLow: number;
         rsi: number;
@@ -34,33 +34,24 @@ export interface MAAnalysis {
     confidence: number;
 }
 
-// Calculate RSI (Relative Strength Index)
+// Calculate RSI
 function calculateRSI(closes: number[], period: number = 14): number {
     if (closes.length <= period) return 50;
-
-    let gains = 0;
-    let losses = 0;
-
+    let gains = 0, losses = 0;
     for (let i = closes.length - period; i < closes.length; i++) {
-        const difference = closes[i] - closes[i - 1];
-        if (difference >= 0) {
-            gains += difference;
-        } else {
-            losses -= difference;
-        }
+        const diff = closes[i] - closes[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
     }
-
     if (losses === 0) return 100;
-
     const rs = gains / losses;
     return 100 - (100 / (1 + rs));
 }
 
-// Calculate Simple Moving Average
+// Calculate SMA
 function calculateSMA(data: number[], period: number): number {
     if (data.length < period) return 0;
-    const slice = data.slice(-period);
-    return slice.reduce((a, b) => a + b, 0) / period;
+    return data.slice(-period).reduce((a, b) => a + b, 0) / period;
 }
 
 function calculateSMAArray(data: number[], period: number): number[] {
@@ -73,13 +64,10 @@ function calculateSMAArray(data: number[], period: number): number[] {
     return result;
 }
 
-// Find Swing High/Low from candles
 function findSwingPoints(klines: KlineData[]): { swingHigh: number; swingLow: number } {
     if (klines.length === 0) return { swingHigh: 0, swingLow: 0 };
-
     const highs = klines.map(k => k.high);
     const lows = klines.map(k => k.low);
-
     return {
         swingHigh: Math.max(...highs),
         swingLow: Math.min(...lows)
@@ -90,7 +78,7 @@ const timeframeConfigs = [
     { interval: '1m', label: '1 Phút', limit: 50 },
     { interval: '15m', label: '15 Phút', limit: 50 },
     { interval: '1h', label: '1 Giờ', limit: 50 },
-    { interval: '4h', label: '4 Giờ', limit: 50 },
+    { interval: '4h', label: '4 Giờ', limit: 200 },
 ];
 
 export function useBinanceKlines(symbol: string) {
@@ -98,11 +86,9 @@ export function useBinanceKlines(symbol: string) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Track current symbol to prevent stale data updates
     const currentSymbolRef = useRef(symbol);
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Update ref when symbol changes
     useEffect(() => {
         currentSymbolRef.current = symbol;
     }, [symbol]);
@@ -110,7 +96,6 @@ export function useBinanceKlines(symbol: string) {
     const fetchKlines = useCallback(async (targetSymbol: string) => {
         if (!targetSymbol || targetSymbol.length < 3) return;
 
-        // Abort previous request
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -123,15 +108,8 @@ export function useBinanceKlines(symbol: string) {
             const normalizedSymbol = targetSymbol.toUpperCase().replace('/', '');
             const results: MAAnalysis['timeframes'] = [];
 
-            // Logic counters (kept for compatibility, though we rely on specific strategy now)
-            let bullishCount = 0;
-            let bearishCount = 0;
-
             for (const tf of timeframeConfigs) {
-                // Check if symbol changed during fetch
-                if (currentSymbolRef.current !== targetSymbol) {
-                    return;
-                }
+                if (currentSymbolRef.current !== targetSymbol) return;
 
                 try {
                     const response = await fetch(
@@ -139,15 +117,9 @@ export function useBinanceKlines(symbol: string) {
                         { signal: abortControllerRef.current?.signal }
                     );
 
-                    if (!response.ok) {
-                        throw new Error(`API Error: ${response.status}`);
-                    }
-
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
                     const rawData = await response.json();
-
-                    if (!Array.isArray(rawData) || rawData.length === 0) {
-                        continue;
-                    }
+                    if (!Array.isArray(rawData) || rawData.length === 0) continue;
 
                     const klines: KlineData[] = rawData.map((k: any[]) => ({
                         openTime: k[0],
@@ -172,21 +144,35 @@ export function useBinanceKlines(symbol: string) {
                     const { swingHigh, swingLow } = findSwingPoints(klines);
 
                     let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-                    let ma50, ma12, ma26, cross;
+                    let ma50, ma200, ma12, ma26, cross;
 
-                    // 1. Trend Determination
-                    if (tf.interval === '1h') {
+                    // 4H Analysis (MA50/MA200)
+                    if (tf.interval === '4h') {
+                        const ma50Arr = calculateSMAArray(closes, 50);
+                        const ma200Arr = calculateSMAArray(closes, 200);
+
+                        ma50 = ma50Arr[ma50Arr.length - 1];
+                        ma200 = ma200Arr[ma200Arr.length - 1];
+
+                        const ma50_prev = ma50Arr[ma50Arr.length - 2];
+                        const ma200_prev = ma200Arr[ma200Arr.length - 2];
+
+                        cross = 'none';
+                        if (ma50_prev <= ma200_prev && ma50 > ma200) cross = 'golden_cross';
+                        else if (ma50_prev >= ma200_prev && ma50 < ma200) cross = 'death_cross';
+
+                        if (ma50 > ma200) trend = 'bullish';
+                        else if (ma50 < ma200) trend = 'bearish';
+
+                    } else if (tf.interval === '1h') {
                         ma50 = calculateSMA(closes, 50);
                         if (ma20 > ma50) trend = 'bullish';
                         else if (ma20 < ma50) trend = 'bearish';
                     } else if (tf.interval === '15m') {
-                        // 15m Cross Logic
                         const ma12Array = calculateSMAArray(closes, 12);
                         const ma26Array = calculateSMAArray(closes, 26);
-
                         ma12 = ma12Array[ma12Array.length - 1];
                         ma26 = ma26Array[ma26Array.length - 1];
-
                         const ma12_prev = ma12Array[ma12Array.length - 2];
                         const ma26_prev = ma26Array[ma26Array.length - 2];
 
@@ -194,22 +180,17 @@ export function useBinanceKlines(symbol: string) {
                         if (ma12_prev <= ma26_prev && ma12 > ma26) cross = 'bullish_cross';
                         else if (ma12_prev >= ma26_prev && ma12 < ma26) cross = 'bearish_cross';
 
-                        // Default trend for 15m (fallback)
                         trend = ma12 > ma26 ? 'bullish' : 'bearish';
                     } else {
-                        // Default MA20 Trend for 1m, 4h
                         const threshold = tf.interval === '1m' ? 0.05 : 0.5;
                         if (priceGap > threshold) trend = 'bullish';
                         else if (priceGap < -threshold) trend = 'bearish';
                     }
 
-                    if (trend === 'bullish') bullishCount++;
-                    if (trend === 'bearish') bearishCount++;
-
                     results.push({
                         timeframe: tf.interval,
                         label: tf.label,
-                        ma20, ma50, ma12, ma26, cross: cross as any,
+                        ma20, ma50, ma200, ma12, ma26, cross: cross as any,
                         currentPrice,
                         trend,
                         swingHigh,
@@ -232,10 +213,7 @@ export function useBinanceKlines(symbol: string) {
                 return;
             }
 
-            // Calculate overall bias (Simplified confidence)
             let overallBias: 'long' | 'short' | 'neutral' = 'neutral';
-
-            // New Strategy Bias (1H + 15M)
             const h1 = results.find(r => r.timeframe === '1h');
             const m15 = results.find(r => r.timeframe === '15m');
 
@@ -247,44 +225,32 @@ export function useBinanceKlines(symbol: string) {
             setData({
                 timeframes: results,
                 overallBias,
-                confidence: 80 // Hardcoded for now as strategy is specific
+                confidence: 80
             });
             setError(null);
         } catch (e: any) {
-            if (e.name !== 'AbortError') {
-                setError('Không thể lấy dữ liệu từ Binance');
-            }
+            if (e.name !== 'AbortError') setError('Không thể lấy dữ liệu từ Binance');
         } finally {
-            if (currentSymbolRef.current === targetSymbol) {
-                setLoading(false);
-            }
+            if (currentSymbolRef.current === targetSymbol) setLoading(false);
         }
     }, []);
 
-    // Fetch when symbol changes
     useEffect(() => {
         setData(null);
         setError(null);
-        if (symbol && symbol.length >= 3) {
-            fetchKlines(symbol);
-        }
-        return () => {
-            if (abortControllerRef.current) abortControllerRef.current.abort();
-        };
+        if (symbol && symbol.length >= 3) fetchKlines(symbol);
+        return () => { if (abortControllerRef.current) abortControllerRef.current.abort(); };
     }, [symbol, fetchKlines]);
 
-    // Periodic refresh
     useEffect(() => {
         if (!symbol || symbol.length < 3) return;
         const interval = setInterval(() => {
             if (currentSymbolRef.current === symbol) fetchKlines(symbol);
-        }, 15000); // Increased refresh rate for 1m responsiveness
+        }, 15000);
         return () => clearInterval(interval);
     }, [symbol, fetchKlines]);
 
-    const refetch = useCallback(() => {
-        fetchKlines(currentSymbolRef.current);
-    }, [fetchKlines]);
+    const refetch = useCallback(() => { fetchKlines(currentSymbolRef.current); }, [fetchKlines]);
 
     return { data, loading, error, refetch };
 }

@@ -91,7 +91,18 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                {tf.timeframe === '1h' ? (
+                                {tf.timeframe === '4h' ? (
+                                    <>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA50: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma50 || 0, getDecimals(tf.ma50 || 0))}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[var(--color-text-secondary)]">MA200: </span>
+                                            <span className="text-white font-mono">${formatNumber(tf.ma200 || 0, getDecimals(tf.ma200 || 0))}</span>
+                                        </div>
+                                    </>
+                                ) : tf.timeframe === '1h' ? (
                                     <>
                                         <div>
                                             <span className="text-[var(--color-text-secondary)]">MA20: </span>

@@ -7,7 +7,7 @@ const TF_CONFIG = [
     { interval: '1m', limit: 50 },
     { interval: '15m', limit: 50 },
     { interval: '1h', limit: 50 },
-    { interval: '4h', limit: 50 }
+    { interval: '4h', limit: 200 }
 ];
 
 const corsHeaders = {
@@ -229,6 +229,33 @@ Deno.serve(async (req) => {
                 const lows = data.map((x: any) => parseFloat(x[3]));
                 const volumes = data.map((x: any) => parseFloat(x[5]));
 
+                // 4H Analysis (MA50/MA200)
+                if (cfg.interval === '4h') {
+                    const ma50Arr = calculateSMAArray(closes, 50);
+                    const ma200Arr = calculateSMAArray(closes, 200);
+
+                    if (ma50Arr.length > 2 && ma200Arr.length > 2) {
+                        const ma50_curr = ma50Arr[ma50Arr.length - 1];
+                        const ma200_curr = ma200Arr[ma200Arr.length - 1];
+                        const ma50_prev = ma50Arr[ma50Arr.length - 2];
+                        const ma200_prev = ma200Arr[ma200Arr.length - 2];
+
+                        let cross = 'NONE';
+                        if (ma50_prev <= ma200_prev && ma50_curr > ma200_curr) cross = 'GOLDEN_CROSS';
+                        if (ma50_prev >= ma200_prev && ma50_curr < ma200_curr) cross = 'DEATH_CROSS';
+
+                        analyses['4h'] = {
+                            cross,
+                            close: closes[closes.length - 1],
+                            swingHigh: Math.max(...highs),
+                            swingLow: Math.min(...lows),
+                            rsi: calculateRSI(closes),
+                            ma50: ma50_curr,
+                            ma200: ma200_curr
+                        };
+                    }
+                }
+
                 // Store raw data needed for specific TFs
                 if (cfg.interval === '1h') {
                     analyses['1h'] = {
@@ -285,6 +312,7 @@ Deno.serve(async (req) => {
                 continue;
             }
 
+            const tf4h = analyses['4h'];
             const tf1h = analyses['1h'];
             const tf15m = analyses['15m'];
             const tf1m = analyses['1m'];
@@ -293,6 +321,13 @@ Deno.serve(async (req) => {
             let activeTf = null;
 
             /* --- STRATEGY LOGIC --- */
+
+            // Strategy 1: 4H Major Trend (MA50/MA200 Cross)
+            if (tf4h && tf4h.cross === 'GOLDEN_CROSS') {
+                signal = 'LONG'; activeTf = '4h';
+            } else if (tf4h && tf4h.cross === 'DEATH_CROSS') {
+                signal = 'SHORT'; activeTf = '4h';
+            }
 
             // Case 1: High Confidence BUY
             if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS') {
@@ -332,16 +367,18 @@ Deno.serve(async (req) => {
                 const isBusy = active && active.length > 0;
 
                 if (!isBusy) {
-                    const { target, stopLoss } = calculateDynamicTPSL(tf15m.close, signal, tf15m.swingHigh, tf15m.swingLow); // Use 15m swings for risk
+                    const refTf = activeTf === '4h' ? tf4h : tf15m;
+                    const { target, stopLoss } = calculateDynamicTPSL(refTf.close, signal as 'LONG' | 'SHORT', refTf.swingHigh, refTf.swingLow);
 
-                    // NOTIFY (Only if not 1m)
+                    // NOTIFY (If not 1m)
                     if (activeTf !== '1m') {
                         const icon = signal === 'LONG' ? '🟢' : '🔴';
-                        const msg = `${icon} <b>NEW SIGNAL (Strategy: MA Cross): ${symbol}</b>\n` +
-                            `Trend 1H: ${tf1h.trend}\n` +
-                            `Signal 15M: ${tf15m.cross}\n` +
+                        const strategyName = activeTf === '4h' ? 'MA50/200 Cross' : 'MA Cross 15m';
+
+                        const msg = `${icon} <b>NEW SIGNAL (${activeTf}): ${symbol}</b>\n` +
+                            `Strategy: ${strategyName}\n` +
                             `Type: <b>${signal}</b>\n` +
-                            `Entry: $${tf15m.close}\n` +
+                            `Entry: $${refTf.close}\n` +
                             `Target: $${target.toFixed(2)}\n` +
                             `StopLoss: $${stopLoss.toFixed(2)}`;
 
@@ -350,11 +387,11 @@ Deno.serve(async (req) => {
 
                         await supabase.from('trading_history').insert({
                             symbol, timeframe: activeTf, signal,
-                            price_at_signal: tf15m.close,
+                            price_at_signal: refTf.close,
                             target_price: target, stop_loss: stopLoss,
                             status: 'PENDING',
                             telegram_message_id: msgId,
-                            rsi: tf15m.rsi, volume_ratio: tf15m.volRatio || 1
+                            rsi: refTf.rsi, volume_ratio: 1
                         });
                         newionSignals.push({ symbol, signal });
                     } else {
