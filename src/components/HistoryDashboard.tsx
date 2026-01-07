@@ -227,7 +227,17 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Time:</span>
-                                        <span className="text-slate-300">{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="text-slate-300">
+                                            {(() => {
+                                                const d = new Date(item.created_at);
+                                                const hh = d.getHours().toString().padStart(2, '0');
+                                                const mm = d.getMinutes().toString().padStart(2, '0');
+                                                const day = d.getDate().toString().padStart(2, '0');
+                                                const mo = (d.getMonth() + 1).toString().padStart(2, '0');
+                                                const yr = d.getFullYear();
+                                                return `${hh}:${mm} ${day}/${mo}/${yr}`;
+                                            })()}
+                                        </span>
                                     </div>
                                     {item.signal !== 'NEUTRAL' && (
                                         <>
