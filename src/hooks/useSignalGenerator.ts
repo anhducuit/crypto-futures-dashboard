@@ -1,18 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { saveSignalToSupabase } from '../utils/supabaseUtils';
-
-interface MAAnalysis {
-    timeframes: {
-        timeframe: string;
-        label: string;
-        trend: 'bullish' | 'bearish' | 'neutral';
-        rsi: number;
-        volumeRatio: number;
-        priceGap: number;
-    }[];
-    overallBias: 'long' | 'short' | 'neutral';
-    confidence: number;
-}
+import type { MAAnalysis } from './useBinanceKlines'; // Import shared interface
 
 export function useSignalGenerator(
     symbol: string,
@@ -35,17 +23,14 @@ export function useSignalGenerator(
             const tf1m = maAnalysis.timeframes.find(t => t.timeframe === '1m');
             const tf15m = maAnalysis.timeframes.find(t => t.timeframe === '15m');
             const tf1h = maAnalysis.timeframes.find(t => t.timeframe === '1h');
-            const tf4h = maAnalysis.timeframes.find(t => t.timeframe === '4h');
 
-            // 2. Trend Analysis (1h & 4h)
-            const trendScore = (tf1h?.trend === 'bullish' ? 1 : tf1h?.trend === 'bearish' ? -1 : 0) +
-                (tf4h?.trend === 'bullish' ? 1 : tf4h?.trend === 'bearish' ? -1 : 0);
-            const majorTrend = trendScore >= 1 ? 'long' : trendScore <= -1 ? 'short' : 'neutral';
+            // 2. Trend Analysis (1H: MA20 vs MA50)
+            const majorTrend = tf1h?.trend === 'bullish' ? 'long' : tf1h?.trend === 'bearish' ? 'short' : 'neutral';
 
-            // 3. Momentum Analysis (1m & 15m)
-            const momentumScore = (tf1m?.trend === 'bullish' ? 1 : tf1m?.trend === 'bearish' ? -1 : 0) +
-                (tf15m?.trend === 'bullish' ? 1 : tf15m?.trend === 'bearish' ? -1 : 0);
-            const momentum = momentumScore >= 1 ? 'bullish' : momentumScore <= -1 ? 'bearish' : 'neutral';
+            // 3. Signal Trigger (15M: MA12 Cross MA26)
+            let signalTrigger = 'neutral';
+            if (tf15m?.cross === 'bullish_cross') signalTrigger = 'bullish';
+            else if (tf15m?.cross === 'bearish_cross') signalTrigger = 'bearish';
 
             // 4. Filters
             const isOverbought = (tf15m?.rsi || 50) > 75;
@@ -53,24 +38,37 @@ export function useSignalGenerator(
             const isWeakVolume = (tf15m?.volumeRatio || 1) < 0.6;
 
             let signal: 'LONG' | 'SHORT' | null = null;
+            let finalTf = '15m';
 
-            // 5. Logic Matching (Same as TradingRecommendation.tsx)
-            if (majorTrend === 'long' && momentum === 'bullish') {
+            // 5. Logic Matching (Strict Strategy)
+            if (majorTrend === 'long' && signalTrigger === 'bullish') {
                 if (!isOverbought && !isWeakVolume) {
                     signal = 'LONG';
                 }
-            } else if (majorTrend === 'short' && momentum === 'bearish') {
+            } else if (majorTrend === 'short' && signalTrigger === 'bearish') {
                 if (!isOversold && !isWeakVolume) {
                     signal = 'SHORT';
                 }
             }
 
+            // Fallback: 1m Scalp if no 15m signal (Silent Mode on Server, but we valid here)
+            // We only scalp in direction of Major Trend (1H)
+            if (!signal && tf1m) {
+                if (majorTrend === 'long' && tf1m.trend === 'bullish' && (tf1m.rsi < 70)) {
+                    signal = 'LONG';
+                    finalTf = '1m';
+                } else if (majorTrend === 'short' && tf1m.trend === 'bearish' && (tf1m.rsi > 30)) {
+                    signal = 'SHORT';
+                    finalTf = '1m';
+                }
+            }
+
             // 6. Save Signal
             if (signal) {
-                // We use 1m as the base timeframe for these scalping signals
+                // We pass finalTf to ensure correct labeling
                 await saveSignalToSupabase(
                     symbol,
-                    '1m',
+                    finalTf,
                     signal,
                     currentPrice,
                     tf15m?.rsi || 50,

@@ -1,23 +1,5 @@
 import { Lightbulb, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, BarChart3 } from 'lucide-react';
-
-interface MAAnalysis {
-    timeframes: {
-        timeframe: string;
-        label: string;
-        ma: number;
-        currentPrice: number;
-        trend: 'bullish' | 'bearish' | 'neutral';
-        swingHigh: number;
-        swingLow: number;
-        rsi: number;
-        avgVolume: number;
-        currentVolume: number;
-        volumeRatio: number;
-        priceGap: number;
-    }[];
-    overallBias: 'long' | 'short' | 'neutral';
-    confidence: number;
-}
+import type { MAAnalysis } from '../hooks/useBinanceKlines';
 
 interface TradingRecommendationProps {
     maAnalysis: MAAnalysis | null;
@@ -30,133 +12,112 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
 }) => {
     if (!maAnalysis) return null;
 
-    // 1. Separate timeframes
-    const tf1m = maAnalysis.timeframes.find(t => t.timeframe === '1m');
-    const tf15m = maAnalysis.timeframes.find(t => t.timeframe === '15m');
+    // 2. Trend Analysis (1H: MA20 vs MA50) - Major Trend
     const tf1h = maAnalysis.timeframes.find(t => t.timeframe === '1h');
-    const tf4h = maAnalysis.timeframes.find(t => t.timeframe === '4h');
+    const majorTrend: 'long' | 'short' | 'neutral' = tf1h?.trend === 'bullish' ? 'long' : tf1h?.trend === 'bearish' ? 'short' : 'neutral';
 
-    // 2. Trend Analysis (1h & 4h) - Long term direction
-    const trendScore = (tf1h?.trend === 'bullish' ? 1 : tf1h?.trend === 'bearish' ? -1 : 0) +
-        (tf4h?.trend === 'bullish' ? 1 : tf4h?.trend === 'bearish' ? -1 : 0);
+    // 3. Signal Trigger (15M: MA12 Cross MA26) - Entry
+    const tf15m = maAnalysis.timeframes.find(t => t.timeframe === '15m');
+    let signalTrigger: 'bullish' | 'bearish' | 'neutral' = 'neutral';
 
-    const majorTrend: 'long' | 'short' | 'neutral' = trendScore >= 1 ? 'long' : trendScore <= -1 ? 'short' : 'neutral';
+    if (tf15m?.cross === 'bullish_cross') signalTrigger = 'bullish';
+    else if (tf15m?.cross === 'bearish_cross') signalTrigger = 'bearish';
+    // If no cross, check if trend matches major trend for continuity (optional context)
+    else if (majorTrend === 'long' && tf15m?.trend === 'bullish') signalTrigger = 'neutral'; // 'neutral' but implicitly bullish context
 
-    // 3. Momentum Analysis (1m & 15m) - Entry signals
-    const momentumScore = (tf1m?.trend === 'bullish' ? 1 : tf1m?.trend === 'bearish' ? -1 : 0) +
-        (tf15m?.trend === 'bullish' ? 1 : tf15m?.trend === 'bearish' ? -1 : 0);
-
-    const momentum: 'bullish' | 'bearish' | 'neutral' = momentumScore >= 1 ? 'bullish' : momentumScore <= -1 ? 'bearish' : 'neutral';
-
-    // 4. Overbought/Oversold & Volume Logic
-    const isOverbought = (tf15m?.rsi || 50) > 75 || (tf15m?.priceGap || 0) > 1.8;
-    const isOversold = (tf15m?.rsi || 50) < 25 || (tf15m?.priceGap || 0) < -1.8;
-    const isWeakVolume = (tf15m?.volumeRatio || 1) < 0.6;
+    // 4. Filters
+    const isOverbought = (tf15m?.rsi || 50) > 75;
+    const isOversold = (tf15m?.rsi || 50) < 25;
     const isStrongVolume = (tf15m?.volumeRatio || 1) > 1.5;
 
-    // 5. Final Recommendation Logic
+    // 5. Final Recommendation
     let recommendation: 'long' | 'short' | 'wait' = 'wait';
-    let statusText = 'CHỜ ĐIỂM VÀO';
+    let statusText = 'CHỜ TÍN HIỆU';
     let confidence = 0;
     let reasons: string[] = [];
     let warning: string | null = null;
 
+    const ma20_1h = tf1h?.ma20 || 0;
+    const ma50_1h = tf1h?.ma50 || 0;
+
     if (majorTrend === 'long') {
-        if (momentum === 'bullish') {
-            if (isOverbought) {
-                recommendation = 'wait';
-                statusText = 'QUÁ MUA - CẨN THẬN';
-                confidence = 30;
-                warning = 'Giá đã tăng quá mạnh và cách xa MA. Rủi ro đảo chiều cao.';
-                reasons = ['Xu hướng chính vẫn TĂNG', 'Chỉ báo RSI/Price Gap báo động QUÁ MUA', 'Chờ giá hồi về vùng an toàn hoặc tích lũy thêm'];
-            } else if (isWeakVolume) {
-                recommendation = 'wait';
-                statusText = 'TĂNG NHƯNG VOLUME YẾU';
-                confidence = 45;
-                warning = 'Lực mua không mạnh, cẩn thận bẫy tăng giá (Bull-trap).';
-                reasons = ['Giá tăng nhưng Volume thấp hơn trung bình', 'Thiếu sự xác nhận của dòng tiền lớn', 'Cần quan sát thêm Volume khung 1h'];
-            } else {
+        if (signalTrigger === 'bullish') {
+            if (!isOverbought) {
                 recommendation = 'long';
-                statusText = 'VÀO LỆNH LONG';
-                confidence = isStrongVolume ? 90 : 80;
+                statusText = 'LONG (MA CROSS)';
+                confidence = 85;
                 reasons = [
-                    'Xu hướng lớn (1h/4h) đang TĂNG mạnh',
-                    'Xung lực ngắn hạn (1m/15m) đồng thuận TĂNG',
-                    isStrongVolume ? 'Volume đột biến xác nhận lực mua mạnh' : 'Volume ổn định'
+                    `Trend 1H TĂNG (MA20 ${ma20_1h.toFixed(1)} > MA50 ${ma50_1h.toFixed(1)})`,
+                    'Tín hiệu 15M: Bullish Cross (MA12 cắt LÊN MA26)',
+                    isStrongVolume ? 'Volume xác nhận mạnh' : 'Volume ổn định'
                 ];
+            } else {
+                recommendation = 'wait';
+                statusText = 'QUÁ MUA - CHỜ HỒI';
+                warning = 'Tín hiệu đẹp nhưng RSI đang quá cao (>75).';
             }
-        } else if (momentum === 'bearish') {
-            recommendation = 'wait';
-            statusText = 'ĐANG ĐIỀU CHỈNH - CHỜ MUA';
-            confidence = 40;
-            reasons = ['Xu hướng lớn vẫn là TĂNG', 'Giá đang điều chỉnh ngắn hạn (1m/15m)', 'Chờ nến 1m/15m đảo chiều xanh để vào lệnh'];
         } else {
             recommendation = 'wait';
-            statusText = 'XU HƯỚNG TĂNG - ĐANG TÍCH LŨY';
-            reasons = ['Xu hướng lớn TĂNG', 'Xung lực ngắn hạn đang đi ngang', 'Kiên nhẫn chờ tín hiệu bứt phá'];
+            statusText = 'TREND TĂNG - CHỜ CROSS';
+            reasons = [
+                'Xu hướng 1H là TĂNG',
+                'Chưa có tín hiệu Giao Cắt Lên ở 15M',
+                'Kiên nhẫn chờ MA12 cắt lên MA26'
+            ];
         }
     } else if (majorTrend === 'short') {
-        if (momentum === 'bearish') {
-            if (isOversold) {
-                recommendation = 'wait';
-                statusText = 'QUÁ BÁN - HẠN CHẾ SHORT';
-                confidence = 30;
-                warning = 'Giá đã giảm sâu vào vùng quá bán. Dễ có nhịp hồi kỹ thuật.';
-                reasons = ['Xu hướng chính vẫn GIẢM', 'RSI/Gap báo động QUÁ BÁN', 'Không nên đuổi theo giá ở vùng này'];
-            } else if (isWeakVolume) {
-                recommendation = 'wait';
-                statusText = 'GIẢM NHƯNG VOLUME YẾU';
-                confidence = 45;
-                warning = 'Lực bán không mạnh, cẩn thận nhịp hồi bất ngờ.';
-                reasons = ['Giá giảm nhưng thiếu Volume xác nhận', 'Cẩn thận với các nhịp quét râu nến', 'Nên chờ Volume tăng mạnh để vào lệnh'];
-            } else {
+        if (signalTrigger === 'bearish') {
+            if (!isOversold) {
                 recommendation = 'short';
-                statusText = 'VÀO LỆNH SHORT';
-                confidence = isStrongVolume ? 90 : 80;
+                statusText = 'SHORT (MA CROSS)';
+                confidence = 85;
                 reasons = [
-                    'Xu hướng lớn (1h/4h) đang GIẢM mạnh',
-                    'Xung lực ngắn hạn (1m/15m) đồng thuận GIẢM',
-                    isStrongVolume ? 'Volume lớn xác nhận lực bán áp đảo' : 'Volume ổn định'
+                    `Trend 1H GIẢM (MA20 ${ma20_1h.toFixed(1)} < MA50 ${ma50_1h.toFixed(1)})`,
+                    'Tín hiệu 15M: Bearish Cross (MA12 cắt XUỐNG MA26)',
+                    isStrongVolume ? 'Volume bán mạnh' : 'Volume ổn định'
                 ];
+            } else {
+                recommendation = 'wait';
+                statusText = 'QUÁ BÁN - CHỜ HỒI';
+                warning = 'Tín hiệu đẹp nhưng RSI đang quá thấp (<25).';
             }
-        } else if (momentum === 'bullish') {
-            recommendation = 'wait';
-            statusText = 'HỒI PHỤC NGẮN HẠN - CHỜ BÁN';
-            confidence = 40;
-            reasons = ['Xu hướng lớn vẫn là GIẢM', 'Giá đang có nhịp hồi ngắn hạn', 'Chờ tín hiệu đảo chiều giảm ở khung 1m/15m'];
         } else {
             recommendation = 'wait';
-            statusText = 'XU HƯỚNG GIẢM - ĐANG TÍCH LŨY';
-            reasons = ['Xu hướng lớn GIẢM', 'Xung lực đang đi ngang', 'Chờ tín hiệu tiếp tục xu hướng giảm'];
+            statusText = 'TREND GIẢM - CHỜ CROSS';
+            reasons = [
+                'Xu hướng 1H là GIẢM',
+                'Chưa có tín hiệu Giao Cắt Xuống ở 15M',
+                'Kiên nhẫn chờ MA12 cắt xuống MA26'
+            ];
         }
     } else {
         recommendation = 'wait';
-        statusText = 'THỊ TRƯỜNG ĐI NGANG';
-        reasons = ['Khung lớn (1h/4h) không rõ xu hướng', 'Tín hiệu mâu thuẫn hoặc volume thấp', 'Nên đứng ngoài quan sát'];
+        statusText = 'KHÔNG RÕ XU HƯỚNG';
+        reasons = [`MA20 và MA50 khung 1H đang xoắn vào nhau`, 'Thị trường đi ngang', 'Nên đứng ngoài quan sát'];
     }
 
     return (
         <div className="card">
             <div className="card-header">
                 <Lightbulb size={16} className="text-[var(--color-golden)]" />
-                ĐỀ XUẤT GIAO DỊCH (TREND + MOMENTUM)
+                CHIẾN LƯỢC MA CROSS (1H + 15M)
             </div>
 
             <div className="space-y-4">
                 {/* Stats Layer */}
                 <div className="grid grid-cols-2 gap-2">
                     <div className={`p-2 rounded-lg border ${majorTrend === 'long' ? 'bg-green-500/10 border-green-500/30' : majorTrend === 'short' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
-                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">Xu hướng (1h/4h)</div>
+                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">Xu hướng 1H (MA20/50)</div>
                         <div className={`text-sm font-bold flex items-center gap-1 ${majorTrend === 'long' ? 'text-green-500' : majorTrend === 'short' ? 'text-red-500' : 'text-gray-400'}`}>
                             {majorTrend === 'long' ? <TrendingUp size={14} /> : majorTrend === 'short' ? <TrendingDown size={14} /> : <Minus size={14} />}
-                            {majorTrend === 'long' ? 'TĂNG' : majorTrend === 'short' ? 'GIẢM' : 'TRUNG LẬP'}
+                            {majorTrend === 'long' ? 'BULLISH' : majorTrend === 'short' ? 'BEARISH' : 'NEUTRAL'}
                         </div>
                     </div>
-                    <div className={`p-2 rounded-lg border ${momentum === 'bullish' ? 'bg-green-500/10 border-green-500/30' : momentum === 'bearish' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
-                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">Xung lực (1m/15m)</div>
-                        <div className={`text-sm font-bold flex items-center gap-1 ${momentum === 'bullish' ? 'text-green-500' : momentum === 'bearish' ? 'text-red-500' : 'text-gray-400'}`}>
-                            {momentum === 'bullish' ? <TrendingUp size={14} /> : momentum === 'bearish' ? <TrendingDown size={14} /> : <Minus size={14} />}
-                            {momentum === 'bullish' ? 'TĂNG' : momentum === 'bearish' ? 'GIẢM' : 'ĐI NGANG'}
+                    <div className={`p-2 rounded-lg border ${signalTrigger === 'bullish' ? 'bg-green-500/10 border-green-500/30' : signalTrigger === 'bearish' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
+                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">Tín hiệu 15M (MA12/26)</div>
+                        <div className={`text-xs font-bold flex items-center gap-1 ${signalTrigger === 'bullish' ? 'text-green-500' : signalTrigger === 'bearish' ? 'text-red-500' : 'text-gray-400'}`}>
+                            {signalTrigger === 'bullish' ? <Activity size={14} /> : signalTrigger === 'bearish' ? <Activity size={14} /> : <Minus size={14} />}
+                            {signalTrigger === 'bullish' ? 'GOLDEN CROSS' : signalTrigger === 'bearish' ? 'DEATH CROSS' : 'KHÔNG CÓ'}
                         </div>
                     </div>
                 </div>

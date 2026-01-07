@@ -10,20 +10,25 @@ interface KlineData {
     closeTime: number;
 }
 
-interface MAAnalysis {
+export interface MAAnalysis {
     timeframes: {
         timeframe: string;
         label: string;
-        ma: number;
+        ma20: number;
+        ma50?: number; // For 1H
+        ma12?: number; // For 15m
+        ma26?: number; // For 15m
+        cross?: 'bullish_cross' | 'bearish_cross' | 'none'; // For 15m
+
         currentPrice: number;
-        trend: 'bullish' | 'bearish' | 'neutral';
+        trend: 'bullish' | 'bearish' | 'neutral'; // 1H: Based on MA20/50. Others: MA20
         swingHigh: number;
         swingLow: number;
         rsi: number;
         avgVolume: number;
         currentVolume: number;
-        volumeRatio: number; // current / average
-        priceGap: number;    // % distance from MA
+        volumeRatio: number;
+        priceGap: number;
     }[];
     overallBias: 'long' | 'short' | 'neutral';
     confidence: number;
@@ -56,6 +61,16 @@ function calculateSMA(data: number[], period: number): number {
     if (data.length < period) return 0;
     const slice = data.slice(-period);
     return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+function calculateSMAArray(data: number[], period: number): number[] {
+    if (data.length < period) return [];
+    const result = [];
+    for (let i = period - 1; i < data.length; i++) {
+        const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+        result.push(sum / period);
+    }
+    return result;
 }
 
 // Find Swing High/Low from candles
@@ -107,13 +122,14 @@ export function useBinanceKlines(symbol: string) {
         try {
             const normalizedSymbol = targetSymbol.toUpperCase().replace('/', '');
             const results: MAAnalysis['timeframes'] = [];
+
+            // Logic counters (kept for compatibility, though we rely on specific strategy now)
             let bullishCount = 0;
             let bearishCount = 0;
 
             for (const tf of timeframeConfigs) {
                 // Check if symbol changed during fetch
                 if (currentSymbolRef.current !== targetSymbol) {
-                    console.log(`Symbol changed during fetch, aborting: ${targetSymbol}`);
                     return;
                 }
 
@@ -130,7 +146,6 @@ export function useBinanceKlines(symbol: string) {
                     const rawData = await response.json();
 
                     if (!Array.isArray(rawData) || rawData.length === 0) {
-                        console.warn(`No data for ${normalizedSymbol} ${tf.interval}`);
                         continue;
                     }
 
@@ -146,6 +161,7 @@ export function useBinanceKlines(symbol: string) {
 
                     const closes = klines.map(k => k.close);
                     const volumes = klines.map(k => k.volume);
+
                     const ma20 = calculateSMA(closes, 20);
                     const currentPrice = closes[closes.length - 1];
                     const currentVolume = volumes[volumes.length - 1];
@@ -153,30 +169,47 @@ export function useBinanceKlines(symbol: string) {
                     const volumeRatio = avgVolume > 0 ? currentVolume / avgVolume : 1;
                     const rsi = calculateRSI(closes, 14);
                     const priceGap = ((currentPrice - ma20) / ma20) * 100;
-
                     const { swingHigh, swingLow } = findSwingPoints(klines);
 
-                    // Determine trend based on price vs MA (Timeframe sensitive)
                     let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-                    const priceVsMa = ((currentPrice - ma20) / ma20) * 100;
+                    let ma50, ma12, ma26, cross;
 
-                    // Dynamic threshold based on interval
-                    let threshold = 0.5; // Default for 1h, 4h
-                    if (tf.interval === '1m') threshold = 0.1;
-                    else if (tf.interval === '15m') threshold = 0.2;
+                    // 1. Trend Determination
+                    if (tf.interval === '1h') {
+                        ma50 = calculateSMA(closes, 50);
+                        if (ma20 > ma50) trend = 'bullish';
+                        else if (ma20 < ma50) trend = 'bearish';
+                    } else if (tf.interval === '15m') {
+                        // 15m Cross Logic
+                        const ma12Array = calculateSMAArray(closes, 12);
+                        const ma26Array = calculateSMAArray(closes, 26);
 
-                    if (priceVsMa > threshold) {
-                        trend = 'bullish';
-                        bullishCount++;
-                    } else if (priceVsMa < -threshold) {
-                        trend = 'bearish';
-                        bearishCount++;
+                        ma12 = ma12Array[ma12Array.length - 1];
+                        ma26 = ma26Array[ma26Array.length - 1];
+
+                        const ma12_prev = ma12Array[ma12Array.length - 2];
+                        const ma26_prev = ma26Array[ma26Array.length - 2];
+
+                        cross = 'none';
+                        if (ma12_prev <= ma26_prev && ma12 > ma26) cross = 'bullish_cross';
+                        else if (ma12_prev >= ma26_prev && ma12 < ma26) cross = 'bearish_cross';
+
+                        // Default trend for 15m (fallback)
+                        trend = ma12 > ma26 ? 'bullish' : 'bearish';
+                    } else {
+                        // Default MA20 Trend for 1m, 4h
+                        const threshold = tf.interval === '1m' ? 0.05 : 0.5;
+                        if (priceGap > threshold) trend = 'bullish';
+                        else if (priceGap < -threshold) trend = 'bearish';
                     }
+
+                    if (trend === 'bullish') bullishCount++;
+                    if (trend === 'bearish') bearishCount++;
 
                     results.push({
                         timeframe: tf.interval,
                         label: tf.label,
-                        ma: ma20,
+                        ma20, ma50, ma12, ma26, cross: cross as any,
                         currentPrice,
                         trend,
                         swingHigh,
@@ -188,20 +221,9 @@ export function useBinanceKlines(symbol: string) {
                         priceGap
                     });
 
-                    // Auto-save logic was moved to useBackgroundBTCTracker
                 } catch (e: any) {
-                    if (e.name === 'AbortError') {
-                        console.log(`Fetch aborted for ${normalizedSymbol} ${tf.interval}`);
-                        return;
-                    }
-                    console.error(`Error fetching ${tf.interval}:`, e);
+                    if (e.name !== 'AbortError') console.error(`Error fetching ${tf.interval}:`, e);
                 }
-            }
-
-            // Final check: only update state if symbol hasn't changed
-            if (currentSymbolRef.current !== targetSymbol) {
-                console.log(`Symbol changed after fetch, discarding: ${targetSymbol}`);
-                return;
             }
 
             if (results.length === 0) {
@@ -210,29 +232,26 @@ export function useBinanceKlines(symbol: string) {
                 return;
             }
 
-            // Calculate overall bias
+            // Calculate overall bias (Simplified confidence)
             let overallBias: 'long' | 'short' | 'neutral' = 'neutral';
-            const total = bullishCount + bearishCount;
-            const confidence = total > 0 ? Math.max(bullishCount, bearishCount) / timeframeConfigs.length * 100 : 0;
 
-            if (bullishCount > bearishCount && bullishCount >= 2) {
-                overallBias = 'long';
-            } else if (bearishCount > bullishCount && bearishCount >= 2) {
-                overallBias = 'short';
+            // New Strategy Bias (1H + 15M)
+            const h1 = results.find(r => r.timeframe === '1h');
+            const m15 = results.find(r => r.timeframe === '15m');
+
+            if (h1 && m15) {
+                if (h1.trend === 'bullish' && (m15.cross === 'bullish_cross' || m15.trend === 'bullish')) overallBias = 'long';
+                else if (h1.trend === 'bearish' && (m15.cross === 'bearish_cross' || m15.trend === 'bearish')) overallBias = 'short';
             }
 
             setData({
                 timeframes: results,
                 overallBias,
-                confidence
+                confidence: 80 // Hardcoded for now as strategy is specific
             });
             setError(null);
         } catch (e: any) {
-            if (e.name === 'AbortError') {
-                return;
-            }
-            console.error('fetchKlines error:', e);
-            if (currentSymbolRef.current === targetSymbol) {
+            if (e.name !== 'AbortError') {
                 setError('Không thể lấy dữ liệu từ Binance');
             }
         } finally {
@@ -244,32 +263,22 @@ export function useBinanceKlines(symbol: string) {
 
     // Fetch when symbol changes
     useEffect(() => {
-        // Clear old data immediately when symbol changes
         setData(null);
         setError(null);
-
         if (symbol && symbol.length >= 3) {
             fetchKlines(symbol);
         }
-
-        // Cleanup on unmount or symbol change
         return () => {
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
+            if (abortControllerRef.current) abortControllerRef.current.abort();
         };
     }, [symbol, fetchKlines]);
 
     // Periodic refresh
     useEffect(() => {
         if (!symbol || symbol.length < 3) return;
-
         const interval = setInterval(() => {
-            if (currentSymbolRef.current === symbol) {
-                fetchKlines(symbol);
-            }
-        }, 30000);
-
+            if (currentSymbolRef.current === symbol) fetchKlines(symbol);
+        }, 15000); // Increased refresh rate for 1m responsiveness
         return () => clearInterval(interval);
     }, [symbol, fetchKlines]);
 
