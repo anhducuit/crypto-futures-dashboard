@@ -40,6 +40,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
             let query = supabase
                 .from('trading_history')
                 .select('*', { count: 'exact' })
+                .neq('signal', 'NEUTRAL') // Hide SIDELINES
                 .order('created_at', { ascending: false })
                 .range(from, to);
 

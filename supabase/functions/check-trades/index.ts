@@ -215,13 +215,21 @@ Deno.serve(async (req) => {
            PART 2: GENERATE NEW SIGNALS (MA CROSS)
            ========================================= */
 
-        for (const symbol of SYMBOLS_TO_SCAN) {
+        const results = await Promise.allSettled(SYMBOLS_TO_SCAN.map(async (symbol) => {
             const analyses = {};
             let failed = false;
 
-            for (const cfg of TF_CONFIG) {
-                const res = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${cfg.interval}&limit=${cfg.limit}`);
-                const data = await res.json();
+            // Fetch TFs in parallel for speed
+            const fetches = TF_CONFIG.map(cfg =>
+                fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${cfg.interval}&limit=${cfg.limit}`)
+                    .then(r => r.json())
+                    .then(data => ({ cfg, data }))
+                    .catch(() => ({ cfg, data: null }))
+            );
+
+            const responses = await Promise.all(fetches);
+
+            for (const { cfg, data } of responses) {
                 if (!Array.isArray(data)) { failed = true; break; }
 
                 const closes = data.map((x: any) => parseFloat(x[4]));
@@ -256,7 +264,7 @@ Deno.serve(async (req) => {
                     }
                 }
 
-                // Store raw data needed for specific TFs
+                // 1H Analysis
                 if (cfg.interval === '1h') {
                     analyses['1h'] = {
                         trend: 'NEUTRAL',
@@ -264,21 +272,17 @@ Deno.serve(async (req) => {
                         ma50: calculateSMA(closes, 50),
                         close: closes[closes.length - 1]
                     }
-                    // Determine 1H Trend
                     if (analyses['1h'].ma20 > analyses['1h'].ma50) analyses['1h'].trend = 'BULLISH';
                     else if (analyses['1h'].ma20 < analyses['1h'].ma50) analyses['1h'].trend = 'BEARISH';
                 }
 
+                // 15M Analysis
                 if (cfg.interval === '15m') {
-                    // Need historical MA values to detect cross
                     const ma12Array = calculateSMAArray(closes, 12);
                     const ma26Array = calculateSMAArray(closes, 26);
 
-                    // Current (Latest)
                     const ma12_curr = ma12Array[ma12Array.length - 1];
                     const ma26_curr = ma26Array[ma26Array.length - 1];
-
-                    // Previous
                     const ma12_prev = ma12Array[ma12Array.length - 2];
                     const ma26_prev = ma26Array[ma26Array.length - 2];
 
@@ -296,7 +300,7 @@ Deno.serve(async (req) => {
                     }
                 }
 
-                // Keep 1m data for fallback scalping
+                // 1m Scalp
                 if (cfg.interval === '1m') {
                     analyses['1m'] = {
                         close: closes[closes.length - 1],
@@ -308,8 +312,7 @@ Deno.serve(async (req) => {
             }
 
             if (failed || !analyses['1h'] || !analyses['15m']) {
-                logs.push(`Insufficient data for ${symbol}`);
-                continue;
+                return; // Changed to return for map callback
             }
 
             const tf4h = analyses['4h'];
@@ -322,34 +325,25 @@ Deno.serve(async (req) => {
 
             /* --- STRATEGY LOGIC --- */
 
-            // Strategy 1: 4H Major Trend (MA50/MA200 Cross)
+            // Strategy 1: 4H Major Trend (MA50/200 Cross)
             if (tf4h && tf4h.cross === 'GOLDEN_CROSS') {
                 signal = 'LONG'; activeTf = '4h';
             } else if (tf4h && tf4h.cross === 'DEATH_CROSS') {
                 signal = 'SHORT'; activeTf = '4h';
             }
 
-            // Case 1: High Confidence BUY
-            if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS') {
-                signal = 'LONG';
-                activeTf = '15m'; // Or 1h, but 15m is the trigger
-            }
-            // Case 2: High Confidence SELL
-            else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS') {
-                signal = 'SHORT';
-                activeTf = '15m';
+            // Strategy 2: 1H Trend + 15M Cross (Day Trading)
+            if (!signal) {
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS') {
+                    signal = 'LONG'; activeTf = '15m'; // Or 1h, 15m trigger
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS') {
+                    signal = 'SHORT'; activeTf = '15m';
+                }
             }
 
-            // Case 3 (Low Conf) -> Skipped for now, or we can use it for 1m context
-
-            // Fallback: 1m Scalp (Silent) - IF NO MAIN SIGNAL
-            // We align 1m scalp with 1H Trend for safety
+            // Fallback: 1m Scalp (Silent)
             if (!signal && tf1m) {
                 if (tf1h.trend === 'BULLISH' && tf1m.close > tf1m.sma20 && tf1m.rsi < 70) {
-                    // signal = 'LONG'; activeTf = '1m'; 
-                    // Commented out to strictly follow user's new strategy request? 
-                    // User asked to "update MA", didn't say Stop 1m. 
-                    // I will keep it but make sure it respects the new 1H MA Trend.
                     signal = 'LONG'; activeTf = '1m';
                 } else if (tf1h.trend === 'BEARISH' && tf1m.close < tf1m.sma20 && tf1m.rsi > 30) {
                     signal = 'SHORT'; activeTf = '1m';
@@ -398,7 +392,7 @@ Deno.serve(async (req) => {
                         // 1m Silent
                         await supabase.from('trading_history').insert({
                             symbol, timeframe: activeTf, signal,
-                            price_at_signal: tf1m.close, // Use 1m close price
+                            price_at_signal: tf1m.close,
                             target_price: target, stop_loss: stopLoss,
                             status: 'PENDING',
                             telegram_message_id: null,
@@ -407,7 +401,7 @@ Deno.serve(async (req) => {
                     }
                 }
             }
-        }
+        }));
 
         return new Response(JSON.stringify({ success: true, new_signals: newionSignals }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } catch (err) {
