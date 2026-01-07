@@ -210,7 +210,15 @@ Deno.serve(async (req) => {
         const supabase = createClient(supabaseUrl, supabaseKey)
 
         // HEARTBEAT: Update last_scan_at to prove bot is active
-        await supabase.from('bot_settings').upsert({ key: 'last_scan_at', value: new Date().toISOString() });
+        const { data: existingHeartbeat } = await supabase.from('bot_settings').select('id').eq('key', 'last_scan_at').single();
+        if (existingHeartbeat) {
+            await supabase.from('bot_settings').update({ value: new Date().toISOString() }).eq('id', existingHeartbeat.id);
+        } else {
+            await supabase.from('bot_settings').insert({ key: 'last_scan_at', value: new Date().toISOString() });
+        }
+
+        // Cleanup duplicates (just in case)
+        await supabase.from('bot_settings').delete().eq('key', 'last_scan_at').neq('id', existingHeartbeat?.id || 0);
 
         const logs: string[] = [];
         const updates: any[] = [];
@@ -440,10 +448,10 @@ Deno.serve(async (req) => {
 
             // Fallback: 1m Scalp
             if (!signal && tf1m) {
-                // Loosened RSI (75/25 instead of 70/30) to capture volatile scalps near close
-                if (tf1h.trend === 'BULLISH' && tf1m.close > tf1m.sma20 && tf1m.rsi < 75) {
+                // Highly aggressive RSI (85/15) to match client-side sensitivity and capture momentum
+                if (tf1h.trend === 'BULLISH' && tf1m.close > tf1m.sma20 && tf1m.rsi < 85) {
                     signal = 'LONG'; activeTf = '1m';
-                } else if (tf1h.trend === 'BEARISH' && tf1m.close < tf1m.sma20 && tf1m.rsi > 25) {
+                } else if (tf1h.trend === 'BEARISH' && tf1m.close < tf1m.sma20 && tf1m.rsi > 15) {
                     signal = 'SHORT'; activeTf = '1m';
                 }
             }
