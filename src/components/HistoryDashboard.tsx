@@ -105,10 +105,13 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     };
 
     const [successRate, setSuccessRate] = useState(0);
+    const [lossRate, setLossRate] = useState(0);
+    const [winCount, setWinCount] = useState(0);
+    const [lossCount, setLossCount] = useState(0);
 
     const fetchStats = async () => {
         try {
-            // Count total actionable trades (excluding NEUTRAL)
+            // Count total actionable trades (excluding NEUTRAL and PENDING)
             let totalQuery = supabase
                 .from('trading_history')
                 .select('*', { count: 'exact', head: true })
@@ -122,22 +125,35 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                 .eq('status', 'SUCCESS')
                 .neq('signal', 'NEUTRAL');
 
+            // Count total FAILED trades
+            let failedQuery = supabase
+                .from('trading_history')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'FAILED')
+                .neq('signal', 'NEUTRAL');
+
             if (symbol) {
                 totalQuery = totalQuery.eq('symbol', symbol);
                 successQuery = successQuery.eq('symbol', symbol);
+                failedQuery = failedQuery.eq('symbol', symbol);
             }
 
             if (filter !== 'All') {
                 totalQuery = totalQuery.eq('timeframe', filter);
                 successQuery = successQuery.eq('timeframe', filter);
+                failedQuery = failedQuery.eq('timeframe', filter);
             }
 
-            const [totalRes, successRes] = await Promise.all([totalQuery, successQuery]);
+            const [totalRes, successRes, failedRes] = await Promise.all([totalQuery, successQuery, failedQuery]);
 
             const totalActionable = totalRes.count || 0;
             const totalSuccess = successRes.count || 0;
+            const totalFailed = failedRes.count || 0;
 
+            setWinCount(totalSuccess);
+            setLossCount(totalFailed);
             setSuccessRate(totalActionable > 0 ? (totalSuccess / totalActionable) * 100 : 0);
+            setLossRate(totalActionable > 0 ? (totalFailed / totalActionable) * 100 : 0);
         } catch (e) {
             console.error('Error fetching stats:', e);
         }
@@ -183,9 +199,21 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                     <div className="text-center py-4 text-slate-500 text-xs">Chưa có lịch sử đề xuất</div>
                 ) : (
                     <>
-                        <div className="p-3 bg-slate-800/50 rounded-lg flex justify-between items-center border border-slate-700/50">
-                            <span className="text-xs text-slate-400">Tỉ lệ thắng ({filter})</span>
-                            <span className="text-lg font-black text-green-400">{successRate.toFixed(1)}%</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="p-3 bg-slate-800/50 rounded-lg flex flex-col items-center border border-slate-700/50">
+                                <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Tỉ lệ thắng ({filter})</span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-lg font-black text-green-400">{successRate.toFixed(1)}%</span>
+                                    <span className="text-[10px] text-slate-500">({winCount} lệnh)</span>
+                                </div>
+                            </div>
+                            <div className="p-3 bg-slate-800/50 rounded-lg flex flex-col items-center border border-slate-700/50">
+                                <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Tỉ lệ thua ({filter})</span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-lg font-black text-red-400">{lossRate.toFixed(1)}%</span>
+                                    <span className="text-[10px] text-slate-500">({lossCount} lệnh)</span>
+                                </div>
+                            </div>
                         </div>
 
                         {history.map((item) => (
