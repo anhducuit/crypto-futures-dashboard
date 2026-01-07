@@ -63,9 +63,9 @@ export function useSignalGenerator(
                 }
             }
 
-            // 6. Save Signal
+            // 6. Save Signal - DISABLED: Server-side Edge Function now handles this 24/7
+            /*
             if (signal) {
-                // We pass finalTf to ensure correct labeling
                 await saveSignalToSupabase(
                     symbol,
                     finalTf,
@@ -77,6 +77,7 @@ export function useSignalGenerator(
                     lastSignalRef
                 );
             }
+            */
         };
 
         checkSignals();
