@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, Target, Sparkles, Clock, ChevronDown, RefreshCw } from 'lucide-react';
 import { calculateFibonacciLevels, formatNumber } from '../utils/calculations';
-
-interface TimeframeData {
-    timeframe: string;
-    label: string;
-    ma: number;
-    currentPrice: number;
-    trend: 'bullish' | 'bearish' | 'neutral';
-    swingHigh: number;
-    swingLow: number;
-}
-
-interface MAAnalysis {
-    timeframes: TimeframeData[];
-    overallBias: 'long' | 'short' | 'neutral';
-    confidence: number;
-}
+import type { MAAnalysis } from '../hooks/useBinanceKlines';
 
 interface FibonacciCalculatorProps {
     direction: 'long' | 'short';
@@ -178,7 +163,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                             <span className="text-[var(--color-text-secondary)]">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
                             <span className={`font-medium ${selectedData.trend === 'bullish' ? 'text-green-400' : selectedData.trend === 'bearish' ? 'text-red-400' : 'text-gray-400'
                                 }`}>
-                                MA20: ${formatNumber(selectedData.ma, getDecimals(selectedData.ma))}
+                                MA20: ${formatNumber(selectedData.ma20, getDecimals(selectedData.ma20))}
                             </span>
                         </div>
                         <div className="grid grid-cols-2 gap-3">

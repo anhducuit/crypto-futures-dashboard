@@ -1,24 +1,6 @@
 import React from 'react';
 import { BarChart3, Info } from 'lucide-react';
-
-interface MAAnalysis {
-    timeframes: {
-        timeframe: string;
-        label: string;
-        ma: number;
-        currentPrice: number;
-        trend: 'bullish' | 'bearish' | 'neutral';
-        swingHigh: number;
-        swingLow: number;
-        rsi: number;
-        avgVolume: number;
-        currentVolume: number;
-        volumeRatio: number;
-        priceGap: number;
-    }[];
-    overallBias: 'long' | 'short' | 'neutral';
-    confidence: number;
-}
+import type { MAAnalysis } from '../hooks/useBinanceKlines';
 
 interface VolumeAnalysisProps {
     maAnalysis: MAAnalysis | null;

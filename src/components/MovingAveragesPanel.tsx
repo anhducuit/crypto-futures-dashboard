@@ -1,22 +1,7 @@
 import React from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, Target } from 'lucide-react';
 import { formatNumber } from '../utils/calculations';
-
-interface TimeframeData {
-    timeframe: string;
-    label: string;
-    ma: number;
-    currentPrice: number;
-    trend: 'bullish' | 'bearish' | 'neutral';
-    swingHigh: number;
-    swingLow: number;
-}
-
-interface MAAnalysis {
-    timeframes: TimeframeData[];
-    overallBias: 'long' | 'short' | 'neutral';
-    confidence: number;
-}
+import type { MAAnalysis } from '../hooks/useBinanceKlines';
 
 interface MovingAveragesPanelProps {
     data: MAAnalysis | null;
@@ -108,11 +93,11 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
                                     <span className="text-[var(--color-text-secondary)]">MA20: </span>
-                                    <span className="text-white font-mono">${formatNumber(tf.ma, getDecimals(tf.ma))}</span>
+                                    <span className="text-white font-mono">${formatNumber(tf.ma20, getDecimals(tf.ma20))}</span>
                                 </div>
                                 <div>
                                     <span className="text-[var(--color-text-secondary)]">Giá: </span>
-                                    <span className={`font-mono ${tf.currentPrice > tf.ma ? 'text-green-400' : 'text-red-400'}`}>
+                                    <span className={`font-mono ${tf.currentPrice > tf.ma20 ? 'text-green-400' : 'text-red-400'}`}>
                                         ${formatNumber(tf.currentPrice, getDecimals(tf.currentPrice))}
                                     </span>
                                 </div>
