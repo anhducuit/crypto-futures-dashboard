@@ -27,28 +27,29 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, ti
 
             console.log(`TradingView: Loading with timeframe=${timeframe}, symbol=${formattedSymbol}`);
 
-            // Configure dynamic MA studies based on timeframe
-            let studies: any[] = [{ id: "RSI@tv-basicstudies" }];
+            // Configure dynamic MA studies and overrides
+            let studies: string[] = ["RSI@tv-basicstudies", "MASimple@tv-basicstudies", "MASimple@tv-basicstudies"];
+            let studies_overrides: any = {};
 
             if (timeframe === "1") {
                 // 1m Scalp: MA7, MA25
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 7 } });
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 25 } });
+                studies_overrides["moving average.length"] = 7;
+                studies_overrides["moving average.2.length"] = 25;
             } else if (timeframe === "15") {
                 // 15m Day: MA12, MA26
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 12 } });
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 26 } });
+                studies_overrides["moving average.length"] = 12;
+                studies_overrides["moving average.2.length"] = 26;
             } else if (timeframe === "60") {
                 // 1h Swing: MA20, MA50
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 20 } });
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 50 } });
+                studies_overrides["moving average.length"] = 20;
+                studies_overrides["moving average.2.length"] = 50;
             } else if (timeframe === "240") {
                 // 4h Trend: MA50, MA200
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 50 } });
-                studies.push({ id: "MASimple@tv-basicstudies", inputs: { length: 200 } });
+                studies_overrides["moving average.length"] = 50;
+                studies_overrides["moving average.2.length"] = 200;
             }
 
-            const containerId = `tv-chart-${Math.random().toString(36).substr(2, 9)}`;
+            const containerId = `tv-chart-${timeframe}-${Math.random().toString(36).substr(2, 5)}`;
             const widgetDiv = document.createElement('div');
             widgetDiv.id = containerId;
             widgetDiv.style.height = '100%';
@@ -72,8 +73,10 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, ti
                         "enable_publishing": false,
                         "hide_side_toolbar": false,
                         "allow_symbol_change": true,
+                        "save_image": false,
                         "container_id": containerId,
-                        "studies": studies
+                        "studies": studies,
+                        "studies_overrides": studies_overrides
                     });
                 }
             };
