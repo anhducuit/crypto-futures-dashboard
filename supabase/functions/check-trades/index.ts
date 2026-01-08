@@ -246,6 +246,32 @@ Deno.serve(async (req) => {
         // Cleanup duplicates (just in case)
         await supabase.from('bot_settings').delete().eq('key', 'last_scan_at').neq('id', existingHeartbeat?.id || 0);
 
+        /* =========================================
+           PART -1: RETENTION POLICY CLEANUP
+           ========================================= */
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000)).toISOString();
+        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+
+        // 1m: Delete older than 1 day (Keep only non-PENDING)
+        await supabase.from('trading_history').delete()
+            .eq('timeframe', '1m')
+            .lt('created_at', oneDayAgo)
+            .neq('status', 'PENDING');
+
+        // 15m, 1h: Delete older than 7 days
+        await supabase.from('trading_history').delete()
+            .in('timeframe', ['15m', '1h'])
+            .lt('created_at', sevenDaysAgo)
+            .neq('status', 'PENDING');
+
+        // 4h: Delete older than 30 days
+        await supabase.from('trading_history').delete()
+            .eq('timeframe', '4h')
+            .lt('created_at', thirtyDaysAgo)
+            .neq('status', 'PENDING');
+
         const logs: string[] = [];
         const updates: any[] = [];
         const newionSignals: any[] = [];
