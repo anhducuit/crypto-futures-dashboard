@@ -5,17 +5,11 @@ import { useEffect } from 'react';
  * Signal generation is now handled entirely on the server-side (Supabase Edge Functions).
  * This hook is kept as a placeholder to prevent build errors in components that still import it.
  */
-export function useSignalGenerator(
-    symbol: string,
-    maAnalysis: any,
-    currentPrice: number
-) {
+export function useSignalGenerator() {
     useEffect(() => {
-        // Log to console so user knows this is disabled
-        if (symbol && currentPrice) {
-            // console.log('Client-side signal generation is disabled. Monitoring server signals...');
-        }
-    }, [symbol, currentPrice]);
+        // Client-side signal generation is disabled. 
+        // Logic moved to Supabase Edge Functions.
+    }, []);
 
     return null;
 }

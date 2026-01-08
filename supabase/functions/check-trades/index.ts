@@ -190,7 +190,20 @@ Deno.serve(async (req) => {
                 }
             }
 
-            return new Response(JSON.stringify({ success: true, results }), {
+            // Test Telegram directly
+            const token = Deno.env.get('TELEGRAM_BOT_TOKEN') || '';
+            const chatId = Deno.env.get('TELEGRAM_CHAT_ID') || '';
+            const tokenDebug = token ? `${token.slice(0, 5)}...${token.slice(-5)}` : 'MISSING';
+            const chatDebug = chatId ? `${chatId.slice(0, 3)}...` : 'MISSING';
+
+            const testTele = await sendTelegram(`🔔 <b>BOT TEST</b>\nTime: ${new Date().toISOString()}\nStatus: Online`);
+
+            return new Response(JSON.stringify({
+                success: true,
+                env: { token: tokenDebug, chat: chatDebug },
+                telegramTest: testTele,
+                results
+            }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }

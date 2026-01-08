@@ -81,8 +81,8 @@ function App() {
   // Background Trade Monitor (Checks PENDING trades)
   const tradeMonitor = session ? <TradeMonitor /> : null;
 
-  // Automated Signal Generator
-  useSignalGenerator(symbol, maAnalysis, currentPrice || 0);
+  // Automated Signal Generator (Disabled - Logic moved to Server)
+  useSignalGenerator();
 
   // Handle swing selection from MA panel
   const handleSelectSwing = useCallback((swingHigh: number, swingLow: number, timeframe: string) => {
