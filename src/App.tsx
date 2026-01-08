@@ -32,6 +32,7 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [activeTimeframe, setActiveTimeframe] = useState('15'); // 15, 1, 60, 240
 
   useEffect(() => {
     // Check current session
@@ -87,6 +88,12 @@ function App() {
   // Handle swing selection from MA panel
   const handleSelectSwing = useCallback((swingHigh: number, swingLow: number, timeframe: string) => {
     setSelectedSwing({ high: swingHigh, low: swingLow, timeframe });
+
+    // Sync timeframe with chart
+    if (timeframe.includes('1m') || timeframe.includes('1 Phút')) setActiveTimeframe('1');
+    else if (timeframe.includes('15m') || timeframe.includes('15 Phút')) setActiveTimeframe('15');
+    else if (timeframe.includes('1h') || timeframe.includes('1 Giờ')) setActiveTimeframe('60');
+    else if (timeframe.includes('4h') || timeframe.includes('4 Giờ')) setActiveTimeframe('240');
   }, []);
 
   const handleLogout = async () => {
@@ -200,6 +207,8 @@ function App() {
               loading={maLoading}
               onRefresh={refetchMA}
               onSelectSwing={handleSelectSwing}
+              activeTimeframe={activeTimeframe}
+              onTimeframeChange={setActiveTimeframe}
             />
 
             {/* EMA Trend Bias */}
@@ -209,7 +218,7 @@ function App() {
           {/* Center - TradingView Chart & History */}
           <div className="lg:col-span-5 space-y-4 flex flex-col min-h-0">
             <div className="flex-shrink-0">
-              <TradingViewWidget symbol={symbol} />
+              <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
             <div className="flex-1 min-h-[400px]">
               <HistoryDashboard symbol={symbol} />

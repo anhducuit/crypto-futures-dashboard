@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 interface TradingViewWidgetProps {
     symbol: string;
+    timeframe?: string;
 }
 
 declare global {
@@ -10,7 +11,7 @@ declare global {
     }
 }
 
-export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol }) => {
+export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, timeframe = "15" }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -20,26 +21,35 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol }) 
             // Clear any existing widget
             containerRef.current.innerHTML = '';
 
-            // Format symbol for TradingView Perpetual Futures (e.g., BTCUSDT -> BINANCE:BTCUSDT.P)
+            // Format symbol for TradingView Perpetual Futures
             const cleanSymbol = symbol ? symbol.toUpperCase().replace('/', '') : 'BTCUSDT';
             const formattedSymbol = `BINANCE:${cleanSymbol}.P`;
 
-            // Create widget container
-            const widgetContainer = document.createElement('div');
-            widgetContainer.className = 'tradingview-widget-container__widget';
-            widgetContainer.style.height = '100%';
-            widgetContainer.style.width = '100%';
-            containerRef.current.appendChild(widgetContainer);
+            // Configure dynamic MA studies based on timeframe
+            let studies: string[] = ["RSI@tv-basicstudies"];
 
-            // Create and configure script
-            const script = document.createElement('script');
-            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-            script.type = 'text/javascript';
-            script.async = true;
-            script.innerHTML = JSON.stringify({
+            if (timeframe === "1") {
+                // 1m Scalp: MA7, MA25
+                studies.push("MASimple@tv-basicstudies"); // MA1
+                studies.push("MASimple@tv-basicstudies"); // MA2
+            } else if (timeframe === "15") {
+                // 15m Day: MA12, MA26
+                studies.push("MASimple@tv-basicstudies");
+                studies.push("MASimple@tv-basicstudies");
+            } else if (timeframe === "60") {
+                // 1h Swing: MA20, MA50
+                studies.push("MASimple@tv-basicstudies");
+                studies.push("MASimple@tv-basicstudies");
+            } else if (timeframe === "240") {
+                // 4h Trend: MA50, MA200
+                studies.push("MASimple@tv-basicstudies");
+                studies.push("MASimple@tv-basicstudies");
+            }
+
+            const widgetConfig: any = {
                 "autosize": true,
                 "symbol": formattedSymbol,
-                "interval": "15",
+                "interval": timeframe,
                 "timezone": "Asia/Ho_Chi_Minh",
                 "theme": "dark",
                 "style": "1",
@@ -53,19 +63,33 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol }) 
                 "calendar": false,
                 "hide_volume": false,
                 "support_host": "https://www.tradingview.com",
-                "studies": [
-                    "MASimple@tv-basicstudies",
-                    "RSI@tv-basicstudies"
-                ]
-            });
+                "studies": studies
+            };
+
+            // Customize MA lengths using overrides if possible, 
+            // but TV Embed Widget MASimple defaults to some values.
+            // For true customization we might need the Advanced Charting Library (requires license/hosting).
+            // However, we can use a workaround by passing inputs via studies.
+
+            if (timeframe === "1") {
+                widgetConfig["studies_overrides"] = {
+                    "moving average.length": 7,
+                    "moving average.2.length": 25
+                };
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+            script.type = 'text/javascript';
+            script.async = true;
+            script.innerHTML = JSON.stringify(widgetConfig);
 
             containerRef.current.appendChild(script);
         };
 
-        // Small delay to ensure DOM is ready
         const timer = setTimeout(loadWidget, 100);
         return () => clearTimeout(timer);
-    }, [symbol]);
+    }, [symbol, timeframe]);
 
     return (
         <div className="card h-full min-h-[500px]">

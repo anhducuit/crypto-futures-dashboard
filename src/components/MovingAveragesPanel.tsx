@@ -8,13 +8,17 @@ interface MovingAveragesPanelProps {
     loading: boolean;
     onRefresh: () => void;
     onSelectSwing: (swingHigh: number, swingLow: number, timeframe: string) => void;
+    activeTimeframe?: string;
+    onTimeframeChange?: (tf: string) => void;
 }
 
 export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
     data,
     loading,
     onRefresh,
-    onSelectSwing
+    onSelectSwing,
+    activeTimeframe,
+    onTimeframeChange
 }) => {
     const getTrendIcon = (trend: string) => {
         switch (trend) {
@@ -78,7 +82,21 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                     {data.timeframes.map((tf) => (
                         <div
                             key={tf.timeframe}
-                            className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2"
+                            onClick={() => {
+                                if (onTimeframeChange) {
+                                    if (tf.timeframe === '1m') onTimeframeChange('1');
+                                    else if (tf.timeframe === '15m') onTimeframeChange('15');
+                                    else if (tf.timeframe === '1h') onTimeframeChange('60');
+                                    else if (tf.timeframe === '4h') onTimeframeChange('240');
+                                }
+                            }}
+                            className={`p-3 rounded-lg space-y-2 cursor-pointer transition-all ${(activeTimeframe === '1' && tf.timeframe === '1m') ||
+                                    (activeTimeframe === '15' && tf.timeframe === '15m') ||
+                                    (activeTimeframe === '60' && tf.timeframe === '1h') ||
+                                    (activeTimeframe === '240' && tf.timeframe === '4h')
+                                    ? 'bg-[var(--color-golden)]/20 border border-[var(--color-golden)]/50'
+                                    : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-tertiary)]/80 border border-transparent'
+                                }`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
