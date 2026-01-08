@@ -25,6 +25,8 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, ti
             const cleanSymbol = symbol ? symbol.toUpperCase().replace('/', '') : 'BTCUSDT';
             const formattedSymbol = `BINANCE:${cleanSymbol}.P`;
 
+            console.log(`TradingView: Loading with timeframe=${timeframe}, symbol=${formattedSymbol}`);
+
             // Configure dynamic MA studies based on timeframe
             let studies: any[] = [{ id: "RSI@tv-basicstudies" }];
 
