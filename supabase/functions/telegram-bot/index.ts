@@ -26,6 +26,27 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Setup Commands Action
+    if (url.searchParams.get('setup_commands') === 'true') {
+      const commands = [
+        { command: 'menu', description: 'Hiển thị Menu điều khiển' },
+        { command: '1m', description: 'Bật/Tắt khung 1 Phút' },
+        { command: '15m', description: 'Bật/Tắt khung 15 Phút' },
+        { command: '1h', description: 'Bật/Tắt khung 1 Giờ' },
+        { command: '4h', description: 'Bật/Tắt khung 4 Giờ' },
+        { command: 'all', description: 'Bật tất cả khung' },
+        { command: 'scalp', description: 'Chỉ khung 1 Phút' },
+        { command: 'swing', description: 'Khung 15m, 1h, 4h' }
+      ];
+      const res = await fetch(`https://api.telegram.org/bot${secret}/setMyCommands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commands })
+      });
+      const data = await res.json();
+      return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Handle Telegram Update
     const update = await req.json();
 
@@ -44,8 +65,18 @@ Deno.serve(async (req) => {
       let allowed = settings?.value || ['15m', '1h', '4h']; // Default
 
       // 2. Process Commands
-      if (text === '/start') {
-        responseText = `🤖 **Trading Bot Config**\n\nCurrent Mode: ${allowed.join(', ')}\n\n/1m - Toggle 1m\n/15m - Toggle 15m\n/1h - Toggle 1h\n/4h - Toggle 4h\n/all - Enable All\n/scalp - Only 1m\n/swing - 15m, 1h, 4h`;
+      if (text === '/start' || text === '/menu') {
+        responseText = `🤖 **Trading Bot Config Menu**\n\n` +
+          `Active Timeframes: \`${allowed.join(', ')}\`\n\n` +
+          `**Available Commands:**\n` +
+          `/1m - Toggle 1m (Scalp)\n` +
+          `/15m - Toggle 15m (Day Trade)\n` +
+          `/1h - Toggle 1h (Swing)\n` +
+          `/4h - Toggle 4h (Trend)\n` +
+          `/all - Enable All timeframes\n` +
+          `/scalp - Only 1m signals\n` +
+          `/swing - 15m, 1h, 4h signals\n` +
+          `/menu - Show this menu`;
       } else if (['/1m', '/15m', '/1h', '/4h'].includes(text)) {
         const tf = text.substring(1); // Remove /
         if (allowed.includes(tf)) {
