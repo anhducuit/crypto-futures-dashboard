@@ -105,6 +105,7 @@ async function sendTelegram(message: string, replyToId?: number) {
         const result = await res.json();
         return result;
     } catch (e) {
+        console.error('sendTelegram Exception:', e.message);
         return { ok: false, error: e.message };
     }
 }
@@ -548,28 +549,44 @@ Deno.serve(async (req) => {
                         `Time: ${timestampStr}`;
 
                     let msgId = null;
-                    // Send to Telegram
+                    console.log(`Payload: sending telegram for ${symbol}...`);
                     const teleRes = await sendTelegram(msg);
                     if (teleRes && teleRes.ok) {
                         msgId = teleRes.result.message_id;
+                        console.log(`Status: SUCCESS_TELEGRAM id=${msgId}`);
+                    } else {
+                        console.error(`Status: FAILED_TELEGRAM error=${JSON.stringify(teleRes)}`);
                     }
 
                     // Insert into DB
-                    await supabase.from('trading_history').insert({
+                    const { error: insertError } = await supabase.from('trading_history').insert({
                         symbol, timeframe: activeTf, signal,
                         price_at_signal: refTf.close,
                         target_price: target, stop_loss: stopLoss,
                         status: 'PENDING',
                         telegram_message_id: msgId,
-                        rsi: refTf.rsi, volume_ratio: 1
+                        rsi: refTf.rsi, volume_ratio: 1,
+                        // Note: If you add a column 'reason' to DB later, use it here.
+                        // For now we use the existing columns.
                     });
+
+                    if (insertError) {
+                        console.error(`Status: FAILED_TO_INSERT_DB symbol=${symbol}`, insertError);
+                    }
+
                     newionSignals.push({ symbol, signal });
                 }
             }
         }));
 
-        return new Response(JSON.stringify({ success: true, new_signals: newionSignals }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true, new_signals: newionSignals }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
     } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        console.error('Main Handler Error:', err.message);
+        return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
     }
-})
+});

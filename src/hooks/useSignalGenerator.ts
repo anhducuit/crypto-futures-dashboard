@@ -1,26 +1,21 @@
-import { useEffect, useRef } from 'react';
-import type { MAAnalysis } from './useBinanceKlines'; // Import shared interface
+import { useEffect } from 'react';
 
+/**
+ * useSignalGenerator - DEPRECATED
+ * Signal generation is now handled entirely on the server-side (Supabase Edge Functions).
+ * This hook is kept as a placeholder to prevent build errors in components that still import it.
+ */
 export function useSignalGenerator(
     symbol: string,
-    maAnalysis: MAAnalysis | null,
+    maAnalysis: any,
     currentPrice: number
 ) {
-    const lastCheckRef = useRef<number>(0);
-
     useEffect(() => {
-        if (!maAnalysis || !symbol || !currentPrice) return;
+        // Log to console so user knows this is disabled
+        if (symbol && currentPrice) {
+            // console.log('Client-side signal generation is disabled. Monitoring server signals...');
+        }
+    }, [symbol, currentPrice]);
 
-        const checkSignals = async () => {
-            const now = Date.now();
-            // Throttle: Check only once every 5 seconds
-            if (now - lastCheckRef.current < 5000) return;
-            lastCheckRef.current = now;
-
-            // Signal generation is now handled server-side via Edge Functions.
-            // This hook now only acts as a placeholder or could be used for local UI indicators if needed.
-        };
-
-        checkSignals();
-    }, [maAnalysis, symbol, currentPrice]);
+    return null;
 }
