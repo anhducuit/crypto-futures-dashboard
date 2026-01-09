@@ -11,6 +11,7 @@ import { useBinanceKlines } from './hooks/useBinanceKlines';
 import { SymbolInput } from './components/SymbolInput';
 import { LivePriceDisplay } from './components/LivePriceDisplay';
 import { DirectionSelector } from './components/DirectionSelector';
+import { PriceTicker } from './components/PriceTicker';
 import { MovingAveragesPanel } from './components/MovingAveragesPanel';
 import { EMATrendBias } from './components/EMATrendBias';
 import { useEMATrendBias } from './hooks/useEMATrendBias';
@@ -107,10 +108,12 @@ function App() {
               <BarChart2 size={24} className="text-black" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">Pro Crypto Futures</h1>
-              <p className="text-xs text-[var(--color-golden)] font-semibold">by Anh Duc Trader</p>
+              <h1 className="text-xl font-bold tracking-tight">Pro Crypto Futures</h1>
+              <p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">by Anh Duc Trader</p>
             </div>
           </div>
+
+          <PriceTicker />
 
           <div className="hidden md:flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-tertiary)] rounded-lg">

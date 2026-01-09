@@ -92,6 +92,24 @@ body {
   animation: flash-red 0.3s ease-in-out;
 }
 
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
+
+.pause-ticker:hover {
+  animation-play-state: paused;
+}
+
 /* Golden Zone Gradient */
 .golden-zone {
   background: linear-gradient(90deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.25), rgba(251, 191, 36, 0.1));
@@ -207,6 +225,7 @@ input[type="number"]::placeholder {
 /* Slider Styling */
 input[type="range"] {
   -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   height: 8px;
   border-radius: 4px;
@@ -216,6 +235,7 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 20px;
   height: 20px;
   border-radius: 50%;
