@@ -126,6 +126,24 @@ Deno.serve(async (req) => {
         const action = url.searchParams.get('action');
         console.log(`[${new Date().toISOString()}] BOT SCAN START - Action: ${action || 'none'} - Method: ${req.method}`);
 
+        if (action === 'reset') {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+            const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            const supabase = createClient(supabaseUrl, supabaseKey)
+
+            const { error } = await supabase.from('trading_history').delete().neq('id', 0); // Delete all
+            if (error) {
+                return new Response(JSON.stringify({ success: false, error: error.message }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 500
+                });
+            }
+
+            return new Response(JSON.stringify({ success: true, message: "All trading history has been cleared." }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         if (action === 'test') {
             const results: any[] = [];
             for (const symbol of SYMBOLS_TO_SCAN) {
