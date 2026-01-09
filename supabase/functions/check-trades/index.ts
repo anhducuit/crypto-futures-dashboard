@@ -86,16 +86,24 @@ function calculateDynamicTPSL(
 async function sendTelegram(message: string, replyToId?: number, chatIds?: (string | number)[]) {
     const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const ownerChatId = Deno.env.get('TELEGRAM_CHAT_ID');
-    const targets = (chatIds && chatIds.length > 0) ? chatIds : (ownerChatId ? [ownerChatId] : []);
+
+    // Ensure we have a valid list of targets
+    let targets = (chatIds && chatIds.length > 0) ? [...chatIds] : (ownerChatId ? [ownerChatId] : []);
+    // Remove duplicates and ensure strings
+    targets = Array.from(new Set(targets.map(id => String(id))));
+
     if (targets.length === 0) return { ok: false, error: 'No recipients' };
 
-    const promises = targets.map(async (chatId) => {
+    const results = await Promise.all(targets.map(async (chatId) => {
         try {
             const body: any = {
                 chat_id: chatId,
                 text: message,
                 parse_mode: 'HTML'
             };
+
+            // Only apply reply_to_message_id for the ownerChatId 
+            // because we only store ONE message_id in DB (the owner's)
             if (replyToId && String(chatId) === String(ownerChatId)) {
                 body.reply_to_message_id = replyToId;
             }
@@ -105,14 +113,34 @@ async function sendTelegram(message: string, replyToId?: number, chatIds?: (stri
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            return await res.json();
+
+            const data = await res.json();
+
+            // FAIL-SAFE: If reply fails (usually "message not found"), retry as a new message
+            if (!data.ok && data.description?.includes('message to be replied not found')) {
+                console.warn(`Reply failed for ${chatId}, retrying without reply_to_message_id`);
+                delete body.reply_to_message_id;
+                const retryRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                return await retryRes.json();
+            }
+
+            return data;
         } catch (e) {
             console.error(`sendTelegram Error for ${chatId}:`, e.message);
             return { ok: false };
         }
-    });
+    }));
 
-    const results = await Promise.all(promises);
+    // Prioritize returning the owner's result so we save the correct message_id for future replies
+    const ownerIndex = targets.findIndex(id => String(id) === String(ownerChatId));
+    if (ownerIndex !== -1 && results[ownerIndex]?.ok) {
+        return results[ownerIndex];
+    }
+
     return results[0] || { ok: false };
 }
 
