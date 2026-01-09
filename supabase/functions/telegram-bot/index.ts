@@ -55,14 +55,24 @@ Deno.serve(async (req) => {
       const text = update.message.text.trim();
       let responseText = '';
 
-      // 1. Fetch current settings
-      let { data: settings } = await supabase
+      // 1. Fetch current settings (Timeframes & Subscribers)
+      let { data: settingsData } = await supabase
         .from('bot_settings')
-        .select('value')
-        .eq('key', 'allowed_timeframes')
-        .single();
+        .select('key, value')
+        .in('key', ['allowed_timeframes', 'subscriber_ids']);
 
-      let allowed = settings?.value || ['15m', '1h', '4h']; // Default
+      const settingsMap = Object.fromEntries(settingsData?.map(s => [s.key, s.value]) || []);
+      let allowed = settingsMap['allowed_timeframes'] || ['15m', '1h', '4h'];
+      let subscribers = settingsMap['subscriber_ids'] || [];
+
+      // 1.1 Add new subscriber if not exists
+      if (!subscribers.includes(chatId)) {
+        subscribers.push(chatId);
+        await supabase
+          .from('bot_settings')
+          .upsert({ key: 'subscriber_ids', value: subscribers }, { onConflict: 'key' });
+        console.log(`New subscriber added: ${chatId}`);
+      }
 
       // 2. Process Commands
       if (text === '/start' || text === '/menu') {

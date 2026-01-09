@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, Target } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import { formatNumber } from '../utils/calculations';
 import type { MAAnalysis } from '../hooks/useBinanceKlines';
 
@@ -7,7 +7,6 @@ interface MovingAveragesPanelProps {
     data: MAAnalysis | null;
     loading: boolean;
     onRefresh: () => void;
-    onSelectSwing: (swingHigh: number, swingLow: number, timeframe: string) => void;
     activeTimeframe?: string;
     onTimeframeChange?: (tf: string) => void;
 }
@@ -16,7 +15,6 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
     data,
     loading,
     onRefresh,
-    onSelectSwing,
     activeTimeframe,
     onTimeframeChange
 }) => {
@@ -91,11 +89,11 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                                 }
                             }}
                             className={`p-3 rounded-lg space-y-2 cursor-pointer transition-all ${(activeTimeframe === '1' && tf.timeframe === '1m') ||
-                                    (activeTimeframe === '15' && tf.timeframe === '15m') ||
-                                    (activeTimeframe === '60' && tf.timeframe === '1h') ||
-                                    (activeTimeframe === '240' && tf.timeframe === '4h')
-                                    ? 'bg-[var(--color-golden)]/20 border border-[var(--color-golden)]/50'
-                                    : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-tertiary)]/80 border border-transparent'
+                                (activeTimeframe === '15' && tf.timeframe === '15m') ||
+                                (activeTimeframe === '60' && tf.timeframe === '1h') ||
+                                (activeTimeframe === '240' && tf.timeframe === '4h')
+                                ? 'bg-[var(--color-golden)]/20 border border-[var(--color-golden)]/50'
+                                : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-tertiary)]/80 border border-transparent'
                                 }`}
                         >
                             <div className="flex items-center justify-between">
@@ -166,18 +164,11 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                             )}
 
                             <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
-                                <div className="text-xs">
+                                <div className="text-xs w-full text-center">
                                     <span className="text-green-400">H: ${formatNumber(tf.swingHigh, getDecimals(tf.swingHigh))}</span>
                                     <span className="text-[var(--color-text-secondary)] mx-2">|</span>
                                     <span className="text-red-400">L: ${formatNumber(tf.swingLow, getDecimals(tf.swingLow))}</span>
                                 </div>
-                                <button
-                                    onClick={() => onSelectSwing(tf.swingHigh, tf.swingLow, tf.label)}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-golden)]/20 text-[var(--color-golden)] rounded hover:bg-[var(--color-golden)]/30 transition-colors"
-                                >
-                                    <Target size={12} />
-                                    Dùng
-                                </button>
                             </div>
                         </div>
                     ))}

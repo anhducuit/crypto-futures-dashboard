@@ -11,7 +11,6 @@ import {
 interface PositionCalculatorProps {
     currentPrice: number | null;
     direction: 'long' | 'short';
-    swingLow?: number;
     entryPrice: string;
     onEntryChange: (price: string) => void;
 }
@@ -21,7 +20,6 @@ type CalculatorMode = 'stoploss' | 'no-stoploss';
 export const PositionCalculator: React.FC<PositionCalculatorProps> = ({
     currentPrice,
     direction,
-    swingLow = 0,
     entryPrice,
     onEntryChange
 }) => {
@@ -45,7 +43,7 @@ export const PositionCalculator: React.FC<PositionCalculatorProps> = ({
 
     // Calculate split entries for no-stoploss mode
     const splitEntries = mode === 'no-stoploss' && entry > 0
-        ? calculateSplitEntries(wallet, entry, swingLow || entry * 0.9)
+        ? calculateSplitEntries(wallet, entry, entry * 0.9)
         : null;
 
     return (

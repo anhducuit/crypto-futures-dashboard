@@ -4,10 +4,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 /* --- CONSTANTS & CONFIG --- */
 const SYMBOLS_TO_SCAN = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
 const TF_CONFIG = [
-    { interval: '1m', limit: 50 },
-    { interval: '15m', limit: 50 },
-    { interval: '1h', limit: 50 },
-    { interval: '4h', limit: 200 }
+    { interval: '1m', limit: 100 },
+    { interval: '15m', limit: 100 },
+    { interval: '1h', limit: 100 },
+    { interval: '4h', limit: 300 } // Enough for SMA200
 ];
 
 const corsHeaders = {
@@ -52,62 +52,68 @@ function calculateDynamicTPSL(
     swingLow: number
 ) {
     const range = (swingHigh && swingLow) ? (swingHigh - swingLow) : 0;
+
+    // Default fallback if range is too small or invalid
     if (range === 0 || isNaN(range) || range / entryPrice < 0.001) {
         return {
-            target: signal === 'LONG' ? entryPrice * 1.005 : entryPrice * 0.995,
-            stopLoss: signal === 'LONG' ? entryPrice * 0.997 : entryPrice * 1.003
+            target: signal === 'LONG' ? entryPrice * 1.012 : entryPrice * 0.988, // 1.2% base
+            stopLoss: signal === 'LONG' ? entryPrice * 0.994 : entryPrice * 1.006 // 0.6% risk
         }
     }
 
     let target, stopLoss;
 
     if (signal === 'LONG') {
-        target = swingHigh + (range * 0.618);
-        stopLoss = swingLow + (range * 0.236);
+        // Entry at current price, Target at Fib 0.618 of recent range above Entry
+        // Stoploss at Fib 0.786 of the swing or 0.5% min
+        target = entryPrice + (range * 0.618);
+        stopLoss = entryPrice - (range * 0.382); // Stop at 38.2% retracement of range
 
-        if (target / entryPrice < 1.002) target = entryPrice * 1.005;
-        if (stopLoss / entryPrice > 0.998) stopLoss = entryPrice * 0.997;
+        // Hard limits for safety and minimum R:R
+        if (target / entryPrice < 1.005) target = entryPrice * 1.015;
+        if (stopLoss / entryPrice > 0.995) stopLoss = entryPrice * 0.992;
     } else {
-        target = swingLow - (range * 0.618);
-        stopLoss = swingHigh - (range * 0.236);
+        target = entryPrice - (range * 0.618);
+        stopLoss = entryPrice + (range * 0.382);
 
-        if (target / entryPrice > 0.998) target = entryPrice * 0.995;
-        if (stopLoss / entryPrice < 1.002) stopLoss = entryPrice * 1.003;
+        if (target / entryPrice > 0.995) target = entryPrice * 0.985;
+        if (stopLoss / entryPrice < 1.005) stopLoss = entryPrice * 1.008;
     }
 
     return { target, stopLoss };
 }
 
-async function sendTelegram(message: string, replyToId?: number) {
+async function sendTelegram(message: string, replyToId?: number, chatIds?: (string | number)[]) {
     const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+    const ownerChatId = Deno.env.get('TELEGRAM_CHAT_ID');
+    const targets = (chatIds && chatIds.length > 0) ? chatIds : (ownerChatId ? [ownerChatId] : []);
+    if (targets.length === 0) return { ok: false, error: 'No recipients' };
 
-    if (!token || !chatId) return { ok: false, error: 'Missing tokens' };
+    const promises = targets.map(async (chatId) => {
+        try {
+            const body: any = {
+                chat_id: chatId,
+                text: message,
+                parse_mode: 'HTML'
+            };
+            if (replyToId && String(chatId) === String(ownerChatId)) {
+                body.reply_to_message_id = replyToId;
+            }
 
-    try {
-        const url = `https://api.telegram.org/bot${token}/sendMessage`;
-        const body: any = {
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'HTML'
-        };
-
-        if (replyToId) {
-            body.reply_to_message_id = replyToId;
+            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return await res.json();
+        } catch (e) {
+            console.error(`sendTelegram Error for ${chatId}:`, e.message);
+            return { ok: false };
         }
+    });
 
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-        return result;
-    } catch (e) {
-        console.error('sendTelegram Exception:', e.message);
-        return { ok: false, error: e.message };
-    }
+    const results = await Promise.all(promises);
+    return results[0] || { ok: false };
 }
 
 /* --- MAIN LOGIC --- */
@@ -118,6 +124,7 @@ Deno.serve(async (req) => {
     try {
         const url = new URL(req.url);
         const action = url.searchParams.get('action');
+        console.log(`[${new Date().toISOString()}] BOT SCAN START - Action: ${action || 'none'} - Method: ${req.method}`);
 
         if (action === 'test') {
             const results: any[] = [];
@@ -231,16 +238,48 @@ Deno.serve(async (req) => {
             });
         }
 
+        if (action === 'fix-cron') {
+            const sql = `
+                SELECT cron.unschedule('check-trades-every-minute');
+                SELECT cron.schedule(
+                'check-trades-every-minute',
+                '* * * * *',
+                $$
+                SELECT
+                    net.http_post(
+                    url := 'https://tnmagcatofooeshzdhac.supabase.co/functions/v1/check-trades',
+                    headers := '{"Content-Type": "application/json"}'::jsonb,
+                    body := '{}'::jsonb
+                    )
+                $$
+                );
+            `;
+            // Note: We can only run this if we have an RPC like 'execute_sql'. 
+            // If not, we will just return a manual instruction for the user.
+            return new Response(JSON.stringify({
+                instruction: "Please run the following SQL in your Supabase SQL Editor to fix the bot automation:",
+                sql: sql.trim()
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         const supabase = createClient(supabaseUrl, supabaseKey)
 
         // HEARTBEAT: Update last_scan_at to prove bot is active
-        const { data: existingHeartbeat } = await supabase.from('bot_settings').select('id').eq('key', 'last_scan_at').single();
+        const { data: existingHeartbeat, error: fetchError } = await supabase.from('bot_settings').select('id').eq('key', 'last_scan_at').single();
+        if (fetchError) console.error('Heartbeat fetch error:', fetchError);
+
         if (existingHeartbeat) {
-            await supabase.from('bot_settings').update({ value: new Date().toISOString() }).eq('id', existingHeartbeat.id);
+            console.log('Updating heartbeat ID:', existingHeartbeat.id);
+            const { error: updateError } = await supabase.from('bot_settings').update({ value: new Date().toISOString() }).eq('id', existingHeartbeat.id);
+            if (updateError) console.error('Heartbeat update error:', updateError);
         } else {
-            await supabase.from('bot_settings').insert({ key: 'last_scan_at', value: new Date().toISOString() });
+            console.log('Inserting new heartbeat');
+            const { error: insertError } = await supabase.from('bot_settings').insert({ key: 'last_scan_at', value: new Date().toISOString() });
+            if (insertError) console.error('Heartbeat insert error:', insertError);
         }
 
         // Cleanup duplicates (just in case)
@@ -274,19 +313,21 @@ Deno.serve(async (req) => {
 
         const logs: string[] = [];
         const updates: any[] = [];
-        const newionSignals: any[] = [];
+        const newSignals: any[] = [];
 
         /* =========================================
            PART 0: FETCH BOT SETTINGS
            ========================================= */
         const { data: settingsData } = await supabase
             .from('bot_settings')
-            .select('value')
-            .eq('key', 'allowed_timeframes')
-            .single();
+            .select('key, value')
+            .in('key', ['allowed_timeframes', 'subscriber_ids']);
+
+        const settingsMap = Object.fromEntries(settingsData?.map(s => [s.key, s.value]) || []);
 
         // Default allow all if not set
-        const allowedTimeframes: string[] = settingsData?.value || ['1m', '15m', '1h', '4h'];
+        const allowedTimeframes: string[] = settingsMap['allowed_timeframes'] || ['1m', '15m', '1h', '4h'];
+        const subscriberIds: (string | number)[] = settingsMap['subscriber_ids'] || [];
 
         /* =========================================
            PART 1: AUDIT EXISTING TRADES
@@ -294,7 +335,9 @@ Deno.serve(async (req) => {
         const { data: pendingTrades } = await supabase
             .from('trading_history')
             .select('*')
-            .eq('status', 'PENDING');
+            .eq('status', 'PENDING')
+            .order('created_at', { ascending: false })
+            .limit(100); // LIMIT to avoid timeouts
 
         if (pendingTrades && pendingTrades.length > 0) {
             const grouped = pendingTrades.reduce((acc, t) => {
@@ -360,7 +403,7 @@ Deno.serve(async (req) => {
                             `Entry: $${trade.price_at_signal}\n` +
                             `Close Price: $${currentPrice}`;
 
-                        await sendTelegram(msg, trade.telegram_message_id);
+                        await sendTelegram(msg, trade.telegram_message_id, subscriberIds);
                     }
                 }
             }
@@ -392,6 +435,12 @@ Deno.serve(async (req) => {
                 const lows = data.map((x: any) => parseFloat(x[3]));
                 const volumes = data.map((x: any) => parseFloat(x[5]));
 
+                const currentClose = closes[closes.length - 1];
+                const currentVol = volumes[volumes.length - 1];
+                const avgVol20 = calculateSMA(volumes, 20);
+                const volRatio = avgVol20 > 0 ? (currentVol / avgVol20) : 1;
+                const rsi = calculateRSI(closes);
+
                 // 4H Analysis (MA50/MA200)
                 if (cfg.interval === '4h') {
                     const ma50Arr = calculateSMAArray(closes, 50);
@@ -409,10 +458,10 @@ Deno.serve(async (req) => {
 
                         analyses['4h'] = {
                             cross,
-                            close: closes[closes.length - 1],
+                            close: currentClose,
                             swingHigh: Math.max(...highs),
                             swingLow: Math.min(...lows),
-                            rsi: calculateRSI(closes),
+                            rsi, volRatio,
                             ma50: ma50_curr,
                             ma200: ma200_curr
                         };
@@ -421,14 +470,14 @@ Deno.serve(async (req) => {
 
                 // 1H Analysis
                 if (cfg.interval === '1h') {
+                    const ma20 = calculateSMA(closes, 20);
+                    const ma50 = calculateSMA(closes, 50);
                     analyses['1h'] = {
-                        trend: 'NEUTRAL',
-                        ma20: calculateSMA(closes, 20),
-                        ma50: calculateSMA(closes, 50),
-                        close: closes[closes.length - 1]
+                        trend: ma20 > ma50 ? 'BULLISH' : 'BEARISH',
+                        ma20, ma50,
+                        close: currentClose,
+                        rsi, volRatio
                     }
-                    if (analyses['1h'].ma20 > analyses['1h'].ma50) analyses['1h'].trend = 'BULLISH';
-                    else if (analyses['1h'].ma20 < analyses['1h'].ma50) analyses['1h'].trend = 'BEARISH';
                 }
 
                 // 15M Analysis
@@ -447,11 +496,10 @@ Deno.serve(async (req) => {
 
                     analyses['15m'] = {
                         cross: cross,
-                        close: closes[closes.length - 1],
+                        close: currentClose,
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows),
-                        rsi: calculateRSI(closes),
-                        volRatio: (volumes[volumes.length - 1] / calculateSMA(volumes, 20)) || 1
+                        rsi, volRatio
                     }
                 }
 
@@ -471,12 +519,11 @@ Deno.serve(async (req) => {
 
                     analyses['1m'] = {
                         cross: cross,
-                        close: closes[closes.length - 1],
-                        rsi: calculateRSI(closes),
+                        close: currentClose,
+                        rsi, volRatio,
                         sma20: calculateSMA(closes, 20),
                         swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows),
-                        len: closes.length
+                        swingLow: Math.min(...lows)
                     }
                 }
             }
@@ -496,33 +543,32 @@ Deno.serve(async (req) => {
             /* --- STRATEGY LOGIC --- */
 
             // Strategy 1: 4H Major Trend (MA50/200 Cross)
-            if (tf4h && tf4h.cross === 'GOLDEN_CROSS') {
+            if (tf4h && tf4h.cross === 'GOLDEN_CROSS' && tf4h.volRatio > 1.2) {
                 signal = 'LONG'; activeTf = '4h';
-            } else if (tf4h && tf4h.cross === 'DEATH_CROSS') {
+            } else if (tf4h && tf4h.cross === 'DEATH_CROSS' && tf4h.volRatio > 1.2) {
                 signal = 'SHORT'; activeTf = '4h';
             }
 
             // Strategy 2: 1H Trend + 15M Cross (Day Trading)
-            if (!signal) {
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS') {
-                    signal = 'LONG'; activeTf = '15m'; // Or 1h, 15m trigger
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS') {
-                    signal = 'SHORT'; activeTf = '15m';
+            if (!signal && tf1h && tf15m) {
+                const volConfirm = tf15m.volRatio > 1.2;
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm) {
+                    if (tf15m.rsi > 50) { signal = 'LONG'; activeTf = '15m'; }
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm) {
+                    if (tf15m.rsi < 50) { signal = 'SHORT'; activeTf = '15m'; }
                 }
             }
 
-            // Fallback: 1m Scalp (Strict Technical Analysis: MA7/MA25 Cross)
-            if (!signal && tf1m) {
-                // We scalp in direction of 1H Major Trend
-                // Long: MA7 crosses above MA25 + Bullish 1H Trend
-                if (tf1h.trend === 'BULLISH' && tf1m.cross === 'BULLISH_CROSS') {
-                    if (tf1m.rsi < 85) { // Protect from extreme overbought
+            // Fallback: 1m Scalp (Strict Technical Analysis: Volume + RSI)
+            if (!signal && tf1m && tf1h) {
+                const volConfirm = tf1m.volRatio > 1.2;
+                if (tf1h.trend === 'BULLISH' && tf1m.cross === 'BULLISH_CROSS' && volConfirm) {
+                    if (tf1m.rsi > 50 && tf1m.rsi < 80) {
                         signal = 'LONG'; activeTf = '1m';
                     }
                 }
-                // Short: MA7 crosses below MA25 + Bearish 1H Trend
-                else if (tf1h.trend === 'BEARISH' && tf1m.cross === 'BEARISH_CROSS') {
-                    if (tf1m.rsi > 15) { // Protect from extreme oversold
+                else if (tf1h.trend === 'BEARISH' && tf1m.cross === 'BEARISH_CROSS' && volConfirm) {
+                    if (tf1m.rsi < 50 && tf1m.rsi > 20) {
                         signal = 'SHORT'; activeTf = '1m';
                     }
                 }
@@ -585,11 +631,13 @@ Deno.serve(async (req) => {
                         `Entry: $${refTf.close}\n` +
                         `Target: $${target.toFixed(2)}\n` +
                         `StopLoss: $${stopLoss.toFixed(2)}\n` +
+                        `Volume: <b>${refTf.volRatio.toFixed(2)}x</b>\n` +
+                        `RSI: ${refTf.rsi.toFixed(1)}\n` +
                         `Time: ${timestampStr}`;
 
                     let msgId = null;
                     console.log(`Payload: sending telegram for ${symbol}...`);
-                    const teleRes = await sendTelegram(msg);
+                    const teleRes = await sendTelegram(msg, undefined, subscriberIds);
                     if (teleRes && teleRes.ok) {
                         msgId = teleRes.result.message_id;
                         console.log(`Status: SUCCESS_TELEGRAM id=${msgId}`);
@@ -604,7 +652,7 @@ Deno.serve(async (req) => {
                         target_price: target, stop_loss: stopLoss,
                         status: 'PENDING',
                         telegram_message_id: msgId,
-                        rsi: refTf.rsi, volume_ratio: 1,
+                        rsi: refTf.rsi, volume_ratio: refTf.volRatio,
                         // Note: If you add a column 'reason' to DB later, use it here.
                         // For now we use the existing columns.
                     });
@@ -613,12 +661,16 @@ Deno.serve(async (req) => {
                         console.error(`Status: FAILED_TO_INSERT_DB symbol=${symbol}`, insertError);
                     }
 
-                    newionSignals.push({ symbol, signal });
+                    newSignals.push({ symbol, signal });
                 }
             }
         }));
 
-        return new Response(JSON.stringify({ success: true, new_signals: newionSignals }), {
+        return new Response(JSON.stringify({
+            success: true,
+            server_time: new Date().toISOString(),
+            new_signals: newSignals
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (err) {

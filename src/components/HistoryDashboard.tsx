@@ -251,34 +251,39 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Entry:</span>
-                                        <span className="text-slate-300">${item.price_at_signal}</span>
+                                        <span className="text-slate-300 font-bold">${item.price_at_signal}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Volume:</span>
+                                        <span className={`font-bold ${item.volume_ratio > 1.2 ? 'text-blue-400' : 'text-slate-400'}`}>
+                                            {item.volume_ratio ? item.volume_ratio.toFixed(2) : '1.00'}x
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Target:</span>
+                                        <span className="text-green-500/80">${item.target_price}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">RSI:</span>
+                                        <span className="text-slate-300">{item.rsi ? item.rsi.toFixed(1) : '--'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">StopLoss:</span>
+                                        <span className="text-red-500/80">${item.stop_loss}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Time:</span>
-                                        <span className="text-slate-300">
+                                        <span className="text-slate-400">
                                             {(() => {
                                                 const d = new Date(item.created_at);
                                                 const hh = d.getHours().toString().padStart(2, '0');
                                                 const mm = d.getMinutes().toString().padStart(2, '0');
                                                 const day = d.getDate().toString().padStart(2, '0');
                                                 const mo = (d.getMonth() + 1).toString().padStart(2, '0');
-                                                const yr = d.getFullYear();
-                                                return `${hh}:${mm} ${day}/${mo}/${yr}`;
+                                                return `${hh}:${mm} ${day}/${mo}`;
                                             })()}
                                         </span>
                                     </div>
-                                    {item.signal !== 'NEUTRAL' && (
-                                        <>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">Target:</span>
-                                                <span className="text-green-500/80">${item.target_price}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-500">StopLoss:</span>
-                                                <span className="text-red-500/80">${item.stop_loss}</span>
-                                            </div>
-                                        </>
-                                    )}
                                 </div>
                             </div>
                         ))}

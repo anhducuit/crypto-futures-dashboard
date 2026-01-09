@@ -8,16 +8,16 @@ async function debug() {
     const { data: history } = await supabase
         .from('trading_history')
         .select('*')
-        .gte('created_at', '2026-01-07T08:52:00Z')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    console.log('--- NEW SIGNALS SINCE 08:52 UTC ---');
+    console.log('--- LAST 50 SIGNALS ---');
     if (history && history.length > 0) {
         history.forEach(h => {
-            console.log(`[${h.created_at}] ${h.symbol} ${h.timeframe} ${h.signal} - Tele: ${h.telegram_message_id} - RSI: ${h.rsi}`);
+            console.log(`[${h.created_at}] ${h.symbol} ${h.timeframe} ${h.signal} - Status: ${h.status} - Tele: ${h.telegram_message_id} - RSI: ${h.rsi}`);
         });
     } else {
-        console.log('No signals found since manual trigger.');
+        console.log('No BTCUSDT signals found since 08:50 VN.');
     }
 }
 debug();

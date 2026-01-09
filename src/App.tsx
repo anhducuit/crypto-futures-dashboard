@@ -2,7 +2,7 @@
  * Copyright © 2026 Anh Duc Trader. All rights reserved.
  * Unauthorized copying, distribution, or use of this file is strictly prohibited.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, BarChart2, Menu, X, LogOut } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
@@ -51,12 +51,6 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Selected swing data from MA panel
-  const [selectedSwing, setSelectedSwing] = useState<{
-    high: number;
-    low: number;
-    timeframe: string;
-  } | null>(null);
 
   // WebSocket connection
   const {
@@ -85,16 +79,6 @@ function App() {
   // Automated Signal Generator (Disabled - Logic moved to Server)
   useSignalGenerator();
 
-  // Handle swing selection from MA panel
-  const handleSelectSwing = useCallback((swingHigh: number, swingLow: number, timeframe: string) => {
-    setSelectedSwing({ high: swingHigh, low: swingLow, timeframe });
-
-    // Sync timeframe with chart
-    if (timeframe.includes('1m') || timeframe.includes('1 Phút')) setActiveTimeframe('1');
-    else if (timeframe.includes('15m') || timeframe.includes('15 Phút')) setActiveTimeframe('15');
-    else if (timeframe.includes('1h') || timeframe.includes('1 Giờ')) setActiveTimeframe('60');
-    else if (timeframe.includes('4h') || timeframe.includes('4 Giờ')) setActiveTimeframe('240');
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -206,7 +190,6 @@ function App() {
               data={maAnalysis}
               loading={maLoading}
               onRefresh={refetchMA}
-              onSelectSwing={handleSelectSwing}
               activeTimeframe={activeTimeframe}
               onTimeframeChange={setActiveTimeframe}
             />
@@ -239,7 +222,6 @@ function App() {
             <PositionCalculator
               currentPrice={currentPrice}
               direction={direction}
-              swingLow={selectedSwing?.low}
               entryPrice={entryPrice}
               onEntryChange={setEntryPrice}
             />
