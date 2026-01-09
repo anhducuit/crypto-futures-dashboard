@@ -12,6 +12,7 @@ import { SymbolInput } from './components/SymbolInput';
 import { LivePriceDisplay } from './components/LivePriceDisplay';
 import { DirectionSelector } from './components/DirectionSelector';
 import { PriceTicker } from './components/PriceTicker';
+import { MarketTrends } from './components/MarketTrends';
 import { MovingAveragesPanel } from './components/MovingAveragesPanel';
 import { EMATrendBias } from './components/EMATrendBias';
 import { useEMATrendBias } from './hooks/useEMATrendBias';
@@ -213,6 +214,9 @@ function App() {
 
           {/* Right Sidebar - Calculators */}
           <div className="lg:col-span-4 space-y-4">
+            {/* Market Trends (Top Gainers/Losers) */}
+            <MarketTrends onSymbolSelect={setSymbol} />
+
             {/* Fibonacci Calculator */}
             <FibonacciCalculator
               direction={direction}
