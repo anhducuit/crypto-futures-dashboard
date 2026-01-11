@@ -45,6 +45,20 @@ function calculateRSI(closes: number[], period: number = 14): number {
     return 100 - (100 / (1 + rs));
 }
 
+function calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+    if (closes.length <= period) return 0;
+    const trs = [];
+    for (let i = 1; i < closes.length; i++) {
+        const tr = Math.max(
+            highs[i] - lows[i],
+            Math.abs(highs[i] - closes[i - 1]),
+            Math.abs(lows[i] - closes[i - 1])
+        );
+        trs.push(tr);
+    }
+    return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
+}
+
 function calculateDynamicTPSL(
     entryPrice: number,
     signal: 'LONG' | 'SHORT',
@@ -540,12 +554,19 @@ Deno.serve(async (req) => {
                     if (ma12_prev <= ma26_prev && ma12_curr > ma26_curr) cross = 'BULLISH_CROSS';
                     if (ma12_prev >= ma26_prev && ma12_curr < ma26_curr) cross = 'BEARISH_CROSS';
 
+                    const sma20 = calculateSMA(closes, 20);
+                    const atr = calculateATR(highs, lows, closes, 14);
+                    const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
+                    const isExtremeVol = atr > 0 && currentRange > (atr * 2.5);
+                    const distFromSMA = Math.abs(currentClose - sma20) / sma20;
+
                     analyses['15m'] = {
                         cross: cross,
                         close: currentClose,
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows),
-                        rsi, volRatio
+                        rsi, volRatio,
+                        atr, isExtremeVol, distFromSMA, sma20
                     }
                 }
 
@@ -563,13 +584,20 @@ Deno.serve(async (req) => {
                     if (ma7_prev <= ma25_prev && ma7_curr > ma25_curr) cross = 'BULLISH_CROSS';
                     if (ma7_prev >= ma25_prev && ma7_curr < ma25_curr) cross = 'BEARISH_CROSS';
 
+                    const sma20 = calculateSMA(closes, 20);
+                    const atr = calculateATR(highs, lows, closes, 14);
+                    const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
+                    const isExtremeVol = atr > 0 && currentRange > (atr * 3.0); // Strict for 1m
+                    const distFromSMA = Math.abs(currentClose - sma20) / sma20;
+
                     analyses['1m'] = {
                         cross: cross,
                         close: currentClose,
                         rsi, volRatio,
-                        sma20: calculateSMA(closes, 20),
+                        sma20,
                         swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows)
+                        swingLow: Math.min(...lows),
+                        atr, isExtremeVol, distFromSMA
                     }
                 }
             }
@@ -598,23 +626,31 @@ Deno.serve(async (req) => {
             // Strategy 2: 1H Trend + 15M Cross (Day Trading)
             if (!signal && tf1h && tf15m) {
                 const volConfirm = tf15m.volRatio > 1.2;
+                const notOverextended = tf15m.distFromSMA < 0.015; // Max 1.5% from SMA20
+
                 if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm) {
-                    if (tf15m.rsi > 50) { signal = 'LONG'; activeTf = '15m'; }
+                    if (tf15m.rsi > 50 && !tf15m.isExtremeVol && notOverextended) {
+                        signal = 'LONG'; activeTf = '15m';
+                    }
                 } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm) {
-                    if (tf15m.rsi < 50) { signal = 'SHORT'; activeTf = '15m'; }
+                    if (tf15m.rsi < 50 && !tf15m.isExtremeVol && notOverextended) {
+                        signal = 'SHORT'; activeTf = '15m';
+                    }
                 }
             }
 
-            // Fallback: 1m Scalp (Strict Technical Analysis: Volume + RSI)
+            // Fallback: 1m Scalp (Strict Technical Analysis: Volume + RSI + VolGuard)
             if (!signal && tf1m && tf1h) {
                 const volConfirm = tf1m.volRatio > 1.2;
+                const notOverextended = tf1m.distFromSMA < 0.01; // Max 1.0% from SMA20 for 1m
+
                 if (tf1h.trend === 'BULLISH' && tf1m.cross === 'BULLISH_CROSS' && volConfirm) {
-                    if (tf1m.rsi > 50 && tf1m.rsi < 80) {
+                    if (tf1m.rsi > 50 && tf1m.rsi < 80 && !tf1m.isExtremeVol && notOverextended) {
                         signal = 'LONG'; activeTf = '1m';
                     }
                 }
                 else if (tf1h.trend === 'BEARISH' && tf1m.cross === 'BEARISH_CROSS' && volConfirm) {
-                    if (tf1m.rsi < 50 && tf1m.rsi > 20) {
+                    if (tf1m.rsi < 50 && tf1m.rsi > 20 && !tf1m.isExtremeVol && notOverextended) {
                         signal = 'SHORT'; activeTf = '1m';
                     }
                 }
