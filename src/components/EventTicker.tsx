@@ -22,6 +22,7 @@ export const EventTicker: React.FC = () => {
             case 'HIGH': return 'text-red-400 bg-red-400/10 border-red-400/20';
             case 'MEDIUM': return 'text-orange-400 bg-orange-400/10 border-orange-400/20';
             case 'LOW': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+            case 'HOLIDAY': return 'text-slate-400 bg-slate-400/10 border-slate-400/20';
         }
     };
 
@@ -30,6 +31,7 @@ export const EventTicker: React.FC = () => {
             case 'HIGH': return <AlertTriangle size={12} />;
             case 'MEDIUM': return <Info size={12} />;
             case 'LOW': return <Clock size={12} />;
+            case 'HOLIDAY': return <Info size={12} />;
         }
     };
 

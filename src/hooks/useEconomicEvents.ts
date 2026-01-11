@@ -3,13 +3,12 @@ import { useState, useEffect } from 'react';
 export interface EconomicEvent {
     id: string;
     title: string;
-    impact: 'HIGH' | 'MEDIUM' | 'LOW';
+    impact: 'HIGH' | 'MEDIUM' | 'LOW' | 'HOLIDAY';
     time: string;
     date: string;
     country: string;
-    actual?: number | null;
-    estimate?: number | null;
-    prev?: number | null;
+    forecast?: string;
+    previous?: string;
 }
 
 const TRANSLATIONS: Record<string, string> = {
@@ -26,6 +25,8 @@ const TRANSLATIONS: Record<string, string> = {
     'Interest Rate': 'Quyết định Lãi suất',
     'Statement': 'Tuyên bố Chính sách',
     'Meeting Minutes': 'Biên bản cuộc họp',
+    'Jobs Report': 'Báo cáo Việc làm',
+    'Manufacturing PMI': 'Chỉ số Sản xuất PMI',
 };
 
 function translateEvent(event: string): string {
@@ -39,72 +40,52 @@ export function useEconomicEvents() {
     const [events, setEvents] = useState<EconomicEvent[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const apiKey = import.meta.env.VITE_FINNHUB_API_KEY;
-
     const fetchEvents = async () => {
-        if (!apiKey) return;
-
         try {
-            const now = new Date();
-            const from = now.toISOString().split('T')[0];
-            const nextWeek = new Date();
-            nextWeek.setDate(now.getDate() + 7);
-            const to = nextWeek.toISOString().split('T')[0];
-
-            const response = await fetch(
-                `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${apiKey}`
-            );
+            // Source: ForexFactory Public JSON Feed (Keyless)
+            const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
             const data = await response.json();
 
-            let mappedEvents: EconomicEvent[] = [];
-
-            if (data.economicCalendar && data.economicCalendar.length > 0) {
-                mappedEvents = data.economicCalendar
-                    .filter((e: any) => ['USD', 'EUR', 'GBP', 'JPY'].includes(e.country))
+            if (Array.isArray(data)) {
+                const mappedEvents: EconomicEvent[] = data
+                    .filter((e: any) => ['USD', 'EUR', 'GBP', 'JPY', 'CNY'].includes(e.country))
                     .map((e: any, index: number) => {
-                        const dateObj = new Date(e.time);
-                        const vnTime = new Date(dateObj.getTime());
-                        const day = vnTime.getDate().toString().padStart(2, '0');
-                        const month = (vnTime.getMonth() + 1).toString().padStart(2, '0');
-                        const hours = vnTime.getHours().toString().padStart(2, '0');
-                        const minutes = vnTime.getMinutes().toString().padStart(2, '0');
+                        // Parse ISO date (e.g. "2026-01-05T10:00:00-05:00")
+                        const dateObj = new Date(e.date);
+
+                        // Format for Vietnam Time (Browser will handle based on local settings, 
+                        // but let's be explicit if needed. Since App is in VN, standard Date is fine)
+                        const day = dateObj.getDate().toString().padStart(2, '0');
+                        const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                        const hours = dateObj.getHours().toString().padStart(2, '0');
+                        const minutes = dateObj.getMinutes().toString().padStart(2, '0');
 
                         return {
-                            id: `${e.event}-${index}`,
-                            title: translateEvent(e.event),
-                            impact: (e.impact === 'high' ? 'HIGH' : e.impact === 'medium' ? 'MEDIUM' : 'LOW') as any,
+                            id: `${e.title}-${index}`,
+                            title: translateEvent(e.title),
+                            impact: e.impact.toUpperCase() as any,
                             time: `${hours}:${minutes}`,
                             date: `${day}/${month}`,
                             country: e.country,
-                            actual: e.actual,
-                            estimate: e.estimate,
-                            prev: e.prev
+                            forecast: e.forecast,
+                            previous: e.previous
                         };
                     });
-            } else {
-                // FALLBACK: Generate mock events for the simulated 2026 year
-                const tomorrow = new Date(); tomorrow.setDate(now.getDate() + 1);
-                const day3 = new Date(); day3.setDate(now.getDate() + 3);
-                const fmtDate = (d: Date) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
 
-                mappedEvents = [
-                    { id: 'f1', title: 'Chỉ số Giá Tiêu dùng CPI (Mỹ)', impact: 'HIGH', time: '19:30', date: fmtDate(now), country: 'USD' },
-                    { id: 'f2', title: 'Biên bản họp FOMC (Lãi suất)', impact: 'HIGH', time: '02:00', date: fmtDate(tomorrow), country: 'USD' },
-                    { id: 'f3', title: 'Bảng lương Phi nông nghiệp (ADP)', impact: 'HIGH', time: '19:30', date: fmtDate(day3), country: 'USD' },
-                    { id: 'f4', title: 'Tổng sản phẩm Quốc nội GDP (EU)', impact: 'MEDIUM', time: '16:00', date: fmtDate(now), country: 'EUR' },
-                    { id: 'f5', title: 'Đơn trợ cấp Thất nghiệp (Mỹ)', impact: 'MEDIUM', time: '19:30', date: fmtDate(tomorrow), country: 'USD' },
-                ];
+                // Prioritize High Impact, then Sort by Time
+                const sorted = mappedEvents.sort((a, b) => {
+                    const impactWeight = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'HOLIDAY': 0 };
+                    const weightA = impactWeight[a.impact] || 0;
+                    const weightB = impactWeight[b.impact] || 0;
+
+                    if (weightA !== weightB) return weightB - weightA;
+                    return 0; // Keep original chronological order for same impact
+                });
+
+                setEvents(sorted);
             }
-
-            const sorted = mappedEvents.sort((a, b) => {
-                if (a.impact === 'HIGH' && b.impact !== 'HIGH') return -1;
-                if (a.impact !== 'HIGH' && b.impact === 'HIGH') return 1;
-                return 0;
-            });
-
-            setEvents(sorted);
         } catch (error) {
-            console.error('Error fetching economic events:', error);
+            console.error('Error fetching economic events from Faireconomy:', error);
         } finally {
             setLoading(false);
         }
@@ -112,9 +93,9 @@ export function useEconomicEvents() {
 
     useEffect(() => {
         fetchEvents();
-        const interval = setInterval(fetchEvents, 3600000);
+        const interval = setInterval(fetchEvents, 3600000); // Refresh hourly
         return () => clearInterval(interval);
-    }, [apiKey]);
+    }, []);
 
     return { events, loading };
 }
