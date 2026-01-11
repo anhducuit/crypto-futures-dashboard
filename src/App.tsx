@@ -12,6 +12,7 @@ import { SymbolInput } from './components/SymbolInput';
 import { LivePriceDisplay } from './components/LivePriceDisplay';
 import { DirectionSelector } from './components/DirectionSelector';
 import { PriceTicker } from './components/PriceTicker';
+import { EventTicker } from './components/EventTicker';
 import { MarketTrends } from './components/MarketTrends';
 import { MovingAveragesPanel } from './components/MovingAveragesPanel';
 import { EMATrendBias } from './components/EMATrendBias';
@@ -140,6 +141,8 @@ function App() {
           </button>
         </div>
       </header>
+
+      <EventTicker />
 
       {/* Main Content */}
       <main className="max-w-[1920px] mx-auto p-4">
