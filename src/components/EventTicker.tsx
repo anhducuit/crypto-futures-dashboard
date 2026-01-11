@@ -3,9 +3,19 @@ import { AlertTriangle, Clock, Info } from 'lucide-react';
 import { useEconomicEvents, type EconomicEvent } from '../hooks/useEconomicEvents';
 
 export const EventTicker: React.FC = () => {
-    const { events } = useEconomicEvents();
+    const { events, loading } = useEconomicEvents();
 
-    if (events.length === 0) return null;
+    if (loading) {
+        return (
+            <div className="w-full bg-slate-900/50 border-b border-white/5 h-8 flex items-center justify-center">
+                <span className="text-[10px] text-slate-500 animate-pulse">Đang tải lịch sự kiện...</span>
+            </div>
+        );
+    }
+
+    const displayEvents = events.length > 0 ? events : [
+        { id: 'none', title: 'Thị trường hiện không có sự kiện kinh tế quan trọng', impact: 'LOW', time: '--:--', date: '--/--', country: 'ALL' }
+    ] as any;
 
     const getImpactColor = (impact: EconomicEvent['impact']) => {
         switch (impact) {
@@ -34,7 +44,7 @@ export const EventTicker: React.FC = () => {
             <div className="flex-1 overflow-hidden relative h-full">
                 <div className="flex animate-ticker hover:pause-ticker whitespace-nowrap gap-12 items-center h-full">
                     {/* Double the list for infinite scrolling */}
-                    {[...events, ...events].map((event, idx) => (
+                    {[...displayEvents, ...displayEvents].map((event, idx) => (
                         <div key={`${event.id}-${idx}`} className="flex items-center gap-3">
                             <span className="text-[10px] font-bold text-slate-500 uppercase">{event.country}</span>
                             <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-bold ${getImpactColor(event.impact)}`}>
