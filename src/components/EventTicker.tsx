@@ -41,9 +41,14 @@ export const EventTicker: React.FC = () => {
                                 {getImpactIcon(event.impact)}
                                 {event.title}
                             </div>
-                            <span className="text-[10px] font-mono text-slate-400 tracking-wider">
-                                {event.time}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-mono text-slate-400 tracking-wider">
+                                    {event.time}
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-600 bg-white/5 px-1 rounded">
+                                    {event.date}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
