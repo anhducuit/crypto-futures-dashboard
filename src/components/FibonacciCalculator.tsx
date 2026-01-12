@@ -86,7 +86,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                 </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 min-h-[550px]">
                 {/* Timeframe Selector */}
                 <div>
                     <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] mb-2">
@@ -253,16 +253,16 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                 )}
 
-                {levels.length === 0 && !maLoading && (
-                    <div className="text-center py-8 text-[var(--color-text-secondary)]">
-                        <Layers size={32} className="mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Đang tải dữ liệu hoặc chưa có dữ liệu cho timeframe này</p>
-                    </div>
-                )}
-
-                {maLoading && (
-                    <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin w-6 h-6 border-2 border-[var(--color-golden)] border-t-transparent rounded-full"></div>
+                {(levels.length === 0 || maLoading) && (
+                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-[var(--color-text-secondary)] opacity-50">
+                        {maLoading ? (
+                            <div className="animate-spin w-8 h-8 border-4 border-[var(--color-golden)] border-t-transparent rounded-full mb-4"></div>
+                        ) : (
+                            <Layers size={48} className="mb-3" />
+                        )}
+                        <p className="text-sm font-medium">
+                            {maLoading ? 'Đang phân tích dữ liệu...' : 'Chưa có dữ liệu cho symbol/khung giờ này'}
+                        </p>
                     </div>
                 )}
             </div>
