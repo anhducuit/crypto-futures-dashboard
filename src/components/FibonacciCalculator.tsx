@@ -86,7 +86,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                 </button>
             </div>
 
-            <div className="space-y-4 h-[550px] overflow-y-auto pr-2 custom-scrollbar flex flex-col">
+            <div className="space-y-4">
                 {/* Timeframe Selector */}
                 <div>
                     <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] mb-2">
@@ -156,120 +156,132 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                 </div>
 
-                {/* Swing High/Low from Selected Timeframe */}
-                {selectedData && (
-                    <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-[var(--color-text-secondary)]">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
-                            <span className={`font-medium ${selectedData.trend === 'bullish' ? 'text-green-400' : selectedData.trend === 'bearish' ? 'text-red-400' : 'text-gray-400'
-                                }`}>
-                                MA20: ${formatNumber(selectedData.ma20, getDecimals(selectedData.ma20))}
-                            </span>
-                        </div>
+                {maLoading ? (
+                    /* SKELETON LOADER - OCCUPIES EXACT SAME SPACE */
+                    <div className="space-y-4 animate-pulse">
+                        <div className="h-24 bg-white/5 rounded-lg"></div> {/* Swing data box */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="p-2 bg-[var(--color-bg-primary)] rounded">
-                                <div className="text-xs text-green-400 mb-1">Swing High</div>
-                                <div className="font-mono font-bold text-white">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
-                            </div>
-                            <div className="p-2 bg-[var(--color-bg-primary)] rounded">
-                                <div className="text-xs text-red-400 mb-1">Swing Low</div>
-                                <div className="font-mono font-bold text-white">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
-                            </div>
+                            <div className="h-10 bg-white/5 rounded-lg"></div>
+                            <div className="h-10 bg-white/5 rounded-lg"></div>
+                        </div>
+                        <div className="h-20 bg-[var(--color-golden)]/5 rounded-lg border border-[var(--color-golden)]/10"></div> {/* Golden zone box */}
+                        <div className="space-y-2">
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                                <div key={i} className="h-8 bg-white/5 rounded flex justify-between px-3 items-center">
+                                    <div className="w-8 h-3 bg-white/10 rounded"></div>
+                                    <div className="w-16 h-3 bg-white/10 rounded"></div>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                )}
-
-                {/* Manual Override */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                            Swing High ($)
-                        </label>
-                        <input
-                            type="number"
-                            value={swingHigh}
-                            onChange={(e) => setSwingHigh(e.target.value)}
-                            placeholder="Giá cao nhất"
-                            step="any"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                            Swing Low ($)
-                        </label>
-                        <input
-                            type="number"
-                            value={swingLow}
-                            onChange={(e) => setSwingLow(e.target.value)}
-                            placeholder="Giá thấp nhất"
-                            step="any"
-                        />
-                    </div>
-                </div>
-
-                {/* Golden Zone */}
-                {goldenZoneRange && (
-                    <div className="golden-zone p-3 rounded-lg flex items-center gap-3">
-                        <Sparkles size={20} className="text-[var(--color-golden)] flex-shrink-0" />
-                        <div>
-                            <div className="text-sm font-semibold text-[var(--color-golden)]">Golden Zone (0.559 - 0.667)</div>
-                            <div className="text-lg font-bold text-white">{goldenZoneRange}</div>
-                            <div className="text-xs text-[var(--color-text-secondary)]">Vùng Entry tốt nhất</div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Fibonacci Levels */}
-                {levels.length > 0 && (
-                    <div className="space-y-1 mt-4">
-                        <div className="flex justify-between text-xs text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)]">
-                            <span>Level</span>
-                            <span>Giá ($)</span>
-                        </div>
-
-                        {levels.map((level) => (
-                            <div
-                                key={level.ratio}
-                                className={`fib-level ${level.isGoldenZone ? 'golden-zone' : ''}`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    {level.isGoldenZone && (
-                                        <Target size={14} className="text-[var(--color-golden)]" />
-                                    )}
-                                    <span className={level.isGoldenZone ? 'text-[var(--color-golden)] font-semibold' : 'text-[var(--color-text-secondary)]'}>
-                                        {level.ratio}
+                ) : (
+                    <>
+                        {/* Swing High/Low from Selected Timeframe */}
+                        {selectedData && (
+                            <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-[var(--color-text-secondary)]">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
+                                    <span className={`font-medium ${selectedData.trend === 'bullish' ? 'text-green-400' : selectedData.trend === 'bearish' ? 'text-red-400' : 'text-gray-400'
+                                        }`}>
+                                        MA20: ${formatNumber(selectedData.ma20, getDecimals(selectedData.ma20))}
                                     </span>
                                 </div>
-                                <span className={`font-medium ${level.isGoldenZone
-                                    ? 'text-[var(--color-golden)]'
-                                    : direction === 'long'
-                                        ? 'text-green-400'
-                                        : 'text-red-400'
-                                    }`}>
-                                    ${formatNumber(level.price, getDecimals(level.price))}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {(levels.length === 0 || maLoading) && (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-[var(--color-text-secondary)] bg-black/10 rounded-xl border border-dashed border-white/5 my-2">
-                        {maLoading ? (
-                            <>
-                                <div className="relative w-12 h-12 mb-4">
-                                    <div className="absolute inset-0 border-4 border-[var(--color-golden)]/20 rounded-full"></div>
-                                    <div className="absolute inset-0 border-4 border-[var(--color-golden)] border-t-transparent rounded-full animate-spin"></div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-2 bg-[var(--color-bg-primary)] rounded">
+                                        <div className="text-xs text-green-400 mb-1">Swing High</div>
+                                        <div className="font-mono font-bold text-white">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
+                                    </div>
+                                    <div className="p-2 bg-[var(--color-bg-primary)] rounded">
+                                        <div className="text-xs text-red-400 mb-1">Swing Low</div>
+                                        <div className="font-mono font-bold text-white">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
+                                    </div>
                                 </div>
-                                <p className="text-sm font-bold text-white animate-pulse">ĐANG PHÂN TÍCH...</p>
-                            </>
-                        ) : (
-                            <>
-                                <Layers size={48} className="mb-4 opacity-20" />
-                                <p className="text-xs text-center max-w-[150px]">Vui lòng chọn hoặc chờ Robot tải dữ liệu MA</p>
-                            </>
+                            </div>
                         )}
-                    </div>
+
+                        {/* Manual Override */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
+                                    Swing High ($)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={swingHigh}
+                                    onChange={(e) => setSwingHigh(e.target.value)}
+                                    placeholder="Giá cao nhất"
+                                    step="any"
+                                    className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
+                                    Swing Low ($)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={swingLow}
+                                    onChange={(e) => setSwingLow(e.target.value)}
+                                    placeholder="Giá thấp nhất"
+                                    step="any"
+                                    className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Golden Zone */}
+                        {goldenZoneRange && (
+                            <div className="golden-zone p-3 rounded-lg flex items-center gap-3">
+                                <Sparkles size={20} className="text-[var(--color-golden)] flex-shrink-0" />
+                                <div>
+                                    <div className="text-sm font-semibold text-[var(--color-golden)]">Golden Zone (0.559 - 0.667)</div>
+                                    <div className="text-lg font-bold text-white">{goldenZoneRange}</div>
+                                    <div className="text-xs text-[var(--color-text-secondary)]">Vùng Entry tốt nhất</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Fibonacci Levels */}
+                        {levels.length > 0 && (
+                            <div className="space-y-1 mt-4">
+                                <div className="flex justify-between text-xs text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)]">
+                                    <span>Level</span>
+                                    <span>Giá ($)</span>
+                                </div>
+
+                                {levels.map((level) => (
+                                    <div
+                                        key={level.ratio}
+                                        className={`fib-level ${level.isGoldenZone ? 'golden-zone' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {level.isGoldenZone && (
+                                                <Target size={14} className="text-[var(--color-golden)]" />
+                                            )}
+                                            <span className={level.isGoldenZone ? 'text-[var(--color-golden)] font-semibold' : 'text-[var(--color-text-secondary)]'}>
+                                                {level.ratio}
+                                            </span>
+                                        </div>
+                                        <span className={`font-medium ${level.isGoldenZone
+                                            ? 'text-[var(--color-golden)]'
+                                            : direction === 'long'
+                                                ? 'text-green-400'
+                                                : 'text-red-400'
+                                            }`}>
+                                            ${formatNumber(level.price, getDecimals(level.price))}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {levels.length === 0 && !maLoading && (
+                            <div className="flex-1 flex flex-col items-center justify-center py-12 text-[var(--color-text-secondary)] opacity-50">
+                                <Layers size={48} className="mb-3" />
+                                <p className="text-sm font-medium">Chưa có dữ liệu cho symbol/khung giờ này</p>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
