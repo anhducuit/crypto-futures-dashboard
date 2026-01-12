@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PieChart, TrendingUp, Edit3, Save, CheckCircle2, XCircle, Filter } from 'lucide-react';
+import { PieChart, TrendingUp, Edit3, Save, CheckCircle2, XCircle, Filter, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AnalyticsData {
@@ -15,7 +15,7 @@ interface TradeRecord {
     created_at: string;
     symbol: string;
     signal: string;
-    status: 'SUCCESS' | 'FAILED';
+    status: 'SUCCESS' | 'FAILED' | 'PENDING';
     pnl_reason: string | null;
     strategy_name: string | null;
 }
@@ -35,8 +35,8 @@ export const TradeAnalytics: React.FC = () => {
             const { data, error } = await supabase
                 .from('trading_history')
                 .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name')
-                .in('status', ['SUCCESS', 'FAILED'])
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(50);
 
             if (error) throw error;
 
@@ -201,8 +201,8 @@ export const TradeAnalytics: React.FC = () => {
                         <div key={t.id} className="p-4 hover:bg-white/5 group">
                             <div className="flex justify-between items-start">
                                 <div className="flex gap-3">
-                                    <div className={`mt-1 p-1.5 rounded-lg ${t.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                                        {t.status === 'SUCCESS' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                                    <div className={`mt-1 p-1.5 rounded-lg ${t.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500' : t.status === 'FAILED' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                        {t.status === 'SUCCESS' ? <CheckCircle2 size={16} /> : t.status === 'FAILED' ? <XCircle size={16} /> : <Clock size={16} />}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
