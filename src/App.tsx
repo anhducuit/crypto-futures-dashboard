@@ -19,8 +19,7 @@ import { EMATrendBias } from './components/EMATrendBias';
 import { useEMATrendBias } from './hooks/useEMATrendBias';
 import { useSignalGenerator } from './hooks/useSignalGenerator';
 import { FibonacciCalculator } from './components/FibonacciCalculator';
-import { PositionCalculator } from './components/PositionCalculator';
-import { TPCalculator } from './components/TPCalculator';
+import { TradeAnalytics } from './components/TradeAnalytics';
 import { TradingViewWidget } from './components/TradingViewWidget';
 import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
@@ -31,7 +30,6 @@ import './index.css';
 function App() {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [direction, setDirection] = useState<'long' | 'short'>('long');
-  const [entryPrice, setEntryPrice] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -228,20 +226,8 @@ function App() {
               onRefreshMA={refetchMA}
             />
 
-            {/* Position Calculator */}
-            <PositionCalculator
-              currentPrice={currentPrice}
-              direction={direction}
-              entryPrice={entryPrice}
-              onEntryChange={setEntryPrice}
-            />
-
-            {/* TP Calculator */}
-            <TPCalculator
-              direction={direction}
-              entryPrice={entryPrice}
-              onEntryChange={setEntryPrice}
-            />
+            {/* Win/Loss Analytics Report */}
+            <TradeAnalytics />
           </div>
         </div>
       </main>

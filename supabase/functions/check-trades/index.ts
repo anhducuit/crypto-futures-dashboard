@@ -166,7 +166,8 @@ Deno.serve(async (req) => {
     try {
         const url = new URL(req.url);
         const action = url.searchParams.get('action');
-        console.log(`[${new Date().toISOString()}] BOT SCAN START - Action: ${action || 'none'} - Method: ${req.method}`);
+        const now = new Date();
+        console.log(`[${now.toISOString()}] BOT SCAN START - Action: ${action || 'none'} - Method: ${req.method}`);
 
         if (action === 'reset') {
             const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -348,27 +349,11 @@ Deno.serve(async (req) => {
         /* =========================================
            PART -1: RETENTION POLICY CLEANUP
            ========================================= */
-        const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000)).toISOString();
-        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
-        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+        const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
 
-        // 1m: Delete older than 1 day (Keep only non-PENDING)
+        // Universal retention: Delete older than 90 days (Keep only non-PENDING)
         await supabase.from('trading_history').delete()
-            .eq('timeframe', '1m')
-            .lt('created_at', oneDayAgo)
-            .neq('status', 'PENDING');
-
-        // 15m, 1h: Delete older than 7 days
-        await supabase.from('trading_history').delete()
-            .in('timeframe', ['15m', '1h'])
-            .lt('created_at', sevenDaysAgo)
-            .neq('status', 'PENDING');
-
-        // 4h: Delete older than 30 days
-        await supabase.from('trading_history').delete()
-            .eq('timeframe', '4h')
-            .lt('created_at', thirtyDaysAgo)
+            .lt('created_at', ninetyDaysAgo)
             .neq('status', 'PENDING');
 
         const logs: string[] = [];
