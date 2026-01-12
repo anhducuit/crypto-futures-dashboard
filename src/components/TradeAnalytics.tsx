@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PieChart, TrendingUp, Edit3, Save, CheckCircle2, XCircle, Filter, Clock } from 'lucide-react';
+import { PieChart, TrendingUp, Edit3, Save, CheckCircle2, XCircle, Filter, Clock, BarChart2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AnalyticsData {
@@ -8,6 +8,7 @@ interface AnalyticsData {
     wins: number;
     losses: number;
     winRate: number;
+    tfBreakdown?: Record<string, { total: number, wins: number, losses: number }>;
 }
 
 interface TradeRecord {
@@ -18,6 +19,7 @@ interface TradeRecord {
     status: 'SUCCESS' | 'FAILED' | 'PENDING';
     pnl_reason: string | null;
     strategy_name: string | null;
+    timeframe: string;
 }
 
 export const TradeAnalytics: React.FC = () => {
@@ -27,27 +29,37 @@ export const TradeAnalytics: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d' | 'all'>('all');
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Primary fetch with new columns
-            let { data, error } = await supabase
+            const now = new Date();
+            let query = supabase
                 .from('trading_history')
-                .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name')
-                .order('created_at', { ascending: false })
-                .limit(100);
+                .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name, timeframe')
+                .order('created_at', { ascending: false });
+
+            if (timeFilter !== 'all') {
+                let dateLimit = new Date();
+                if (timeFilter === '24h') dateLimit = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                if (timeFilter === '7d') dateLimit = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                if (timeFilter === '30d') dateLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                query = query.gte('created_at', dateLimit.toISOString());
+            }
+
+            let { data, error } = await query.limit(500);
 
             // FALLBACK if columns are missing
             if (error && error.message.includes('column') && error.message.includes('not exist')) {
-                console.warn('New columns missing, falling back to basic query.');
-                const fallback = await supabase
+                const fallbackQuery = supabase
                     .from('trading_history')
-                    .select('id, created_at, symbol, signal, status')
-                    .order('created_at', { ascending: false })
-                    .limit(100);
-                data = fallback.data as any;
-                error = fallback.error;
+                    .select('id, created_at, symbol, signal, status, timeframe')
+                    .order('created_at', { ascending: false });
+
+                const { data: fbData, error: fbError } = await fallbackQuery.limit(500);
+                data = fbData as any;
+                error = fbError;
             }
 
             if (error) throw error;
@@ -56,17 +68,27 @@ export const TradeAnalytics: React.FC = () => {
                 setRecentTrades(data);
 
                 // Calculate Stats
-                const symbolMap: Record<string, { wins: number, losses: number }> = {};
+                const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {};
                 let totalWin = 0, totalLoss = 0;
 
                 data.forEach(t => {
-                    if (!symbolMap[t.symbol]) symbolMap[t.symbol] = { wins: 0, losses: 0 };
+                    const sym = t.symbol;
+                    if (!symbolMap[sym]) symbolMap[sym] = { wins: 0, losses: 0, tfMap: {} };
+
+                    const tf = t.timeframe || 'Unknown';
+                    if (!symbolMap[sym].tfMap[tf]) symbolMap[sym].tfMap[tf] = { total: 0, wins: 0, losses: 0 };
+
                     if (t.status === 'SUCCESS') {
-                        symbolMap[t.symbol].wins++;
+                        symbolMap[sym].wins++;
+                        symbolMap[sym].tfMap[tf].wins++;
                         totalWin++;
-                    } else {
-                        symbolMap[t.symbol].losses++;
+                    } else if (t.status === 'FAILED') {
+                        symbolMap[sym].losses++;
+                        symbolMap[sym].tfMap[tf].losses++;
                         totalLoss++;
+                    }
+                    if (t.status !== 'PENDING') {
+                        symbolMap[sym].tfMap[tf].total++;
                     }
                 });
 
@@ -75,16 +97,16 @@ export const TradeAnalytics: React.FC = () => {
                     wins: counts.wins,
                     losses: counts.losses,
                     total: counts.wins + counts.losses,
-                    winRate: (counts.wins / (counts.wins + counts.losses)) * 100
+                    winRate: counts.wins + counts.losses > 0 ? (counts.wins / (counts.wins + counts.losses)) * 100 : 0,
+                    tfBreakdown: counts.tfMap
                 })).sort((a, b) => b.total - a.total);
 
-                // Add Global Stat
                 const global = {
                     symbol: 'TẤT CẢ (ALL)',
                     wins: totalWin,
                     losses: totalLoss,
                     total: totalWin + totalLoss,
-                    winRate: (totalWin / (totalWin + totalLoss)) * 100 || 0
+                    winRate: (totalWin + totalLoss) > 0 ? (totalWin / (totalWin + totalLoss)) * 100 : 0
                 };
 
                 setStats([global, ...calculatedStats]);
@@ -98,9 +120,7 @@ export const TradeAnalytics: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 60000); // 1 min refresh
-        return () => clearInterval(interval);
-    }, []);
+    }, [timeFilter]);
 
     const handleSaveReason = async (id: string) => {
         try {
@@ -124,14 +144,36 @@ export const TradeAnalytics: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header / Global Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {stats.slice(0, 3).map((s, idx) => (
-                    <div key={idx} className="card p-4 bg-gradient-to-br from-[var(--color-bg-secondary)] to-[var(--color-bg-tertiary)] border-l-4 border-l-[var(--color-golden)]">
+            {/* Time Filter & Header */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <BarChart2 className="text-[var(--color-golden)]" size={24} />
+                    <h2 className="text-xl font-black tracking-tighter text-white">TRADING ANALYTICS</h2>
+                </div>
+                <div className="flex bg-[var(--color-bg-secondary)] p-1 rounded-xl border border-[var(--color-border)] shadow-inner">
+                    {(['all', '24h', '7d', '30d'] as const).map(f => (
+                        <button
+                            key={f}
+                            onClick={() => setTimeFilter(f)}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${timeFilter === f ? 'bg-[var(--color-golden)] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            {f === 'all' ? 'TẤT CẢ' : f === '24h' ? '24 GIỜ' : f === '7d' ? '7 NGÀY' : '30 NGÀY'}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Header / Global Summary - Horizontal Scroll */}
+            <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
+                {stats.map((s, idx) => (
+                    <div key={idx} className="min-w-[280px] flex-shrink-0 card p-4 bg-gradient-to-br from-[var(--color-bg-secondary)] to-[var(--color-bg-tertiary)] border-l-4 border-l-[var(--color-golden)] hover:scale-[1.02] transition-transform">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-xs text-[var(--color-text-secondary)] font-bold uppercase tracking-wider">{s.symbol}</p>
-                                <h3 className="text-2xl font-black mt-1 text-white">{s.winRate.toFixed(1)}% <span className="text-xs font-normal opacity-50">Win Rate</span></h3>
+                                <p className="text-[10px] text-[var(--color-text-secondary)] font-bold uppercase tracking-wider">{s.symbol}</p>
+                                <h3 className="text-2xl font-black mt-1 text-white">
+                                    {s.winRate.toFixed(1)}%
+                                    <span className="text-[10px] font-normal opacity-50 ml-1">Win Rate</span>
+                                </h3>
                             </div>
                             <div className={`p-2 rounded-lg ${s.winRate >= 50 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
                                 <PieChart size={20} />
@@ -167,23 +209,42 @@ export const TradeAnalytics: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-[var(--color-border)]">
                             {stats.slice(1).map((s, idx) => (
-                                <tr key={idx} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-4 py-3 font-bold text-white">{s.symbol}</td>
-                                    <td className="px-4 py-3">{s.total}</td>
-                                    <td className="px-4 py-3 text-green-400 font-bold">{s.wins}</td>
-                                    <td className="px-4 py-3 text-red-400 font-bold">{s.losses}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full ${s.winRate >= 50 ? 'bg-green-500' : 'bg-red-500'}`}
-                                                    style={{ width: `${s.winRate}%` }}
-                                                />
+                                <React.Fragment key={idx}>
+                                    <tr className="hover:bg-white/5 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-white italic">{s.symbol}</td>
+                                        <td className="px-4 py-3">{s.total}</td>
+                                        <td className="px-4 py-3 text-green-400 font-bold">{s.wins}</td>
+                                        <td className="px-4 py-3 text-red-400 font-bold">{s.losses}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full ${s.winRate >= 50 ? 'bg-green-500' : 'bg-red-500'}`}
+                                                        style={{ width: `${s.winRate}%` }}
+                                                    />
+                                                </div>
+                                                <span className="font-mono text-xs">{s.winRate.toFixed(0)}%</span>
                                             </div>
-                                            <span className="font-mono">{s.winRate.toFixed(0)}%</span>
-                                        </div>
-                                    </td>
-                                </tr>
+                                        </td>
+                                    </tr>
+                                    {/* Timeframe breakdown row */}
+                                    {s.tfBreakdown && (
+                                        <tr className="bg-black/10">
+                                            <td colSpan={5} className="px-4 py-2">
+                                                <div className="flex flex-wrap gap-4 text-[10px]">
+                                                    {Object.entries(s.tfBreakdown).map(([tf, counts]) => (
+                                                        <div key={tf} className="flex gap-2 bg-white/5 px-2 py-1 rounded border border-white/5">
+                                                            <span className="text-[var(--color-golden)] font-bold">{tf}:</span>
+                                                            <span className="text-green-400">W: {counts.wins}</span>
+                                                            <span className="text-red-400">L: {counts.losses}</span>
+                                                            <span className="opacity-50">({counts.total > 0 ? (counts.wins / counts.total * 100).toFixed(0) : 0}%)</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             ))}
                         </tbody>
                     </table>
