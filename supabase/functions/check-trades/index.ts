@@ -571,179 +571,149 @@ Deno.serve(async (req) => {
                 }
 
                 // 1m Scalp
+                // 1m Scalp Analysis (Two Schools)
                 if (cfg.interval === '1m') {
-                    const ma7Array = calculateSMAArray(closes, 7);
-                    const ma25Array = calculateSMAArray(closes, 25);
+                    // School 1: Scalping (MA5/13)
+                    const ma5Array = calculateSMAArray(closes, 5);
+                    const ma13Array = calculateSMAArray(closes, 13);
+                    const ma5_curr = ma5Array[ma5Array.length - 1];
+                    const ma13_curr = ma13Array[ma13Array.length - 1];
+                    const ma5_prev = ma5Array[ma5Array.length - 2];
+                    const ma13_prev = ma13Array[ma13Array.length - 2];
 
-                    const ma7_curr = ma7Array[ma7Array.length - 1];
-                    const ma25_curr = ma25Array[ma25Array.length - 1];
-                    const ma7_prev = ma7Array[ma7Array.length - 2];
-                    const ma25_prev = ma25Array[ma25Array.length - 2];
+                    let crossScalp = 'NONE';
+                    if (ma5_prev <= ma13_prev && ma5_curr > ma13_curr) crossScalp = 'BULLISH_CROSS';
+                    if (ma5_prev >= ma13_prev && ma5_curr < ma13_curr) crossScalp = 'BEARISH_CROSS';
 
-                    let cross = 'NONE';
-                    if (ma7_prev <= ma25_prev && ma7_curr > ma25_curr) cross = 'BULLISH_CROSS';
-                    if (ma7_prev >= ma25_prev && ma7_curr < ma25_curr) cross = 'BEARISH_CROSS';
+                    // School 2: Safe Mode (MA12/26)
+                    const ma12Array = calculateSMAArray(closes, 12);
+                    const ma26Array = calculateSMAArray(closes, 26);
+                    const ma12_curr = ma12Array[ma12Array.length - 1];
+                    const ma26_curr = ma26Array[ma26Array.length - 1];
+                    const ma12_prev = ma12Array[ma12Array.length - 2];
+                    const ma26_prev = ma26Array[ma26Array.length - 2];
+
+                    let crossSafe = 'NONE';
+                    if (ma12_prev <= ma26_prev && ma12_curr > ma26_curr) crossSafe = 'BULLISH_CROSS';
+                    if (ma12_prev >= ma26_prev && ma12_curr < ma26_curr) crossSafe = 'BEARISH_CROSS';
 
                     const sma20 = calculateSMA(closes, 20);
                     const atr = calculateATR(highs, lows, closes, 14);
                     const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
-                    const isExtremeVol = atr > 0 && currentRange > (atr * 3.0); // Strict for 1m
+                    const isExtremeVol = atr > 0 && currentRange > (atr * 3.0);
                     const distFromSMA = Math.abs(currentClose - sma20) / sma20;
 
-                    analyses['1m'] = {
-                        cross: cross,
+                    analyses['1m_scalp'] = {
+                        cross: crossScalp,
                         close: currentClose,
-                        rsi, volRatio,
-                        sma20,
+                        rsi, volRatio, sma20, atr, isExtremeVol, distFromSMA,
                         swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows),
-                        atr, isExtremeVol, distFromSMA
-                    }
+                        swingLow: Math.min(...lows)
+                    };
+                    analyses['1m_safe'] = {
+                        cross: crossSafe,
+                        close: currentClose,
+                        rsi, volRatio, sma20, atr, isExtremeVol, distFromSMA,
+                        swingHigh: Math.max(...highs),
+                        swingLow: Math.min(...lows)
+                    };
                 }
             }
 
             if (failed || !analyses['1h'] || !analyses['15m']) {
-                return; // Changed to return for map callback
+                return;
             }
 
-            const tf4h = analyses['4h'];
-            const tf1h = analyses['1h'];
-            const tf15m = analyses['15m'];
-            const tf1m = analyses['1m'];
+            const tf4h = analyses['4h'] as any;
+            const tf1h = analyses['1h'] as any;
+            const tf15m = analyses['15m'] as any;
+            const tf1m_scalp = analyses['1m_scalp'] as any;
+            const tf1m_safe = analyses['1m_safe'] as any;
 
-            let signal = null;
-            let activeTf = null;
+            let signals_to_process: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
 
-            /* --- STRATEGY LOGIC --- */
-
-            // Strategy 1: 4H Major Trend (MA50/200 Cross)
+            // Strategy 1: 4H Major Trend
             if (tf4h && tf4h.cross === 'GOLDEN_CROSS' && tf4h.volRatio > 1.2) {
-                signal = 'LONG'; activeTf = '4h';
+                signals_to_process.push({ type: 'LONG', tf: '4h', ref: tf4h, name: 'MA50/200 Cross' });
             } else if (tf4h && tf4h.cross === 'DEATH_CROSS' && tf4h.volRatio > 1.2) {
-                signal = 'SHORT'; activeTf = '4h';
+                signals_to_process.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: 'MA50/200 Cross' });
             }
 
-            // Strategy 2: 1H Trend + 15M Cross (Day Trading)
-            if (!signal && tf1h && tf15m) {
+            // Strategy 2: 1H Trend + 15M Cross
+            if (tf1h && tf15m) {
                 const volConfirm = tf15m.volRatio > 1.2;
-                const notOverextended = tf15m.distFromSMA < 0.015; // Max 1.5% from SMA20
-
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm) {
-                    if (tf15m.rsi > 50 && !tf15m.isExtremeVol && notOverextended) {
-                        signal = 'LONG'; activeTf = '15m';
-                    }
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm) {
-                    if (tf15m.rsi < 50 && !tf15m.isExtremeVol && notOverextended) {
-                        signal = 'SHORT'; activeTf = '15m';
-                    }
+                const notOverextended = tf15m.distFromSMA < 0.015;
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && !tf15m.isExtremeVol && notOverextended) {
+                    signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && !tf15m.isExtremeVol && notOverextended) {
+                    signals_to_process.push({ type: 'SHORT', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
                 }
             }
 
-            // Fallback: 1m Scalp (Strict Technical Analysis: Volume + RSI + VolGuard)
-            if (!signal && tf1m && tf1h) {
-                const volConfirm = tf1m.volRatio > 1.2;
-                const notOverextended = tf1m.distFromSMA < 0.01; // Max 1.0% from SMA20 for 1m
-
-                if (tf1h.trend === 'BULLISH' && tf1m.cross === 'BULLISH_CROSS' && volConfirm) {
-                    if (tf1m.rsi > 50 && tf1m.rsi < 80 && !tf1m.isExtremeVol && notOverextended) {
-                        signal = 'LONG'; activeTf = '1m';
-                    }
+            // Strategy 3: 1m Duo Schools
+            if (tf1h && tf1m_scalp && tf1m_safe) {
+                // School 1: Scalping (MA5/13)
+                const scalpVol = tf1m_scalp.volRatio > 1.2;
+                const scalpDist = tf1m_scalp.distFromSMA < 0.01;
+                if (tf1h.trend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 50 && tf1m_scalp.rsi < 85 && !tf1m_scalp.isExtremeVol && scalpDist) {
+                    signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
+                } else if (tf1h.trend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 50 && tf1m_scalp.rsi > 15 && !tf1m_scalp.isExtremeVol && scalpDist) {
+                    signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
                 }
-                else if (tf1h.trend === 'BEARISH' && tf1m.cross === 'BEARISH_CROSS' && volConfirm) {
-                    if (tf1m.rsi < 50 && tf1m.rsi > 20 && !tf1m.isExtremeVol && notOverextended) {
-                        signal = 'SHORT'; activeTf = '1m';
-                    }
+
+                // School 2: Safe Mode (MA12/26)
+                const safeVol = tf1m_safe.volRatio > 1.1; // Slightly lower requirement for safe cross
+                const safeDist = tf1m_safe.distFromSMA < 0.008; // Stricter for safe mode
+                if (tf1h.trend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
+                    signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
+                } else if (tf1h.trend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
+                    signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
                 }
             }
 
-            // FILTER: Check if this timeframe is allowed by user settings manually
-            if (activeTf && !allowedTimeframes.includes(activeTf)) {
-                // If 1m and not allowed, ignore. If 15m and not allowed, ignore.
-                // console.log(`Signal ${activeTf} ignored by settings.`);
-                activeTf = null;
-                signal = null;
-            }
+            for (const sig of signals_to_process) {
+                if (!allowedTimeframes.includes(sig.tf)) continue;
 
-            if (signal && activeTf) {
                 const { data: active } = await supabase
                     .from('trading_history')
                     .select('id')
                     .eq('symbol', symbol)
                     .eq('status', 'PENDING')
-                    .eq('timeframe', activeTf) // SEPARATE POSITIONS BY TIMEFRAME
+                    .eq('timeframe', sig.tf)
+                    .eq('strategy_name', sig.name) // Distinguish by name
                     .limit(1);
 
-                const isBusy = active && active.length > 0;
+                if (!active || active.length === 0) {
+                    const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow);
+                    const icon = sig.type === 'LONG' ? '🟢' : '🔴';
 
-                if (!isBusy) {
-                    let refTf;
-                    let strategyName;
-
-                    if (activeTf === '4h') {
-                        refTf = tf4h;
-                        strategyName = 'MA50/200 Cross';
-                    } else if (activeTf === '1h') { // Just in case
-                        refTf = tf1h;
-                        strategyName = 'Trend Follow';
-                    } else if (activeTf === '15m') {
-                        refTf = tf15m;
-                        strategyName = 'MA Cross 15m';
-                    } else { // 1m
-                        refTf = tf1m;
-                        strategyName = 'Scalp 1m';
-                    }
-
-                    const { target, stopLoss } = calculateDynamicTPSL(refTf.close, signal as 'LONG' | 'SHORT', refTf.swingHigh, refTf.swingLow);
-
-                    // NOTIFY ALL (Filtered by allowedTimeframes previously)
-                    const icon = signal === 'LONG' ? '🟢' : '🔴';
-
-                    // Vietnam Time (UTC+7)
                     const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
-                    const hours = vnNow.getUTCHours().toString().padStart(2, '0');
-                    const minutes = vnNow.getUTCMinutes().toString().padStart(2, '0');
-                    const day = vnNow.getUTCDate().toString().padStart(2, '0');
-                    const month = (vnNow.getUTCMonth() + 1).toString().padStart(2, '0');
-                    const year = vnNow.getUTCFullYear();
-                    const timestampStr = `${hours}:${minutes} ${day}/${month}/${year}`;
+                    const timestampStr = `${vnNow.getUTCHours().toString().padStart(2, '0')}:${vnNow.getUTCMinutes().toString().padStart(2, '0')} ${vnNow.getUTCDate().toString().padStart(2, '0')}/${(vnNow.getUTCMonth() + 1).toString().padStart(2, '0')}`;
 
-                    const msg = `${icon} <b>NEW SIGNAL (${activeTf}): ${symbol}</b>\n` +
-                        `Strategy: ${strategyName}\n` +
-                        `Type: <b>${signal}</b>\n` +
-                        `Entry: $${refTf.close}\n` +
+                    const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
+                        `Trường phái: <b>${sig.name}</b>\n` +
+                        `Type: <b>${sig.type}</b>\n` +
+                        `Entry: $${sig.ref.close}\n` +
                         `Target: $${target.toFixed(2)}\n` +
                         `StopLoss: $${stopLoss.toFixed(2)}\n` +
-                        `Volume: <b>${refTf.volRatio.toFixed(2)}x</b>\n` +
-                        `RSI: ${refTf.rsi.toFixed(1)}\n` +
+                        `Volume: <b>${sig.ref.volRatio.toFixed(2)}x</b>\n` +
+                        `RSI: ${sig.ref.rsi.toFixed(1)}\n` +
                         `Time: ${timestampStr}`;
 
                     let msgId = null;
-                    console.log(`Payload: sending telegram for ${symbol}...`);
                     const teleRes = await sendTelegram(msg, undefined, subscriberIds);
-                    if (teleRes && teleRes.ok) {
-                        msgId = teleRes.result.message_id;
-                        console.log(`Status: SUCCESS_TELEGRAM id=${msgId}`);
-                    } else {
-                        console.error(`Status: FAILED_TELEGRAM error=${JSON.stringify(teleRes)}`);
-                    }
+                    if (teleRes && teleRes.ok) msgId = teleRes.result.message_id;
 
-                    // Insert into DB
-                    const { error: insertError } = await supabase.from('trading_history').insert({
-                        symbol, timeframe: activeTf, signal,
-                        price_at_signal: refTf.close,
+                    await supabase.from('trading_history').insert({
+                        symbol, timeframe: sig.tf, signal: sig.type,
+                        price_at_signal: sig.ref.close,
                         target_price: target, stop_loss: stopLoss,
                         status: 'PENDING',
                         telegram_message_id: msgId,
-                        rsi: refTf.rsi, volume_ratio: refTf.volRatio,
-                        // Note: If you add a column 'reason' to DB later, use it here.
-                        // For now we use the existing columns.
+                        rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
+                        strategy_name: sig.name
                     });
-
-                    if (insertError) {
-                        console.error(`Status: FAILED_TO_INSERT_DB symbol=${symbol}`, insertError);
-                    }
-
-                    newSignals.push({ symbol, signal });
+                    newSignals.push({ symbol, signal: sig.type });
                 }
             }
         }));
