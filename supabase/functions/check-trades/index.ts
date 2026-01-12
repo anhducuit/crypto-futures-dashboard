@@ -689,7 +689,7 @@ Deno.serve(async (req) => {
                     const teleRes = await sendTelegram(msg, undefined, subscriberIds);
                     if (teleRes && teleRes.ok) msgId = teleRes.result.message_id;
 
-                    await supabase.from('trading_history').insert({
+                    const signalData: any = {
                         symbol, timeframe: sig.tf, signal: sig.type,
                         price_at_signal: sig.ref.close,
                         target_price: target, stop_loss: stopLoss,
@@ -697,7 +697,18 @@ Deno.serve(async (req) => {
                         telegram_message_id: msgId,
                         rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
                         strategy_name: sig.name
-                    });
+                    };
+
+                    const { error: insertError } = await supabase.from('trading_history').insert(signalData);
+
+                    // FALLBACK: If new columns (strategy_name) are missing, insert without them
+                    if (insertError && insertError.message.includes('column') && insertError.message.includes('not exist')) {
+                        console.warn('New columns missing in DB, falling back to basic insert');
+                        delete signalData.strategy_name;
+                        delete signalData.pnl_reason; // just in case
+                        await supabase.from('trading_history').insert(signalData);
+                    }
+
                     newSignals.push({ symbol, signal: sig.type });
                 }
             }

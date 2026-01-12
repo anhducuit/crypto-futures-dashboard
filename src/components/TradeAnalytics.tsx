@@ -31,12 +31,24 @@ export const TradeAnalytics: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Fetch closed trades
-            const { data, error } = await supabase
+            // Primary fetch with new columns
+            let { data, error } = await supabase
                 .from('trading_history')
                 .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name')
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .limit(100);
+
+            // FALLBACK if columns are missing
+            if (error && error.message.includes('column') && error.message.includes('not exist')) {
+                console.warn('New columns missing, falling back to basic query.');
+                const fallback = await supabase
+                    .from('trading_history')
+                    .select('id, created_at, symbol, signal, status')
+                    .order('created_at', { ascending: false })
+                    .limit(100);
+                data = fallback.data as any;
+                error = fallback.error;
+            }
 
             if (error) throw error;
 
