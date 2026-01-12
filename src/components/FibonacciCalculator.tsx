@@ -186,12 +186,17 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                 </div>
 
-                {maLoading ? (
-                    <div className="space-y-4 animate-pulse">
-                        <div className="h-[104px] bg-white/5 rounded-lg"></div>
-                        <div className="h-[76px] bg-[var(--color-golden)]/5 rounded-lg border border-[var(--color-golden)]/10"></div>
+                {/* LAYOUT STABLE CONTAINER */}
+                <div className="grid grid-cols-1">
+                    {/* Skeleton Layer */}
+                    <div
+                        className={`col-start-1 row-start-1 space-y-4 transition-opacity duration-300 ${maLoading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                        aria-hidden={!maLoading}
+                    >
+                        <div className="h-[104px] bg-white/5 rounded-lg border border-white/5"></div>
+                        <div className="h-[76px] bg-white/5 rounded-lg border border-white/5"></div>
                         <div className="space-y-1">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+                            {[...Array(10)].map((_, i) => (
                                 <div key={i} className="h-[34px] bg-white/5 rounded flex justify-between px-3 items-center">
                                     <div className="w-8 h-3 bg-white/10 rounded"></div>
                                     <div className="w-24 h-3 bg-white/10 rounded"></div>
@@ -199,11 +204,12 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                             ))}
                         </div>
                     </div>
-                ) : (
-                    <>
+
+                    {/* Content Layer */}
+                    <div className={`col-start-1 row-start-1 space-y-4 transition-opacity duration-300 ${!maLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         {/* Swing High/Low from Selected Timeframe */}
-                        {selectedData && (
-                            <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2 h-[104px]">
+                        {selectedData ? (
+                            <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2 h-[104px] border border-white/5">
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-[var(--color-text-secondary)] text-xs">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
                                     <span className={`font-medium ${selectedData.trend === 'bullish' ? 'text-green-400' : selectedData.trend === 'bearish' ? 'text-red-400' : 'text-gray-400'
@@ -222,62 +228,61 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        ) : <div className="h-[104px]"></div>}
 
                         {/* Golden Zone */}
-                        {goldenZoneRange && (
-                            <div className="golden-zone p-3 rounded-lg flex items-center gap-3 h-[76px]">
+                        {goldenZoneRange ? (
+                            <div className="golden-zone p-3 rounded-lg flex items-center gap-3 h-[76px] border border-[var(--color-golden)]/20">
                                 <Sparkles size={20} className="text-[var(--color-golden)] flex-shrink-0" />
                                 <div>
-                                    <div className="text-[10px] font-semibold text-[var(--color-golden)]">Golden Zone (0.559 - 0.667)</div>
+                                    <div className="text-[10px] font-semibold text-[var(--color-golden)] uppercase tracking-wider">Golden Zone</div>
                                     <div className="text-base font-bold text-white">{goldenZoneRange}</div>
-                                    <div className="text-[10px] text-[var(--color-text-secondary)]">Vùng Entry tốt nhất</div>
+                                    <div className="text-[10px] text-[var(--color-text-secondary)]">Vùng Entry tối ưu nhất</div>
                                 </div>
                             </div>
-                        )}
+                        ) : <div className="h-[76px]"></div>}
 
                         {/* Fibonacci Levels */}
-                        {levels.length > 0 && (
-                            <div className="space-y-1 mt-4">
-                                <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)]">
-                                    <span>Level</span>
-                                    <span>Giá ($)</span>
-                                </div>
-
-                                {levels.map((level) => (
-                                    <div
-                                        key={level.ratio}
-                                        className={`fib-level h-[34px] ${level.isGoldenZone ? 'golden-zone' : ''}`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            {level.isGoldenZone && (
-                                                <Target size={14} className="text-[var(--color-golden)]" />
-                                            )}
-                                            <span className={level.isGoldenZone ? 'text-[var(--color-golden)] font-semibold' : 'text-[var(--color-text-secondary)]'}>
-                                                {level.ratio}
+                        <div className="space-y-1 mt-4 min-h-[350px]">
+                            {levels.length > 0 ? (
+                                <>
+                                    <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)] mb-2">
+                                        <span>RET LEVEL</span>
+                                        <span>GIÁ DỰ KIẾN ($)</span>
+                                    </div>
+                                    {levels.map((level) => (
+                                        <div
+                                            key={level.ratio}
+                                            className={`fib-level h-[34px] ${level.isGoldenZone ? 'golden-zone' : ''}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {level.isGoldenZone && (
+                                                    <Target size={14} className="text-[var(--color-golden)]" />
+                                                )}
+                                                <span className={level.isGoldenZone ? 'text-[var(--color-golden)] font-bold' : 'text-[var(--color-text-secondary)]'}>
+                                                    {level.ratio}
+                                                </span>
+                                            </div>
+                                            <span className={`font-mono font-bold ${level.isGoldenZone
+                                                ? 'text-[var(--color-golden)]'
+                                                : direction === 'long'
+                                                    ? 'text-green-400'
+                                                    : 'text-red-400'
+                                                }`}>
+                                                ${formatNumber(level.price, getDecimals(level.price))}
                                             </span>
                                         </div>
-                                        <span className={`font-medium ${level.isGoldenZone
-                                            ? 'text-[var(--color-golden)]'
-                                            : direction === 'long'
-                                                ? 'text-green-400'
-                                                : 'text-red-400'
-                                            }`}>
-                                            ${formatNumber(level.price, getDecimals(level.price))}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {levels.length === 0 && !maLoading && (
-                            <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-secondary)] opacity-50">
-                                <Layers size={48} className="mb-3" />
-                                <p className="text-sm font-medium">Chưa có dữ liệu cho symbol/khung giờ này</p>
-                            </div>
-                        )}
-                    </>
-                )}
+                                    ))}
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full opacity-30 py-12">
+                                    <Layers size={48} className="mb-2" />
+                                    <p className="text-xs">Chưa có dữ liệu tính toán</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
