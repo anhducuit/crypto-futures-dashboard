@@ -435,18 +435,32 @@ Deno.serve(async (req) => {
                     }
 
                     if (newStatus !== 'PENDING') {
-                        await supabase.from('trading_history').update({ status: newStatus }).eq('id', trade.id);
+                        // Generate dynamic reason
+                        let autoReason = '';
+                        if (newStatus === 'SUCCESS') {
+                            autoReason = `✅ Thắng lệnh do: ${trade.strategy_name}. RSI: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x. Thị trường thuận xu hướng.`;
+                        } else {
+                            autoReason = `❌ Thua lệnh: Giá đi ngược dự đoán (Stoploss). RSI vào lệnh: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x. Thị trường đảo chiều mạnh.`;
+                        }
+
+                        const updateData: any = { status: newStatus, pnl_reason: autoReason };
+                        const { error: upErr } = await supabase.from('trading_history').update(updateData).eq('id', trade.id);
+
+                        // Fallback if pnl_reason column still not added by user
+                        if (upErr && upErr.message.includes('column') && upErr.message.includes('not exist')) {
+                            await supabase.from('trading_history').update({ status: newStatus }).eq('id', trade.id);
+                        }
+
                         updates.push({ id: trade.id, status: newStatus });
 
                         // REPLY TO OPEN MESSAGE IF EXISTS (Closed Trades)
-                        // Reply even for 1m if message_id exists (meaning it was reported)
-                        // If 1m was silent (id null), this won't reply, which is correct.
                         const icon = newStatus === 'SUCCESS' ? '✅' : '❌';
                         const msg = `${icon} <b>TRADE CLOSED: ${trade.symbol}</b>\n` +
                             `Result: <b>${newStatus}</b>\n` +
                             `Type: ${trade.signal}\n` +
                             `Entry: $${trade.price_at_signal}\n` +
-                            `Close Price: $${currentPrice}`;
+                            `Close Price: $${currentPrice}\n` +
+                            `Lý do Robot: <i>${autoReason}</i>`;
 
                         await sendTelegram(msg, trade.telegram_message_id, subscriberIds);
                     }
