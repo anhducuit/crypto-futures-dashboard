@@ -86,7 +86,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                 </button>
             </div>
 
-            <div className="space-y-4 min-h-[550px]">
+            <div className="space-y-4 h-[550px] overflow-y-auto pr-2 custom-scrollbar flex flex-col">
                 {/* Timeframe Selector */}
                 <div>
                     <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] mb-2">
@@ -254,15 +254,21 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                 )}
 
                 {(levels.length === 0 || maLoading) && (
-                    <div className="flex-1 flex flex-col items-center justify-center py-12 text-[var(--color-text-secondary)] opacity-50">
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-[var(--color-text-secondary)] bg-black/10 rounded-xl border border-dashed border-white/5 my-2">
                         {maLoading ? (
-                            <div className="animate-spin w-8 h-8 border-4 border-[var(--color-golden)] border-t-transparent rounded-full mb-4"></div>
+                            <>
+                                <div className="relative w-12 h-12 mb-4">
+                                    <div className="absolute inset-0 border-4 border-[var(--color-golden)]/20 rounded-full"></div>
+                                    <div className="absolute inset-0 border-4 border-[var(--color-golden)] border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                                <p className="text-sm font-bold text-white animate-pulse">ĐANG PHÂN TÍCH...</p>
+                            </>
                         ) : (
-                            <Layers size={48} className="mb-3" />
+                            <>
+                                <Layers size={48} className="mb-4 opacity-20" />
+                                <p className="text-xs text-center max-w-[150px]">Vui lòng chọn hoặc chờ Robot tải dữ liệu MA</p>
+                            </>
                         )}
-                        <p className="text-sm font-medium">
-                            {maLoading ? 'Đang phân tích dữ liệu...' : 'Chưa có dữ liệu cho symbol/khung giờ này'}
-                        </p>
                     </div>
                 )}
             </div>
