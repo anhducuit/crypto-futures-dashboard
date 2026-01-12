@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PieChart, TrendingUp, Edit3, Save, CheckCircle2, XCircle, Filter, Clock, BarChart2 } from 'lucide-react';
+import { PieChart, TrendingUp, Clock, BarChart2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AnalyticsData {
@@ -11,29 +11,14 @@ interface AnalyticsData {
     tfBreakdown?: Record<string, { total: number, wins: number, losses: number }>;
 }
 
-interface TradeRecord {
-    id: string;
-    created_at: string;
-    symbol: string;
-    signal: string;
-    status: 'SUCCESS' | 'FAILED' | 'PENDING';
-    pnl_reason: string | null;
-    strategy_name: string | null;
-    timeframe: string;
-}
 
 export const TradeAnalytics: React.FC = () => {
     const [stats, setStats] = useState<AnalyticsData[]>([]);
-    const [recentTrades, setRecentTrades] = useState<TradeRecord[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
     const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d' | 'all'>('all');
+    const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number }>>({});
 
     const fetchData = async () => {
         try {
-            setLoading(true);
             const now = new Date();
             let query = supabase
                 .from('trading_history')
@@ -65,7 +50,6 @@ export const TradeAnalytics: React.FC = () => {
             if (error) throw error;
 
             if (data) {
-                setRecentTrades(data);
 
                 // Calculate Stats
                 const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {};
@@ -92,6 +76,27 @@ export const TradeAnalytics: React.FC = () => {
                     }
                 });
 
+                // Calculate Session Stats (Morning, Afternoon, Evening, Night)
+                const hourMap: Record<string, { wins: number, losses: number }> = {
+                    'SÁNG (06-12h)': { wins: 0, losses: 0 },
+                    'CHIỀU (12-18h)': { wins: 0, losses: 0 },
+                    'TỐI (18-24h)': { wins: 0, losses: 0 },
+                    'ĐÊM (00-06h)': { wins: 0, losses: 0 }
+                };
+
+                data.forEach(t => {
+                    const hour = new Date(t.created_at).getHours();
+                    let session = '';
+                    if (hour >= 6 && hour < 12) session = 'SÁNG (06-12h)';
+                    else if (hour >= 12 && hour < 18) session = 'CHIỀU (12-18h)';
+                    else if (hour >= 18 && hour < 24) session = 'TỐI (18-24h)';
+                    else session = 'ĐÊM (00-06h)';
+
+                    if (t.status === 'SUCCESS') hourMap[session].wins++;
+                    else if (t.status === 'FAILED') hourMap[session].losses++;
+                });
+                setBestHours(hourMap);
+
                 const calculatedStats: AnalyticsData[] = Object.entries(symbolMap).map(([symbol, counts]) => ({
                     symbol,
                     wins: counts.wins,
@@ -113,8 +118,6 @@ export const TradeAnalytics: React.FC = () => {
             }
         } catch (e) {
             console.error('Error fetching analytics:', e);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -122,25 +125,6 @@ export const TradeAnalytics: React.FC = () => {
         fetchData();
     }, [timeFilter]);
 
-    const handleSaveReason = async (id: string) => {
-        try {
-            const { error } = await supabase
-                .from('trading_history')
-                .update({ pnl_reason: editValue })
-                .eq('id', id);
-
-            if (error) throw error;
-            setEditingId(null);
-            fetchData();
-        } catch (e) {
-            alert('Lỗi khi lưu lý do');
-        }
-    };
-
-    const filteredTrades = recentTrades.filter(t =>
-        t.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (t.strategy_name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     return (
         <div className="space-y-6">
@@ -251,90 +235,36 @@ export const TradeAnalytics: React.FC = () => {
                 </div>
             </div>
 
-            {/* Detail Logs & Reasons */}
+            {/* Market Session Analysis - NEW TABLE */}
             <div className="card">
-                <div className="card-header flex justify-between items-center p-4">
+                <div className="card-header flex justify-between items-center bg-[var(--color-bg-secondary)] p-4">
                     <div className="flex items-center gap-2">
-                        <Edit3 size={16} className="text-[var(--color-golden)]" />
-                        <span className="font-bold tracking-tight">BÁO CÁO CHI TIẾT & LÝ DO</span>
-                    </div>
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                        <input
-                            type="text"
-                            placeholder="Tìm coin hoặc chiến lược..."
-                            className="bg-black/30 border border-[var(--color-border)] rounded-full pl-9 pr-4 py-1 text-xs focus:outline-none focus:border-[var(--color-golden)]/50 w-64"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                        <Clock size={16} className="text-[var(--color-golden)]" />
+                        <span className="font-bold tracking-tight uppercase">PHÂN TÍCH GIỜ VÀNG (SÁNG/TRƯA/CHIỀU/TỐI)</span>
                     </div>
                 </div>
-                <div className="divide-y divide-[var(--color-border)] max-h-[600px] overflow-y-auto">
-                    {filteredTrades.map(t => (
-                        <div key={t.id} className="p-4 hover:bg-white/5 group">
-                            <div className="flex justify-between items-start">
-                                <div className="flex gap-3">
-                                    <div className={`mt-1 p-1.5 rounded-lg ${t.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500' : t.status === 'FAILED' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                                        {t.status === 'SUCCESS' ? <CheckCircle2 size={16} /> : t.status === 'FAILED' ? <XCircle size={16} /> : <Clock size={16} />}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-white uppercase">{t.symbol}</span>
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${t.signal === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                                {t.signal}
-                                            </span>
-                                            <span className="text-[10px] text-slate-500 font-mono">
-                                                {new Date(t.created_at).toLocaleString('vi-VN')}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-0.5 font-medium">{t.strategy_name || 'Chiến lược mặc định'}</p>
-                                    </div>
+                <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {Object.entries(bestHours).map(([session, counts]) => {
+                        const total = counts.wins + counts.losses;
+                        const rate = total > 0 ? (counts.wins / total * 100) : 0;
+                        return (
+                            <div key={session} className="bg-black/20 p-3 rounded-lg border border-white/5 text-center">
+                                <p className="text-[10px] text-slate-500 font-bold mb-1">{session}</p>
+                                <p className={`text-lg font-black ${rate >= 50 ? 'text-green-400' : 'text-red-400'}`}>{rate.toFixed(0)}%</p>
+                                <div className="mt-2 text-[10px] flex justify-center gap-2">
+                                    <span className="text-green-500">W:{counts.wins}</span>
+                                    <span className="text-red-500">L:{counts.losses}</span>
                                 </div>
-
-                                {editingId === t.id ? (
-                                    <button
-                                        onClick={() => handleSaveReason(t.id)}
-                                        className="flex items-center gap-1.5 bg-[var(--color-golden)] text-black px-3 py-1 rounded-lg text-xs font-bold hover:bg-yellow-500 transition-colors"
-                                    >
-                                        <Save size={14} /> LƯU
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => {
-                                            setEditingId(t.id);
-                                            setEditValue(t.pnl_reason || '');
-                                        }}
-                                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 bg-white/10 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-white/20 transition-all border border-white/10"
-                                    >
-                                        <Edit3 size={14} /> SỬA LÝ DO
-                                    </button>
-                                )}
                             </div>
-
-                            <div className="mt-3">
-                                {editingId === t.id ? (
-                                    <textarea
-                                        className="w-full bg-black/40 border border-[var(--color-golden)]/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[var(--color-golden)] min-h-[80px]"
-                                        placeholder="Nhập lý do thắng hoặc thua tại đây..."
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        autoFocus
-                                    />
-                                ) : (
-                                    <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                                        <p className={`text-sm ${t.pnl_reason ? 'text-slate-300 italic' : 'text-slate-600 italic'}`}>
-                                            {t.pnl_reason || 'Chưa có ghi chú lý do...'}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                    {filteredTrades.length === 0 && !loading && (
-                        <div className="p-12 text-center text-slate-500 italic">
-                            Không tìm thấy dữ liệu báo cáo nào.
-                        </div>
-                    )}
+                        );
+                    })}
+                </div>
+                <div className="px-4 pb-4">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                        <p className="text-[10px] text-blue-300 italic">
+                            💡 Gợi ý: Dựa vào bảng này để biết Robot hoạt động hiệu quả nhất vào khung giờ nào để tối ưu lợi nhuận.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
