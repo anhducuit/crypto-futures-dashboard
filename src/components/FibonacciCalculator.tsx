@@ -86,7 +86,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                 </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="p-4 space-y-4">
                 {/* Timeframe Selector */}
                 <div>
                     <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] mb-2">
@@ -156,20 +156,45 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                 </div>
 
+                {/* Manual Override - ALWAYS VISIBLE TO PREVENT SHIFT */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
+                            Swing High ($)
+                        </label>
+                        <input
+                            type="number"
+                            value={swingHigh}
+                            onChange={(e) => setSwingHigh(e.target.value)}
+                            placeholder="Giá cao nhất"
+                            step="any"
+                            className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
+                            Swing Low ($)
+                        </label>
+                        <input
+                            type="number"
+                            value={swingLow}
+                            onChange={(e) => setSwingLow(e.target.value)}
+                            placeholder="Giá thấp nhất"
+                            step="any"
+                            className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
+                        />
+                    </div>
+                </div>
+
                 {maLoading ? (
-                    /* SKELETON LOADER - OCCUPIES EXACT SAME SPACE */
                     <div className="space-y-4 animate-pulse">
-                        <div className="h-24 bg-white/5 rounded-lg"></div> {/* Swing data box */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="h-10 bg-white/5 rounded-lg"></div>
-                            <div className="h-10 bg-white/5 rounded-lg"></div>
-                        </div>
-                        <div className="h-20 bg-[var(--color-golden)]/5 rounded-lg border border-[var(--color-golden)]/10"></div> {/* Golden zone box */}
-                        <div className="space-y-2">
-                            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                                <div key={i} className="h-8 bg-white/5 rounded flex justify-between px-3 items-center">
+                        <div className="h-[104px] bg-white/5 rounded-lg"></div>
+                        <div className="h-[76px] bg-[var(--color-golden)]/5 rounded-lg border border-[var(--color-golden)]/10"></div>
+                        <div className="space-y-1">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+                                <div key={i} className="h-[34px] bg-white/5 rounded flex justify-between px-3 items-center">
                                     <div className="w-8 h-3 bg-white/10 rounded"></div>
-                                    <div className="w-16 h-3 bg-white/10 rounded"></div>
+                                    <div className="w-24 h-3 bg-white/10 rounded"></div>
                                 </div>
                             ))}
                         </div>
@@ -178,9 +203,9 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     <>
                         {/* Swing High/Low from Selected Timeframe */}
                         {selectedData && (
-                            <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2">
+                            <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2 h-[104px]">
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-[var(--color-text-secondary)]">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
+                                    <span className="text-[var(--color-text-secondary)] text-xs">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
                                     <span className={`font-medium ${selectedData.trend === 'bullish' ? 'text-green-400' : selectedData.trend === 'bearish' ? 'text-red-400' : 'text-gray-400'
                                         }`}>
                                         MA20: ${formatNumber(selectedData.ma20, getDecimals(selectedData.ma20))}
@@ -189,54 +214,24 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-2 bg-[var(--color-bg-primary)] rounded">
                                         <div className="text-xs text-green-400 mb-1">Swing High</div>
-                                        <div className="font-mono font-bold text-white">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
+                                        <div className="font-mono font-bold text-white text-xs">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
                                     </div>
                                     <div className="p-2 bg-[var(--color-bg-primary)] rounded">
                                         <div className="text-xs text-red-400 mb-1">Swing Low</div>
-                                        <div className="font-mono font-bold text-white">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
+                                        <div className="font-mono font-bold text-white text-xs">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Manual Override */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                                    Swing High ($)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={swingHigh}
-                                    onChange={(e) => setSwingHigh(e.target.value)}
-                                    placeholder="Giá cao nhất"
-                                    step="any"
-                                    className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                                    Swing Low ($)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={swingLow}
-                                    onChange={(e) => setSwingLow(e.target.value)}
-                                    placeholder="Giá thấp nhất"
-                                    step="any"
-                                    className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
-                                />
-                            </div>
-                        </div>
-
                         {/* Golden Zone */}
                         {goldenZoneRange && (
-                            <div className="golden-zone p-3 rounded-lg flex items-center gap-3">
+                            <div className="golden-zone p-3 rounded-lg flex items-center gap-3 h-[76px]">
                                 <Sparkles size={20} className="text-[var(--color-golden)] flex-shrink-0" />
                                 <div>
-                                    <div className="text-sm font-semibold text-[var(--color-golden)]">Golden Zone (0.559 - 0.667)</div>
-                                    <div className="text-lg font-bold text-white">{goldenZoneRange}</div>
-                                    <div className="text-xs text-[var(--color-text-secondary)]">Vùng Entry tốt nhất</div>
+                                    <div className="text-[10px] font-semibold text-[var(--color-golden)]">Golden Zone (0.559 - 0.667)</div>
+                                    <div className="text-base font-bold text-white">{goldenZoneRange}</div>
+                                    <div className="text-[10px] text-[var(--color-text-secondary)]">Vùng Entry tốt nhất</div>
                                 </div>
                             </div>
                         )}
@@ -244,7 +239,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                         {/* Fibonacci Levels */}
                         {levels.length > 0 && (
                             <div className="space-y-1 mt-4">
-                                <div className="flex justify-between text-xs text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)]">
+                                <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)]">
                                     <span>Level</span>
                                     <span>Giá ($)</span>
                                 </div>
@@ -252,7 +247,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                                 {levels.map((level) => (
                                     <div
                                         key={level.ratio}
-                                        className={`fib-level ${level.isGoldenZone ? 'golden-zone' : ''}`}
+                                        className={`fib-level h-[34px] ${level.isGoldenZone ? 'golden-zone' : ''}`}
                                     >
                                         <div className="flex items-center gap-2">
                                             {level.isGoldenZone && (
@@ -276,7 +271,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                         )}
 
                         {levels.length === 0 && !maLoading && (
-                            <div className="flex-1 flex flex-col items-center justify-center py-12 text-[var(--color-text-secondary)] opacity-50">
+                            <div className="flex flex-col items-center justify-center py-12 text-[var(--color-text-secondary)] opacity-50">
                                 <Layers size={48} className="mb-3" />
                                 <p className="text-sm font-medium">Chưa có dữ liệu cho symbol/khung giờ này</p>
                             </div>
