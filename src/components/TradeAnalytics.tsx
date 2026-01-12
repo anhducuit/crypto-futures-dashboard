@@ -1,8 +1,5 @@
-/**
- * Copyright © 2026 Anh Duc Trader. All rights reserved.
- */
 import React, { useEffect, useState } from 'react';
-import { PieChart, TrendingUp, TrendingDown, Edit3, Save, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { PieChart, TrendingUp, Edit3, Save, CheckCircle2, XCircle, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AnalyticsData {
@@ -189,7 +186,7 @@ export const TradeAnalytics: React.FC = () => {
                         <span className="font-bold tracking-tight">BÁO CÁO CHI TIẾT & LÝ DO</span>
                     </div>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <input
                             type="text"
                             placeholder="Tìm coin hoặc chiến lược..."
