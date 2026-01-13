@@ -91,20 +91,20 @@ export const PnLShareModal: React.FC<PnLShareModalProps> = ({ trade, onClose }) 
                             backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(20, 20, 20, 1) 0%, rgba(5, 5, 5, 1) 100%)'
                         }}
                     >
-                        {/* Background Patterns - Grid & Logo Watermark */}
-                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                        <div className="absolute -bottom-10 -right-10 opacity-[0.07] pointer-events-none rotate-12">
-                            <img src="C:/Users/PC/.gemini/antigravity/brain/4966686e-ef79-4119-9d2a-da79a6d44685/trading_logo_gold_1768297895551.png" alt="" className="w-64 h-64 object-contain grayscale" />
+                        {/* Background Patterns - Grid & Stylized "AĐ" Watermark */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                        <div className="absolute -bottom-10 -right-10 opacity-[0.05] pointer-events-none rotate-12 select-none">
+                            <span className="text-[200px] font-black italic text-white leading-none">AĐ</span>
                         </div>
 
-                        {/* Top Branding Section - More Exclusive */}
+                        {/* Top Branding Section - Stylized "AĐ" Logo */}
                         <div className="relative z-10 flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-xl p-0.5 bg-gradient-to-br from-[var(--color-golden)] to-yellow-900 shadow-lg shadow-yellow-500/20">
-                                <img src="C:/Users/PC/.gemini/antigravity/brain/4966686e-ef79-4119-9d2a-da79a6d44685/trading_logo_gold_1768297895551.png" alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-[var(--color-golden)] to-yellow-900 shadow-lg shadow-yellow-500/20 border border-white/10">
+                                <span className="text-2xl font-black italic text-black -tracking-widest">AĐ</span>
                             </div>
                             <div>
                                 <h1 className="text-xl font-black italic tracking-tighter text-white leading-none">ANH DUC TRADER</h1>
-                                <p className="text-[9px] font-bold text-[var(--color-golden)] tracking-[0.3em] uppercase opacity-80 mt-1">Pro Crypto Futures</p>
+                                <p className="text-[9px] font-bold text-[var(--color-golden)] tracking-[0.3em] uppercase opacity-80 mt-1">Hệ Thống Phân Tích Pro</p>
                             </div>
                         </div>
 
@@ -117,19 +117,20 @@ export const PnLShareModal: React.FC<PnLShareModalProps> = ({ trade, onClose }) 
                                 <span className="text-2xl font-black text-white italic tracking-tighter">{trade.symbol}</span>
                             </div>
 
-                            <div className="relative">
+                            <div className="relative pt-2">
+                                {/* Adjusted ROE Position to prevent overlap */}
+                                <div className={`absolute -right-8 -top-2 text-xs font-black italic ${isWin ? 'text-green-400/40' : 'text-red-400/40'}`}>
+                                    ROE %
+                                </div>
                                 <div className={`text-7xl font-black tracking-tighter italic ${isWin ? 'text-green-400' : 'text-red-400'} drop-shadow-[0_0_15px_rgba(0,255,0,0.2)]`}>
                                     {pnlPercentage > 0 ? '+' : ''}{pnlPercentage.toFixed(1)}%
-                                </div>
-                                <div className={`absolute -right-4 top-0 text-xl font-black ${isWin ? 'text-green-400/30' : 'text-red-400/30'} -rotate-12`}>
-                                    ROE
                                 </div>
                             </div>
 
                             <div className="mt-2 flex items-center gap-1.5">
                                 <div className={`h-[1px] w-8 ${isWin ? 'bg-green-500/50' : 'bg-red-500/50'}`}></div>
-                                <span className={`text-[10px] font-black tracking-[0.2em] italic ${isWin ? 'text-green-400' : 'text-red-400'}`}>
-                                    {isWin ? 'VICTORY' : 'LIQUIDATED'}
+                                <span className={`text-[12px] font-black tracking-[0.3em] italic ${isWin ? 'text-green-400' : 'text-red-400'}`}>
+                                    {isWin ? 'WIN' : 'LOSS'}
                                 </span>
                                 <div className={`h-[1px] w-8 ${isWin ? 'bg-green-500/50' : 'bg-red-500/50'}`}></div>
                             </div>
@@ -142,26 +143,26 @@ export const PnLShareModal: React.FC<PnLShareModalProps> = ({ trade, onClose }) 
 
                             <div className="grid grid-cols-2 gap-y-3">
                                 <div>
-                                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-0.5">Entry Price</p>
+                                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-0.5">Giá Vào Lệnh</p>
                                     <p className="text-sm font-black text-white font-mono">${formatNumber(trade.price_at_signal, trade.price_at_signal > 1 ? 2 : 4)}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-0.5">Exit Price</p>
+                                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider mb-0.5">Giá Hiện Tại</p>
                                     <p className="text-sm font-black text-white font-mono">${formatNumber(exitPrice, exitPrice > 1 ? 2 : 4)}</p>
                                 </div>
                                 <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between items-center">
                                     <div className="flex items-center gap-1.5">
                                         <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-golden)] animate-pulse"></div>
-                                        <span className="text-[9px] font-black text-white/60 tracking-wider uppercase">{trade.timeframe} STRATEGY</span>
+                                        <span className="text-[9px] font-black text-white/60 tracking-wider uppercase">CHIẾN THUẬT {trade.timeframe}</span>
                                     </div>
-                                    <span className="text-[10px] font-black italic bg-[var(--color-golden)] text-black px-2 py-0.5 rounded shadow-sm">{leverage}X LEVERAGE</span>
+                                    <span className="text-[10px] font-black italic bg-[var(--color-golden)] text-black px-2 py-0.5 rounded shadow-sm">ĐÒN BẨY {leverage}X</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer Disclaimer */}
                         <div className="mt-4 text-center">
-                            <p className="text-[7px] text-white/20 font-medium tracking-[0.1em]">© 2026 EXCLUSIVE ANALYTICS BY ANH DUC TRADER • FINANCIAL FREEDOM</p>
+                            <p className="text-[7px] text-white/20 font-medium tracking-[0.1em]">© 2026 PHÂN TÍCH ĐỘC QUYỀN BỞI ANH DỨC TRADER • TỰ DO TÀI CHÍNH</p>
                         </div>
                     </div>
                 </div>
