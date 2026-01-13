@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, Target, Sparkles, Clock, ChevronDown, RefreshCw } from 'lucide-react';
+import { Layers, Target, Sparkles, Clock, ChevronDown, RefreshCw, Share2 } from 'lucide-react';
 import { calculateFibonacciLevels, formatNumber } from '../utils/calculations';
 import type { MAAnalysis } from '../hooks/useBinanceKlines';
+import { AnalysisShareModal } from './AnalysisShareModal';
 
 interface FibonacciCalculatorProps {
+    symbol: string;
     direction: 'long' | 'short';
     maAnalysis: MAAnalysis | null;
     maLoading: boolean;
@@ -11,6 +13,7 @@ interface FibonacciCalculatorProps {
 }
 
 export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
+    symbol,
     direction,
     maAnalysis,
     maLoading,
@@ -21,6 +24,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
     const [swingLow, setSwingLow] = useState<string>('');
     const [levels, setLevels] = useState<Array<{ ratio: number; price: number; isGoldenZone: boolean }>>([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     // Get selected timeframe data
     const selectedData = maAnalysis?.timeframes.find(tf => tf.timeframe === selectedTimeframe);
@@ -76,14 +80,24 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     <Layers size={16} className="text-[var(--color-golden)]" />
                     FIBONACCI RETRACEMENT
                 </div>
-                <button
-                    onClick={onRefreshMA}
-                    disabled={maLoading}
-                    className={`p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors ${maLoading ? 'animate-spin' : ''}`}
-                    title="Làm mới dữ liệu"
-                >
-                    <RefreshCw size={14} className="text-[var(--color-text-secondary)]" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsShareModalOpen(true)}
+                        disabled={levels.length === 0}
+                        className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-golden)] disabled:opacity-30"
+                        title="Chia sẻ phân tích"
+                    >
+                        <Share2 size={14} />
+                    </button>
+                    <button
+                        onClick={onRefreshMA}
+                        disabled={maLoading}
+                        className={`p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors ${maLoading ? 'animate-spin' : ''}`}
+                        title="Làm mới dữ liệu"
+                    >
+                        <RefreshCw size={14} className="text-[var(--color-text-secondary)]" />
+                    </button>
+                </div>
             </div>
 
             <div className="p-4 space-y-4">
@@ -284,6 +298,21 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                 </div>
             </div>
+
+            {isShareModalOpen && (
+                <AnalysisShareModal
+                    type="FIBONACCI"
+                    symbol={symbol}
+                    data={{
+                        levels,
+                        swingHigh,
+                        swingLow,
+                        direction,
+                        timeframe: selectedTimeframe
+                    }}
+                    onClose={() => setIsShareModalOpen(false)}
+                />
+            )}
         </div>
     );
 };

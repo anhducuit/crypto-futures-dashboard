@@ -188,10 +188,11 @@ function App() {
             />
 
             {/* Volume Analysis Section */}
-            <VolumeAnalysis maAnalysis={maAnalysis} />
+            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
 
             {/* Moving Averages Analysis */}
             <MovingAveragesPanel
+              symbol={symbol}
               data={maAnalysis}
               loading={maLoading}
               onRefresh={refetchMA}
@@ -220,6 +221,7 @@ function App() {
 
             {/* Fibonacci Calculator */}
             <FibonacciCalculator
+              symbol={symbol}
               direction={direction}
               maAnalysis={maAnalysis}
               maLoading={maLoading}

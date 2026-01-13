@@ -1,19 +1,32 @@
-import React from 'react';
-import { BarChart3, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { BarChart3, Info, Share2 } from 'lucide-react';
 import type { MAAnalysis } from '../hooks/useBinanceKlines';
+import { AnalysisShareModal } from './AnalysisShareModal';
 
 interface VolumeAnalysisProps {
+    symbol: string;
     maAnalysis: MAAnalysis | null;
 }
 
-export const VolumeAnalysis: React.FC<VolumeAnalysisProps> = ({ maAnalysis }) => {
+export const VolumeAnalysis: React.FC<VolumeAnalysisProps> = ({ symbol, maAnalysis }) => {
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
     if (!maAnalysis) return null;
 
     return (
         <div className="card">
-            <div className="card-header">
-                <BarChart3 size={16} className="text-[var(--color-golden)]" />
-                PHÂN TÍCH KHỐI LƯỢNG (VOLUME)
+            <div className="card-header justify-between">
+                <div className="flex items-center gap-2">
+                    <BarChart3 size={16} className="text-[var(--color-golden)]" />
+                    PHÂN TÍCH KHỐI LƯỢNG (VOLUME)
+                </div>
+                <button
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-golden)]"
+                    title="Chia sẻ phân tích"
+                >
+                    <Share2 size={14} />
+                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -76,6 +89,15 @@ export const VolumeAnalysis: React.FC<VolumeAnalysisProps> = ({ maAnalysis }) =>
                     <strong className="text-blue-300">Tips:</strong> Volume đột biến kèm theo xu hướng giá đồng thuận là tín hiệu xác nhận cực mạnh. Nếu giá tăng nhưng Volume yếu, hãy cẩn thận với cái bẫy tăng giá (Bull-trap).
                 </p>
             </div>
+
+            {isShareModalOpen && (
+                <AnalysisShareModal
+                    type="VOLUME"
+                    symbol={symbol}
+                    data={maAnalysis}
+                    onClose={() => setIsShareModalOpen(false)}
+                />
+            )}
         </div>
     );
 };

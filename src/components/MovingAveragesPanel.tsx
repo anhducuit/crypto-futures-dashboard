@@ -1,9 +1,11 @@
-import React from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, Share2 } from 'lucide-react';
 import { formatNumber } from '../utils/calculations';
 import type { MAAnalysis } from '../hooks/useBinanceKlines';
+import { AnalysisShareModal } from './AnalysisShareModal';
 
 interface MovingAveragesPanelProps {
+    symbol: string;
     data: MAAnalysis | null;
     loading: boolean;
     onRefresh: () => void;
@@ -12,12 +14,15 @@ interface MovingAveragesPanelProps {
 }
 
 export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
+    symbol,
     data,
     loading,
     onRefresh,
     activeTimeframe,
     onTimeframeChange
 }) => {
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
     const getTrendIcon = (trend: string) => {
         switch (trend) {
             case 'bullish':
@@ -58,14 +63,24 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                     <BarChart3 size={16} className="text-[var(--color-golden)]" />
                     PHÂN TÍCH MA ĐA KHUNG
                 </div>
-                <button
-                    onClick={onRefresh}
-                    disabled={loading}
-                    className={`p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors ${loading ? 'animate-spin' : ''}`}
-                    title="Làm mới dữ liệu"
-                >
-                    <RefreshCw size={14} className="text-[var(--color-text-secondary)]" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsShareModalOpen(true)}
+                        disabled={!data}
+                        className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-golden)] disabled:opacity-30"
+                        title="Chia sẻ phân tích"
+                    >
+                        <Share2 size={14} />
+                    </button>
+                    <button
+                        onClick={onRefresh}
+                        disabled={loading}
+                        className={`p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors ${loading ? 'animate-spin' : ''}`}
+                        title="Làm mới dữ liệu"
+                    >
+                        <RefreshCw size={14} className="text-[var(--color-text-secondary)]" />
+                    </button>
+                </div>
             </div>
 
             {loading && !data && (
@@ -217,6 +232,15 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                     <BarChart3 size={32} className="mx-auto mb-2 opacity-50" />
                     <p className="text-sm">Nhập symbol để xem phân tích MA</p>
                 </div>
+            )}
+
+            {isShareModalOpen && (
+                <AnalysisShareModal
+                    type="MA"
+                    symbol={symbol}
+                    data={data}
+                    onClose={() => setIsShareModalOpen(false)}
+                />
             )}
         </div>
     );
