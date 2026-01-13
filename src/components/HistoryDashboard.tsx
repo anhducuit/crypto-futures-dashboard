@@ -2,8 +2,9 @@
  * Copyright © 2026 Anh Duc Trader. All rights reserved.
  */
 import React, { useEffect, useState } from 'react';
-import { History, CheckCircle2, XCircle, Clock, Trash2 } from 'lucide-react';
+import { History, CheckCircle2, XCircle, Clock, Trash2, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PnLShareModal } from './PnLShareModal';
 
 interface HistoryItem {
     id: string;
@@ -30,6 +31,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     const [statusFilter, setStatusFilter] = useState('All');
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [sharingItem, setSharingItem] = useState<HistoryItem | null>(null);
     const ITEMS_PER_PAGE = 20;
 
     const fetchHistory = async () => {
@@ -240,6 +242,15 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                         ) : (
                                             <Clock size={14} className="text-yellow-500 animate-pulse" />
                                         )}
+                                        {item.status !== 'PENDING' && (
+                                            <button
+                                                onClick={() => setSharingItem(item)}
+                                                className="p-1 hover:text-[var(--color-golden)] transition-all"
+                                                title="Chia sẻ PnL"
+                                            >
+                                                <Share2 size={12} />
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => deleteItem(item.id)}
                                             className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all"
@@ -329,6 +340,21 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                     </>
                 )}
             </div>
+
+            {sharingItem && (
+                <PnLShareModal
+                    trade={{
+                        symbol: sharingItem.symbol,
+                        signal: sharingItem.signal,
+                        price_at_signal: sharingItem.price_at_signal,
+                        status: sharingItem.status as 'SUCCESS' | 'FAILED',
+                        target_price: sharingItem.target_price,
+                        stop_loss: sharingItem.stop_loss,
+                        timeframe: sharingItem.timeframe
+                    }}
+                    onClose={() => setSharingItem(null)}
+                />
+            )}
         </div>
     );
 };
