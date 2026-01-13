@@ -85,7 +85,7 @@ export const PnLShareModal: React.FC<PnLShareModalProps> = ({ trade, onClose }) 
                 <div className="p-8 flex justify-center bg-[#050505]">
                     <div
                         ref={cardRef}
-                        className={`relative w-full max-w-[340px] aspect-[4/5] p-6 flex flex-col justify-between overflow-hidden border-4 ${isWin ? 'border-green-500/30' : 'border-red-500/30'} shadow-[0_0_40px_rgba(0,0,0,0.5)]`}
+                        className={`relative w-full max-w-[340px] min-h-[425px] p-6 flex flex-col justify-between border-4 ${isWin ? 'border-green-500/30' : 'border-red-500/30'} shadow-[0_0_40px_rgba(0,0,0,0.5)]`}
                         style={{
                             background: '#0a0a0a',
                             backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(20, 20, 20, 1) 0%, rgba(5, 5, 5, 1) 100%)'
