@@ -2,12 +2,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /* --- CONSTANTS & CONFIG --- */
-const SYMBOLS_TO_SCAN = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
+const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
 const TF_CONFIG = [
-    { interval: '1m', limit: 100 },
+    { interval: '1m', limit: 300 },
     { interval: '15m', limit: 100 },
     { interval: '1h', limit: 100 },
-    { interval: '4h', limit: 300 } // Enough for SMA200
+    { interval: '4h', limit: 300 }
 ];
 
 const corsHeaders = {
@@ -189,6 +189,13 @@ Deno.serve(async (req) => {
 
         if (action === 'test') {
             const results: any[] = [];
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+            const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            const supabase = createClient(supabaseUrl, supabaseKey)
+
+            const { data: settings } = await supabase.from('bot_settings').select('value').eq('key', 'target_symbols').single();
+            const SYMBOLS_TO_SCAN = settings?.value || DEFAULT_SYMBOLS;
+
             for (const symbol of SYMBOLS_TO_SCAN) {
                 const analyses: any = {};
                 try {
@@ -347,11 +354,12 @@ Deno.serve(async (req) => {
         await supabase.from('bot_settings').delete().eq('key', 'last_scan_at').neq('id', existingHeartbeat?.id || 0);
 
         /* =========================================
-           PART -1: RETENTION POLICY CLEANUP
+           PART -1: GLOBAL RETENTION POLICY (90 DAYS)
            ========================================= */
-        const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000)).toISOString();
+        const nowMs = now.getTime();
+        const ninetyDaysAgo = new Date(nowMs - (90 * 24 * 60 * 60 * 1000)).toISOString();
 
-        // Universal retention: Delete older than 90 days (Keep only non-PENDING)
+        // Keep all trades (except PENDING) for 90 days for balanced analytics
         await supabase.from('trading_history').delete()
             .lt('created_at', ninetyDaysAgo)
             .neq('status', 'PENDING');
@@ -366,9 +374,11 @@ Deno.serve(async (req) => {
         const { data: settingsData } = await supabase
             .from('bot_settings')
             .select('key, value')
-            .in('key', ['allowed_timeframes', 'subscriber_ids']);
+            .in('key', ['allowed_timeframes', 'subscriber_ids', 'target_symbols']);
 
         const settingsMap = Object.fromEntries(settingsData?.map(s => [s.key, s.value]) || []);
+
+        const SYMBOLS_TO_SCAN: string[] = settingsMap['target_symbols'] || DEFAULT_SYMBOLS;
 
         // Default allow all if not set
         const allowedTimeframes: string[] = settingsMap['allowed_timeframes'] || ['1m', '15m', '1h', '4h'];

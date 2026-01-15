@@ -16,6 +16,8 @@ export const TradeAnalytics: React.FC = () => {
     const [stats, setStats] = useState<AnalyticsData[]>([]);
     const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d' | 'all'>('all');
     const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number }>>({});
+    const [lastScan, setLastScan] = useState<string | null>(null);
+    const [botOnline, setBotOnline] = useState<boolean>(true);
 
     const fetchData = async () => {
         try {
@@ -24,6 +26,14 @@ export const TradeAnalytics: React.FC = () => {
                 .from('trading_history')
                 .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name, timeframe')
                 .order('created_at', { ascending: false });
+
+            // Fetch Heartbeat
+            const { data: heartbeat } = await supabase.from('bot_settings').select('value').eq('key', 'last_scan_at').single();
+            if (heartbeat) {
+                setLastScan(heartbeat.value);
+                const diff = (new Date().getTime() - new Date(heartbeat.value).getTime()) / 1000;
+                setBotOnline(diff < 300); // Online if scanned in last 5 mins
+            }
 
             if (timeFilter !== 'all') {
                 let dateLimit = new Date();
@@ -144,6 +154,19 @@ export const TradeAnalytics: React.FC = () => {
                             {f === 'all' ? 'TẤT CẢ' : f === '24h' ? '24 GIỜ' : f === '7d' ? '7 NGÀY' : '30 NGÀY'}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* Bot Status Bar */}
+            <div className={`p-3 rounded-xl border flex items-center justify-between ${botOnline ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${botOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    <span className="text-xs font-bold text-white uppercase tracking-tighter">
+                        Trạng thái Bot Server: {botOnline ? 'ONLINE (ĐANG QUÉT)' : 'OFFLINE (CẦN KIỂM TRA)'}
+                    </span>
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">
+                    Last Scan: {lastScan ? new Date(lastScan).toLocaleTimeString('vi-VN') : 'N/A'}
                 </div>
             </div>
 
