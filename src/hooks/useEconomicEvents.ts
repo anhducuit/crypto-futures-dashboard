@@ -9,6 +9,7 @@ export interface EconomicEvent {
     country: string;
     forecast?: string;
     previous?: string;
+    timestamp: number;
 }
 
 const TRANSLATIONS: Record<string, string> = {
@@ -66,7 +67,8 @@ export function useEconomicEvents() {
                             date: `${day}/${month}`,
                             country: e.country,
                             forecast: e.forecast,
-                            previous: e.previous
+                            previous: e.previous,
+                            timestamp: dateObj.getTime()
                         };
                     });
             } else {
@@ -76,23 +78,20 @@ export function useEconomicEvents() {
                 const fmtDate = (d: Date) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
 
                 mappedEvents = [
-                    { id: 'f1', title: 'Chỉ số Giá Tiêu dùng CPI (Mỹ)', impact: 'HIGH', time: '19:30', date: fmtDate(now), country: 'USD' },
-                    { id: 'f2', title: 'Biên bản họp FOMC (Lãi suất)', impact: 'HIGH', time: '02:00', date: fmtDate(tomorrow), country: 'USD' },
-                    { id: 'f3', title: 'Bảng lương Phi nông nghiệp (ADP)', impact: 'HIGH', time: '19:30', date: fmtDate(day3), country: 'USD' },
-                    { id: 'f4', title: 'Tổng sản phẩm Quốc nội GDP (EU)', impact: 'MEDIUM', time: '16:00', date: fmtDate(now), country: 'EUR' },
-                    { id: 'f5', title: 'Đơn trợ cấp Thất nghiệp (Mỹ)', impact: 'MEDIUM', time: '19:30', date: fmtDate(tomorrow), country: 'USD' },
+                    { id: 'f1', title: 'Chỉ số Giá Tiêu dùng CPI (Mỹ)', impact: 'HIGH', time: '19:30', date: fmtDate(now), country: 'USD', timestamp: now.getTime() },
+                    { id: 'f2', title: 'Biên bản họp FOMC (Lãi suất)', impact: 'HIGH', time: '02:00', date: fmtDate(tomorrow), country: 'USD', timestamp: tomorrow.getTime() },
+                    { id: 'f3', title: 'Bảng lương Phi nông nghiệp (ADP)', impact: 'HIGH', time: '19:30', date: fmtDate(day3), country: 'USD', timestamp: day3.getTime() },
+                    { id: 'f4', title: 'Tổng sản phẩm Quốc nội GDP (EU)', impact: 'MEDIUM', time: '16:00', date: fmtDate(now), country: 'EUR', timestamp: now.getTime() },
+                    { id: 'f5', title: 'Đơn trợ cấp Thất nghiệp (Mỹ)', impact: 'MEDIUM', time: '19:30', date: fmtDate(tomorrow), country: 'USD', timestamp: tomorrow.getTime() },
                 ];
             }
 
-            // If we have data, we sort it. 
-            // On days like Sunday, mappedEvents from the feed might be very short.
-            const sorted = mappedEvents.sort((a, b) => {
-                const impactWeight = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'HOLIDAY': 0 };
-                const weightA = impactWeight[a.impact] || 0;
-                const weightB = impactWeight[b.impact] || 0;
-                if (weightA !== weightB) return weightB - weightA;
-                return 0;
-            });
+            // FILTER: Show only events from yesterday, today and future
+            const oneDayAgo = now.getTime() - (24 * 60 * 60 * 1000);
+            const filtered = mappedEvents.filter(e => (e as any).timestamp > oneDayAgo);
+
+            // SORT: By Time (Chronological)
+            const sorted = filtered.sort((a, b) => (a as any).timestamp - (b as any).timestamp);
 
             setEvents(sorted);
         } catch (error) {
@@ -104,7 +103,7 @@ export function useEconomicEvents() {
 
     useEffect(() => {
         fetchEvents();
-        const interval = setInterval(fetchEvents, 3600000);
+        const interval = setInterval(fetchEvents, 1800000); // 30 mins
         return () => clearInterval(interval);
     }, []);
 
