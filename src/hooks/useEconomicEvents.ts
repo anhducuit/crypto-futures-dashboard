@@ -42,10 +42,12 @@ export function useEconomicEvents() {
     const [loading, setLoading] = useState(true);
 
     const fetchEvents = async () => {
+        const now = new Date();
         try {
-            const now = new Date();
-            const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
-            const data = await response.json();
+            // Use Supabase Edge Function as a proxy to avoid CORS
+            const proxyUrl = 'https://tnmagcatofooeshzdhac.supabase.co/functions/v1/check-trades?action=get-calendar';
+            const res = await fetch(proxyUrl);
+            const data = await res.json();
 
             let mappedEvents: EconomicEvent[] = [];
 

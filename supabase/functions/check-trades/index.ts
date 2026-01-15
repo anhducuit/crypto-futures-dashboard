@@ -169,6 +169,21 @@ Deno.serve(async (req) => {
         const now = new Date();
         console.log(`[${now.toISOString()}] BOT SCAN START - Action: ${action || 'none'} - Method: ${req.method}`);
 
+        if (action === 'get-calendar') {
+            try {
+                const res = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+                const data = await res.json();
+                return new Response(JSON.stringify(data), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            } catch (e) {
+                return new Response(JSON.stringify({ error: 'Failed to fetch calendar' }), {
+                    status: 500,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
         if (action === 'reset') {
             const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
             const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
