@@ -226,7 +226,7 @@ export const TradeAnalytics: React.FC = () => {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                                     <div
-                                                        className={`h-full rounded-full ${s.winRate >= 50 ? 'bg-green-500' : 'bg-red-500'}`}
+                                                        className={`h-full rounded-full animate-grow-x ${s.winRate >= 50 ? 'bg-green-500' : 'bg-red-500'}`}
                                                         style={{ width: `${s.winRate}%` }}
                                                     />
                                                 </div>

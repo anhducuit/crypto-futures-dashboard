@@ -109,7 +109,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">Pro Crypto Futures</h1>
-              <p className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest">by Anh Duc Trader</p>
+              <p className="text-[11px] text-yellow-500 font-black uppercase tracking-[0.2em] drop-shadow-sm">by Anh Duc Trader</p>
             </div>
           </div>
 
