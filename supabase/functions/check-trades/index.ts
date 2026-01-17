@@ -100,8 +100,9 @@ function calculateDynamicTPSL(
     }
 
     let target, stopLoss;
-    const atrMultiplier = timeframe === '1m' ? 3.5 : 3.0; // Loosened from 2.5/2.0
-    const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.5); // Increased from 0.382
+    // ATR Multiplier optimized by Timeframe
+    const atrMultiplier = timeframe === '4h' ? 4.0 : (timeframe === '1h' ? 3.5 : 3.0);
+    const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.5);
 
     if (signal === 'LONG') {
         // Target at Fib 0.618 of range or entry + buffer
@@ -110,9 +111,9 @@ function calculateDynamicTPSL(
         stopLoss = entryPrice - volatilityBuffer;
 
         // Hard limits for safety and minimum R:R
-        const minRR = 1.2;
-        const maxSL = 0.025; // Loosened from 1.2% to 2.5%
-        const minSL = timeframe === '1m' ? 0.008 : 0.007; // Increased from 0.5%/0.3%
+        const minRR = 1.3; // Increased from 1.2 for better quality
+        const maxSL = 0.035; // Max 3.5%
+        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.01 : 0.008));
 
         const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
@@ -125,9 +126,9 @@ function calculateDynamicTPSL(
         target = entryPrice - Math.max(range * 0.618, volatilityBuffer * 1.5);
         stopLoss = entryPrice + volatilityBuffer;
 
-        const minRR = 1.2;
-        const maxSL = 0.025;
-        const minSL = timeframe === '1m' ? 0.008 : 0.007;
+        const minRR = 1.3;
+        const maxSL = 0.035;
+        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.01 : 0.008));
 
         const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
@@ -726,7 +727,7 @@ Deno.serve(async (req) => {
             // Strategy 1: 4H Major Trend (EMA20/50 Cross)
             if (tf4h) {
                 const volConfirm = tf4h.volRatio > 1.2;
-                const notOverextended = tf4h.distFromEMA < 0.03; // Allows 3% away for 4H
+                const notOverextended = tf4h.distFromEMA < 0.02; // Stricter entry (2% limit)
                 if (tf4h.cross === 'BULLISH_CROSS' && volConfirm && tf4h.rsi > 50 && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
                 } else if (tf4h.cross === 'BEARISH_CROSS' && volConfirm && tf4h.rsi < 50 && notOverextended) {
@@ -737,7 +738,7 @@ Deno.serve(async (req) => {
             // Strategy 2: 1H Trend Optimization
             if (tf1h) {
                 const volConfirm = tf1h.volRatio > 1.2;
-                const notOverextended = tf1h.distFromEMA < 0.02; // 2% limit
+                const notOverextended = tf1h.distFromEMA < 0.015; // 1.5% limit
                 if (tf1h.cross === 'BULLISH_CROSS' && volConfirm && tf1h.rsi > 50 && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
                 } else if (tf1h.cross === 'BEARISH_CROSS' && volConfirm && tf1h.rsi < 50 && notOverextended) {
@@ -748,7 +749,7 @@ Deno.serve(async (req) => {
             // Strategy 3: 1H Trend + 15M Cross
             if (tf1h && tf15m) {
                 const volConfirm = tf15m.volRatio > 1.2;
-                const notOverextended = tf15m.distFromEMA < 0.012; // Stricter entry
+                const notOverextended = tf15m.distFromEMA < 0.01; // Stricter (1% limit)
                 if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && tf15m.rsi < 70 && !tf15m.isExtremeVol && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
                 } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && tf15m.rsi > 45 && !tf15m.isExtremeVol && notOverextended) {
