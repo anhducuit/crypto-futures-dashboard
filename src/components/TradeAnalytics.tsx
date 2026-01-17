@@ -170,6 +170,46 @@ export const TradeAnalytics: React.FC = () => {
                 </div>
             </div>
 
+            {/* Insight Performance Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl flex items-center gap-4">
+                    <div className="bg-red-500/20 p-3 rounded-full text-red-500">
+                        <TrendingUp size={20} className="rotate-180" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Coin Yếu Nhất (Loss)</p>
+                        <h4 className="text-lg font-black text-white">
+                            {(() => {
+                                const realStats = stats.slice(1).filter(s => s.total >= 5);
+                                if (realStats.length === 0) return 'CHƯA ĐỦ DỮ LIỆU';
+                                const worst = [...realStats].sort((a, b) => a.winRate - b.winRate)[0];
+                                return `${worst.symbol} (${worst.winRate.toFixed(0)}%)`;
+                            })()}
+                        </h4>
+                    </div>
+                </div>
+                <div className="bg-green-500/5 border border-green-500/10 p-4 rounded-xl flex items-center gap-4">
+                    <div className="bg-green-500/20 p-3 rounded-full text-green-500">
+                        <BarChart2 size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase">Khung Giờ Vàng (Win Rate)</p>
+                        <h4 className="text-lg font-black text-white">
+                            {(() => {
+                                const sessions = Object.entries(bestHours).map(([name, counts]) => ({
+                                    name,
+                                    rate: (counts.wins + counts.losses) > 0 ? (counts.wins / (counts.wins + counts.losses) * 100) : 0,
+                                    total: counts.wins + counts.losses
+                                })).filter(s => s.total >= 3);
+                                if (sessions.length === 0) return 'CHƯA ĐỦ DỮ LIỆU';
+                                const best = sessions.sort((a, b) => b.rate - a.rate)[0];
+                                return `${best.name.split(' ')[0]} (${best.rate.toFixed(0)}%)`;
+                            })()}
+                        </h4>
+                    </div>
+                </div>
+            </div>
+
             {/* Header / Global Summary - Horizontal Scroll */}
             <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
                 {stats.map((s, idx) => (

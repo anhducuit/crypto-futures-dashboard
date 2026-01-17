@@ -251,10 +251,19 @@ export const Auth: React.FC = () => {
                         )}
                     </button>
 
-                    <div className="pt-4 text-center">
+                    <div className="pt-4 text-center space-y-3">
                         <p className="text-[10px] text-slate-500 italic">
                             Chỉ dành cho tài khoản được cấp quyền.
                         </p>
+                        <div className="border-t border-white/5 pt-3">
+                            <a
+                                href="/register"
+                                className="text-xs font-bold text-[var(--color-golden)] hover:underline flex items-center justify-center gap-1"
+                            >
+                                <Zap size={14} />
+                                CHƯA CÓ TÀI KHOẢN? ĐĂNG KÝ NGAY
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>

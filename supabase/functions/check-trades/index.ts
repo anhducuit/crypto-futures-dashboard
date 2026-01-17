@@ -63,35 +63,59 @@ function calculateDynamicTPSL(
     entryPrice: number,
     signal: 'LONG' | 'SHORT',
     swingHigh: number,
-    swingLow: number
+    swingLow: number,
+    atr: number = 0,
+    timeframe: string = '15m'
 ) {
     const range = (swingHigh && swingLow) ? (swingHigh - swingLow) : 0;
 
     // Default fallback if range is too small or invalid
     if (range === 0 || isNaN(range) || range / entryPrice < 0.001) {
+        const baseRisk = timeframe === '1m' ? 0.008 : 0.006; // 0.8% for 1m, 0.6% others
+        const baseReward = baseRisk * 1.5;
         return {
-            target: signal === 'LONG' ? entryPrice * 1.012 : entryPrice * 0.988, // 1.2% base
-            stopLoss: signal === 'LONG' ? entryPrice * 0.994 : entryPrice * 1.006 // 0.6% risk
+            target: signal === 'LONG' ? entryPrice * (1 + baseReward) : entryPrice * (1 - baseReward),
+            stopLoss: signal === 'LONG' ? entryPrice * (1 - baseRisk) : entryPrice * (1 + baseRisk)
         }
     }
 
     let target, stopLoss;
+    const atrMultiplier = timeframe === '1m' ? 2.5 : 2.0;
+    const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.382);
 
     if (signal === 'LONG') {
-        // Entry at current price, Target at Fib 0.618 of recent range above Entry
-        // Stoploss at Fib 0.786 of the swing or 0.5% min
-        target = entryPrice + (range * 0.618);
-        stopLoss = entryPrice - (range * 0.382); // Stop at 38.2% retracement of range
+        // Target at Fib 0.618 of range or entry + buffer
+        target = entryPrice + Math.max(range * 0.618, volatilityBuffer * 1.5);
+        // Stoploss at entry - buffer (ATR based or 38.2% Fib)
+        stopLoss = entryPrice - volatilityBuffer;
 
         // Hard limits for safety and minimum R:R
-        if (target / entryPrice < 1.005) target = entryPrice * 1.015;
-        if (stopLoss / entryPrice > 0.995) stopLoss = entryPrice * 0.992;
-    } else {
-        target = entryPrice - (range * 0.618);
-        stopLoss = entryPrice + (range * 0.382);
+        const minRR = 1.2;
+        const maxSL = 0.012; // Max 1.2% SL
+        const minSL = timeframe === '1m' ? 0.005 : 0.003; // Min 0.5% for 1m noise
 
-        if (target / entryPrice > 0.995) target = entryPrice * 0.985;
-        if (stopLoss / entryPrice < 1.005) stopLoss = entryPrice * 1.008;
+        const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
+        if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
+        if (currentSLPercent > maxSL) stopLoss = entryPrice * (1 - maxSL);
+
+        const currentTPPercent = Math.abs(target - entryPrice) / entryPrice;
+        const requiredTP = (Math.abs(entryPrice - stopLoss) / entryPrice) * minRR;
+        if (currentTPPercent < requiredTP) target = entryPrice * (1 + requiredTP);
+    } else {
+        target = entryPrice - Math.max(range * 0.618, volatilityBuffer * 1.5);
+        stopLoss = entryPrice + volatilityBuffer;
+
+        const minRR = 1.2;
+        const maxSL = 0.012;
+        const minSL = timeframe === '1m' ? 0.005 : 0.003;
+
+        const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
+        if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
+        if (currentSLPercent > maxSL) stopLoss = entryPrice * (1 + maxSL);
+
+        const currentTPPercent = Math.abs(entryPrice - target) / entryPrice;
+        const requiredTP = (Math.abs(stopLoss - entryPrice) / entryPrice) * minRR;
+        if (currentTPPercent < requiredTP) target = entryPrice * (1 - requiredTP);
     }
 
     return { target, stopLoss };
@@ -498,7 +522,7 @@ Deno.serve(async (req) => {
            ========================================= */
 
         const results = await Promise.allSettled(SYMBOLS_TO_SCAN.map(async (symbol) => {
-            const analyses = {};
+            const analyses: Record<string, any> = {};
             let failed = false;
 
             // Fetch TFs in parallel for speed
@@ -540,6 +564,7 @@ Deno.serve(async (req) => {
                         if (ma50_prev <= ma200_prev && ma50_curr > ma200_curr) cross = 'GOLDEN_CROSS';
                         if (ma50_prev >= ma200_prev && ma50_curr < ma200_curr) cross = 'DEATH_CROSS';
 
+                        const atr = calculateATR(highs, lows, closes, 14);
                         analyses['4h'] = {
                             cross,
                             close: currentClose,
@@ -547,7 +572,8 @@ Deno.serve(async (req) => {
                             swingLow: Math.min(...lows),
                             rsi, volRatio,
                             ma50: ma50_curr,
-                            ma200: ma200_curr
+                            ma200: ma200_curr,
+                            atr
                         };
                     }
                 }
@@ -556,11 +582,12 @@ Deno.serve(async (req) => {
                 if (cfg.interval === '1h') {
                     const ma20 = calculateSMA(closes, 20);
                     const ma50 = calculateSMA(closes, 50);
+                    const atr = calculateATR(highs, lows, closes, 14);
                     analyses['1h'] = {
                         trend: ma20 > ma50 ? 'BULLISH' : 'BEARISH',
                         ma20, ma50,
                         close: currentClose,
-                        rsi, volRatio
+                        rsi, volRatio, atr
                     }
                 }
 
@@ -674,23 +701,26 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // Strategy 3: 1m Duo Schools
-            if (tf1h && tf1m_scalp && tf1m_safe) {
+            // Strategy 3: 1m Duo Schools (Must align with 15m trend + 1h trend)
+            if (tf1h && tf15m && tf1m_scalp && tf1m_safe) {
+                const tf15mTrend = tf15m.close > tf15m.sma20 ? 'BULLISH' : 'BEARISH';
+
                 // School 1: Scalping (MA5/13)
-                const scalpVol = tf1m_scalp.volRatio > 1.2;
-                const scalpDist = tf1m_scalp.distFromSMA < 0.01;
-                if (tf1h.trend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 50 && tf1m_scalp.rsi < 85 && !tf1m_scalp.isExtremeVol && scalpDist) {
+                const scalpVol = tf1m_scalp.volRatio > 1.5; // Increased vol requirement for noise
+                const scalpDist = tf1m_scalp.distFromSMA < 0.008; // Stricter
+
+                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 50 && tf1m_scalp.rsi < 80 && !tf1m_scalp.isExtremeVol && scalpDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
-                } else if (tf1h.trend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 50 && tf1m_scalp.rsi > 15 && !tf1m_scalp.isExtremeVol && scalpDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 50 && tf1m_scalp.rsi > 20 && !tf1m_scalp.isExtremeVol && scalpDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
                 }
 
                 // School 2: Safe Mode (MA12/26)
-                const safeVol = tf1m_safe.volRatio > 1.1; // Slightly lower requirement for safe cross
-                const safeDist = tf1m_safe.distFromSMA < 0.008; // Stricter for safe mode
-                if (tf1h.trend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
+                const safeVol = tf1m_safe.volRatio > 1.3;
+                const safeDist = tf1m_safe.distFromSMA < 0.006;
+                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
-                } else if (tf1h.trend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
                 }
             }
@@ -708,7 +738,7 @@ Deno.serve(async (req) => {
                     .limit(1);
 
                 if (!active || active.length === 0) {
-                    const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow);
+                    const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
                     const icon = sig.type === 'LONG' ? '🟢' : '🔴';
 
                     const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
