@@ -113,7 +113,7 @@ function calculateDynamicTPSL(
         // Hard limits for safety and minimum R:R
         const minRR = 1.3; // Increased from 1.2 for better quality
         const maxSL = 0.035; // Max 3.5%
-        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.01 : 0.008));
+        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.01));
 
         const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
@@ -128,7 +128,7 @@ function calculateDynamicTPSL(
 
         const minRR = 1.3;
         const maxSL = 0.035;
-        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.01 : 0.008));
+        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.01));
 
         const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
@@ -763,7 +763,7 @@ Deno.serve(async (req) => {
 
                 // School 1: Scalping (EMA5/13)
                 const scalpVol = tf1m_scalp.volRatio > 1.5;
-                const scalpDist = tf1m_scalp.distFromEMA < 0.007; // Very strict to avoid peak-entry
+                const scalpDist = tf1m_scalp.distFromEMA < 0.005; // Even stricter (0.5% limit)
 
                 if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 50 && tf1m_scalp.rsi < 80 && !tf1m_scalp.isExtremeVol && scalpDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
@@ -773,7 +773,7 @@ Deno.serve(async (req) => {
 
                 // School 2: Safe Mode (EMA12/26)
                 const safeVol = tf1m_safe.volRatio > 1.3;
-                const safeDist = tf1m_safe.distFromEMA < 0.005; // Strict
+                const safeDist = tf1m_safe.distFromEMA < 0.003; // Ultra strict for 1m safe (0.3% limit)
                 if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
                 } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
