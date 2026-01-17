@@ -192,7 +192,18 @@ export const Auth: React.FC = () => {
                         <ShieldCheck size={32} className="text-black" />
                     </div>
                     <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">CRYPTO PORTAL</h2>
-                    <p className="text-slate-400 text-sm font-medium tracking-wide">Hệ thống Trading Pro - Anh Duc Trader</p>
+                    <p className="text-slate-400 text-sm font-medium tracking-wide mb-6">Hệ thống Trading Pro - Anh Duc Trader</p>
+
+                    <a
+                        href="/intro"
+                        className="group relative inline-flex items-center gap-3 px-6 py-3 bg-[var(--color-golden)]/10 border border-[var(--color-golden)]/30 rounded-2xl hover:bg-[var(--color-golden)]/20 transition-all duration-300 animate-pulse-slow shadow-[0_0_20px_rgba(255,184,0,0.1)]"
+                    >
+                        <BarChart3 size={20} className="text-[var(--color-golden)] group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-black text-[var(--color-golden)] uppercase tracking-[0.15em]">
+                            Xem giới thiệu tính năng hệ thống
+                        </span>
+                        <div className="absolute -inset-1 bg-[var(--color-golden)] opacity-10 blur-lg rounded-2xl pointer-events-none group-hover:opacity-20 transition-opacity"></div>
+                    </a>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
@@ -255,20 +266,13 @@ export const Auth: React.FC = () => {
                         <p className="text-[10px] text-slate-500 italic">
                             Chỉ dành cho tài khoản được cấp quyền.
                         </p>
-                        <div className="border-t border-white/5 pt-3 space-y-3">
+                        <div className="border-t border-white/5 pt-3">
                             <a
                                 href="/register"
                                 className="text-xs font-bold text-[var(--color-golden)] hover:underline flex items-center justify-center gap-1"
                             >
                                 <Zap size={14} />
                                 CHƯA CÓ TÀI KHOẢN? ĐĂNG KÝ NGAY
-                            </a>
-                            <a
-                                href="/intro"
-                                className="text-[10px] font-bold text-slate-400 hover:text-white flex items-center justify-center gap-1.5 uppercase tracking-widest mt-2"
-                            >
-                                <BarChart3 size={12} className="text-[var(--color-golden)]" />
-                                Xem giới thiệu tính năng hệ thống
                             </a>
                         </div>
                     </div>
