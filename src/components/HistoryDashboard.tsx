@@ -262,7 +262,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Entry:</span>
-                                        <span className="text-slate-300 font-bold">${item.price_at_signal}</span>
+                                        <span className="text-slate-300 font-bold">${Number(item.price_at_signal).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Volume:</span>
@@ -272,7 +272,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Target:</span>
-                                        <span className="text-green-500/80">${item.target_price}</span>
+                                        <span className="text-green-500/80">${Number(item.target_price).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">RSI:</span>
@@ -280,7 +280,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">StopLoss:</span>
-                                        <span className="text-red-500/80">${item.stop_loss}</span>
+                                        <span className="text-red-500/80">${Number(item.stop_loss).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Time:</span>

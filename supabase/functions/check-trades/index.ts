@@ -32,6 +32,26 @@ function calculateSMAArray(data: number[], period: number): number[] {
     return result; // Aligned with end of data
 }
 
+function calculateEMA(data: number[], period: number): number {
+    if (data.length < period) return 0;
+    const k = 2 / (period + 1);
+    let ema = data[0];
+    for (let i = 1; i < data.length; i++) {
+        ema = data[i] * k + ema * (1 - k);
+    }
+    return ema;
+}
+
+function calculateEMAArray(data: number[], period: number): number[] {
+    if (data.length < period) return [];
+    const k = 2 / (period + 1);
+    const result = [data[0]];
+    for (let i = 1; i < data.length; i++) {
+        result.push(data[i] * k + result[i - 1] * (1 - k));
+    }
+    return result;
+}
+
 function calculateRSI(closes: number[], period: number = 14): number {
     if (closes.length <= period) return 50;
     let gains = 0, losses = 0;
@@ -80,8 +100,8 @@ function calculateDynamicTPSL(
     }
 
     let target, stopLoss;
-    const atrMultiplier = timeframe === '1m' ? 2.5 : 2.0;
-    const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.382);
+    const atrMultiplier = timeframe === '1m' ? 3.5 : 3.0; // Loosened from 2.5/2.0
+    const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.5); // Increased from 0.382
 
     if (signal === 'LONG') {
         // Target at Fib 0.618 of range or entry + buffer
@@ -91,8 +111,8 @@ function calculateDynamicTPSL(
 
         // Hard limits for safety and minimum R:R
         const minRR = 1.2;
-        const maxSL = 0.012; // Max 1.2% SL
-        const minSL = timeframe === '1m' ? 0.005 : 0.003; // Min 0.5% for 1m noise
+        const maxSL = 0.025; // Loosened from 1.2% to 2.5%
+        const minSL = timeframe === '1m' ? 0.008 : 0.007; // Increased from 0.5%/0.3%
 
         const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
@@ -106,8 +126,8 @@ function calculateDynamicTPSL(
         stopLoss = entryPrice + volatilityBuffer;
 
         const minRR = 1.2;
-        const maxSL = 0.012;
-        const minSL = timeframe === '1m' ? 0.005 : 0.003;
+        const maxSL = 0.025;
+        const minSL = timeframe === '1m' ? 0.008 : 0.007;
 
         const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
@@ -118,7 +138,11 @@ function calculateDynamicTPSL(
         if (currentTPPercent < requiredTP) target = entryPrice * (1 - requiredTP);
     }
 
-    return { target, stopLoss };
+    // ROUNDING FIX for floating point errors
+    return {
+        target: Math.round(target * 100) / 100,
+        stopLoss: Math.round(stopLoss * 100) / 100
+    };
 }
 
 async function sendTelegram(message: string, replyToId?: number, chatIds?: (string | number)[]) {
@@ -267,11 +291,11 @@ Deno.serve(async (req) => {
                                     cross
                                 };
                             } else if (cfg.interval === '1h') {
-                                const ma20 = calculateSMA(closes, 20);
-                                const ma50 = calculateSMA(closes, 50);
+                                const ema20 = calculateEMA(closes, 20);
+                                const ema50 = calculateEMA(closes, 50);
                                 analyses['1h'] = {
-                                    ma20, ma50,
-                                    trend: ma20 > ma50 ? 'BULLISH' : 'BEARISH'
+                                    ema20, ema50,
+                                    trend: ema20 > ema50 ? 'BULLISH' : 'BEARISH'
                                 };
                             }
                         }
@@ -549,67 +573,84 @@ Deno.serve(async (req) => {
                 const volRatio = avgVol20 > 0 ? (currentVol / avgVol20) : 1;
                 const rsi = calculateRSI(closes);
 
-                // 4H Analysis (MA50/MA200)
+                // 4H Analysis (EMA20/50 Cross - More active than MA50/200)
                 if (cfg.interval === '4h') {
-                    const ma50Arr = calculateSMAArray(closes, 50);
-                    const ma200Arr = calculateSMAArray(closes, 200);
+                    const ema20Arr = calculateEMAArray(closes, 20);
+                    const ema50Arr = calculateEMAArray(closes, 50);
 
-                    if (ma50Arr.length > 2 && ma200Arr.length > 2) {
-                        const ma50_curr = ma50Arr[ma50Arr.length - 1];
-                        const ma200_curr = ma200Arr[ma200Arr.length - 1];
-                        const ma50_prev = ma50Arr[ma50Arr.length - 2];
-                        const ma200_prev = ma200Arr[ma200Arr.length - 2];
+                    if (ema20Arr.length > 2 && ema50Arr.length > 2) {
+                        const ema20_curr = ema20Arr[ema20Arr.length - 1];
+                        const ema50_curr = ema50Arr[ema50Arr.length - 1];
+                        const ema20_prev = ema20Arr[ema20Arr.length - 2];
+                        const ema50_prev = ema50Arr[ema50Arr.length - 2];
 
                         let cross = 'NONE';
-                        if (ma50_prev <= ma200_prev && ma50_curr > ma200_curr) cross = 'GOLDEN_CROSS';
-                        if (ma50_prev >= ma200_prev && ma50_curr < ma200_curr) cross = 'DEATH_CROSS';
+                        if (ema20_prev <= ema50_prev && ema20_curr > ema50_curr) cross = 'BULLISH_CROSS';
+                        if (ema20_prev >= ema50_prev && ema20_curr < ema50_curr) cross = 'BEARISH_CROSS';
 
                         const atr = calculateATR(highs, lows, closes, 14);
+                        const distFromEMA = Math.abs(currentClose - ema20_curr) / ema20_curr;
+
                         analyses['4h'] = {
                             cross,
                             close: currentClose,
                             swingHigh: Math.max(...highs),
                             swingLow: Math.min(...lows),
                             rsi, volRatio,
-                            ma50: ma50_curr,
-                            ma200: ma200_curr,
-                            atr
+                            ema20: ema20_curr,
+                            ema50: ema50_curr,
+                            atr, distFromEMA
                         };
                     }
                 }
 
-                // 1H Analysis
+                // 1H Analysis (EMA20/50)
                 if (cfg.interval === '1h') {
-                    const ma20 = calculateSMA(closes, 20);
-                    const ma50 = calculateSMA(closes, 50);
+                    const ema20Arr = calculateEMAArray(closes, 20);
+                    const ema50Arr = calculateEMAArray(closes, 50);
+                    const ema20_curr = ema20Arr[ema20Arr.length - 1];
+                    const ema50_curr = ema50Arr[ema50Arr.length - 1];
+                    const ema20_prev = ema20Arr[ema20Arr.length - 2];
+                    const ema50_prev = ema50Arr[ema50Arr.length - 2];
+
+                    let cross = 'NONE';
+                    if (ema20_prev <= ema50_prev && ema20_curr > ema50_curr) cross = 'BULLISH_CROSS';
+                    if (ema20_prev >= ema50_prev && ema20_curr < ema50_curr) cross = 'BEARISH_CROSS';
+
                     const atr = calculateATR(highs, lows, closes, 14);
+                    const distFromEMA = Math.abs(currentClose - ema20_curr) / ema20_curr;
+
                     analyses['1h'] = {
-                        trend: ma20 > ma50 ? 'BULLISH' : 'BEARISH',
-                        ma20, ma50,
+                        trend: ema20_curr > ema50_curr ? 'BULLISH' : 'BEARISH',
+                        cross,
+                        ema20: ema20_curr,
+                        ema50: ema50_curr,
                         close: currentClose,
-                        rsi, volRatio, atr
+                        rsi, volRatio, atr, distFromEMA,
+                        swingHigh: Math.max(...highs),
+                        swingLow: Math.min(...lows)
                     }
                 }
 
                 // 15M Analysis
                 if (cfg.interval === '15m') {
-                    const ma12Array = calculateSMAArray(closes, 12);
-                    const ma26Array = calculateSMAArray(closes, 26);
+                    const ema12Array = calculateEMAArray(closes, 12);
+                    const ema26Array = calculateEMAArray(closes, 26);
 
-                    const ma12_curr = ma12Array[ma12Array.length - 1];
-                    const ma26_curr = ma26Array[ma26Array.length - 1];
-                    const ma12_prev = ma12Array[ma12Array.length - 2];
-                    const ma26_prev = ma26Array[ma26Array.length - 2];
+                    const ema12_curr = ema12Array[ema12Array.length - 1];
+                    const ema26_curr = ema26Array[ema26Array.length - 1];
+                    const ema12_prev = ema12Array[ema12Array.length - 2];
+                    const ema26_prev = ema26Array[ema26Array.length - 2];
 
                     let cross = 'NONE';
-                    if (ma12_prev <= ma26_prev && ma12_curr > ma26_curr) cross = 'BULLISH_CROSS';
-                    if (ma12_prev >= ma26_prev && ma12_curr < ma26_curr) cross = 'BEARISH_CROSS';
+                    if (ema12_prev <= ema26_prev && ema12_curr > ema26_curr) cross = 'BULLISH_CROSS';
+                    if (ema12_prev >= ema26_prev && ema12_curr < ema26_curr) cross = 'BEARISH_CROSS';
 
-                    const sma20 = calculateSMA(closes, 20);
+                    const ema20 = calculateEMA(closes, 20);
                     const atr = calculateATR(highs, lows, closes, 14);
                     const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
                     const isExtremeVol = atr > 0 && currentRange > (atr * 2.5);
-                    const distFromSMA = Math.abs(currentClose - sma20) / sma20;
+                    const distFromEMA = Math.abs(currentClose - ema20) / ema20;
 
                     analyses['15m'] = {
                         cross: cross,
@@ -617,54 +658,53 @@ Deno.serve(async (req) => {
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows),
                         rsi, volRatio,
-                        atr, isExtremeVol, distFromSMA, sma20
+                        atr, isExtremeVol, distFromEMA, ema20
                     }
                 }
 
-                // 1m Scalp
-                // 1m Scalp Analysis (Two Schools)
+                // 1m Scalp Analysis (Using EMA for speed)
                 if (cfg.interval === '1m') {
-                    // School 1: Scalping (MA5/13)
-                    const ma5Array = calculateSMAArray(closes, 5);
-                    const ma13Array = calculateSMAArray(closes, 13);
-                    const ma5_curr = ma5Array[ma5Array.length - 1];
-                    const ma13_curr = ma13Array[ma13Array.length - 1];
-                    const ma5_prev = ma5Array[ma5Array.length - 2];
-                    const ma13_prev = ma13Array[ma13Array.length - 2];
+                    // School 1: Scalping (EMA5/13)
+                    const ema5Array = calculateEMAArray(closes, 5);
+                    const ema13Array = calculateEMAArray(closes, 13);
+                    const ema5_curr = ema5Array[ema5Array.length - 1];
+                    const ema13_curr = ema13Array[ema13Array.length - 1];
+                    const ema5_prev = ema5Array[ema5Array.length - 2];
+                    const ema13_prev = ema13Array[ema13Array.length - 2];
 
                     let crossScalp = 'NONE';
-                    if (ma5_prev <= ma13_prev && ma5_curr > ma13_curr) crossScalp = 'BULLISH_CROSS';
-                    if (ma5_prev >= ma13_prev && ma5_curr < ma13_curr) crossScalp = 'BEARISH_CROSS';
+                    if (ema5_prev <= ema13_prev && ema5_curr > ema13_curr) crossScalp = 'BULLISH_CROSS';
+                    if (ema5_prev >= ema13_prev && ema5_curr < ema13_curr) crossScalp = 'BEARISH_CROSS';
 
-                    // School 2: Safe Mode (MA12/26)
-                    const ma12Array = calculateSMAArray(closes, 12);
-                    const ma26Array = calculateSMAArray(closes, 26);
-                    const ma12_curr = ma12Array[ma12Array.length - 1];
-                    const ma26_curr = ma26Array[ma26Array.length - 1];
-                    const ma12_prev = ma12Array[ma12Array.length - 2];
-                    const ma26_prev = ma26Array[ma26Array.length - 2];
+                    // School 2: Safe Mode (EMA12/26)
+                    const ema12Array = calculateEMAArray(closes, 12);
+                    const ema26Array = calculateEMAArray(closes, 26);
+                    const ema12_curr = ema12Array[ema12Array.length - 1];
+                    const ema26_curr = ema26Array[ema26Array.length - 1];
+                    const ema12_prev = ema12Array[ema12Array.length - 2];
+                    const ema26_prev = ema26Array[ema26Array.length - 2];
 
                     let crossSafe = 'NONE';
-                    if (ma12_prev <= ma26_prev && ma12_curr > ma26_curr) crossSafe = 'BULLISH_CROSS';
-                    if (ma12_prev >= ma26_prev && ma12_curr < ma26_curr) crossSafe = 'BEARISH_CROSS';
+                    if (ema12_prev <= ema26_prev && ema12_curr > ema26_curr) crossSafe = 'BULLISH_CROSS';
+                    if (ema12_prev >= ema26_prev && ema12_curr < ema26_curr) crossSafe = 'BEARISH_CROSS';
 
-                    const sma20 = calculateSMA(closes, 20);
+                    const ema20 = calculateEMA(closes, 20);
                     const atr = calculateATR(highs, lows, closes, 14);
                     const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
                     const isExtremeVol = atr > 0 && currentRange > (atr * 3.0);
-                    const distFromSMA = Math.abs(currentClose - sma20) / sma20;
+                    const distFromEMA = Math.abs(currentClose - ema20) / ema20;
 
                     analyses['1m_scalp'] = {
                         cross: crossScalp,
                         close: currentClose,
-                        rsi, volRatio, sma20, atr, isExtremeVol, distFromSMA,
+                        rsi, volRatio, ema20, atr, isExtremeVol, distFromEMA,
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows)
                     };
                     analyses['1m_safe'] = {
                         cross: crossSafe,
                         close: currentClose,
-                        rsi, volRatio, sma20, atr, isExtremeVol, distFromSMA,
+                        rsi, volRatio, ema20, atr, isExtremeVol, distFromEMA,
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows)
                     };
@@ -683,20 +723,35 @@ Deno.serve(async (req) => {
 
             let signals_to_process: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
 
-            // Strategy 1: 4H Major Trend
-            if (tf4h && tf4h.cross === 'GOLDEN_CROSS' && tf4h.volRatio > 1.2) {
-                signals_to_process.push({ type: 'LONG', tf: '4h', ref: tf4h, name: 'MA50/200 Cross' });
-            } else if (tf4h && tf4h.cross === 'DEATH_CROSS' && tf4h.volRatio > 1.2) {
-                signals_to_process.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: 'MA50/200 Cross' });
+            // Strategy 1: 4H Major Trend (EMA20/50 Cross)
+            if (tf4h) {
+                const volConfirm = tf4h.volRatio > 1.2;
+                const notOverextended = tf4h.distFromEMA < 0.03; // Allows 3% away for 4H
+                if (tf4h.cross === 'BULLISH_CROSS' && volConfirm && tf4h.rsi > 50 && notOverextended) {
+                    signals_to_process.push({ type: 'LONG', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
+                } else if (tf4h.cross === 'BEARISH_CROSS' && volConfirm && tf4h.rsi < 50 && notOverextended) {
+                    signals_to_process.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
+                }
             }
 
-            // Strategy 2: 1H Trend + 15M Cross
+            // Strategy 2: 1H Trend Optimization
+            if (tf1h) {
+                const volConfirm = tf1h.volRatio > 1.2;
+                const notOverextended = tf1h.distFromEMA < 0.02; // 2% limit
+                if (tf1h.cross === 'BULLISH_CROSS' && volConfirm && tf1h.rsi > 50 && notOverextended) {
+                    signals_to_process.push({ type: 'LONG', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
+                } else if (tf1h.cross === 'BEARISH_CROSS' && volConfirm && tf1h.rsi < 50 && notOverextended) {
+                    signals_to_process.push({ type: 'SHORT', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
+                }
+            }
+
+            // Strategy 3: 1H Trend + 15M Cross
             if (tf1h && tf15m) {
                 const volConfirm = tf15m.volRatio > 1.2;
-                const notOverextended = tf15m.distFromSMA < 0.015;
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && !tf15m.isExtremeVol && notOverextended) {
+                const notOverextended = tf15m.distFromEMA < 0.012; // Stricter entry
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && tf15m.rsi < 70 && !tf15m.isExtremeVol && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && !tf15m.isExtremeVol && notOverextended) {
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && tf15m.rsi > 45 && !tf15m.isExtremeVol && notOverextended) {
                     signals_to_process.push({ type: 'SHORT', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
                 }
             }
@@ -705,9 +760,9 @@ Deno.serve(async (req) => {
             if (tf1h && tf15m && tf1m_scalp && tf1m_safe) {
                 const tf15mTrend = tf15m.close > tf15m.sma20 ? 'BULLISH' : 'BEARISH';
 
-                // School 1: Scalping (MA5/13)
-                const scalpVol = tf1m_scalp.volRatio > 1.5; // Increased vol requirement for noise
-                const scalpDist = tf1m_scalp.distFromSMA < 0.008; // Stricter
+                // School 1: Scalping (EMA5/13)
+                const scalpVol = tf1m_scalp.volRatio > 1.5;
+                const scalpDist = tf1m_scalp.distFromEMA < 0.007; // Very strict to avoid peak-entry
 
                 if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 50 && tf1m_scalp.rsi < 80 && !tf1m_scalp.isExtremeVol && scalpDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
@@ -715,9 +770,9 @@ Deno.serve(async (req) => {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
                 }
 
-                // School 2: Safe Mode (MA12/26)
+                // School 2: Safe Mode (EMA12/26)
                 const safeVol = tf1m_safe.volRatio > 1.3;
-                const safeDist = tf1m_safe.distFromSMA < 0.006;
+                const safeDist = tf1m_safe.distFromEMA < 0.005; // Strict
                 if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
                 } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
