@@ -24,7 +24,7 @@ export const RegisterPage: React.FC = () => {
                 .from('user_registrations')
                 .insert([{
                     email,
-                    password_hash: password, // In production, hash this client-side or handle in Edge Function
+                    password_hash: password,
                     tx_code: generatedCode,
                     payment_status: 'pending'
                 }]);
@@ -37,6 +37,25 @@ export const RegisterPage: React.FC = () => {
             setLoading(false);
         }
     };
+
+    // Polling logic for status check
+    React.useEffect(() => {
+        let interval: any;
+        if (step === 2 && email) {
+            interval = setInterval(async () => {
+                const { data } = await supabase
+                    .from('user_registrations')
+                    .select('payment_status')
+                    .eq('email', email)
+                    .single();
+
+                if (data?.payment_status === 'completed') {
+                    setStep(3);
+                }
+            }, 3000); // Check every 3s
+        }
+        return () => clearInterval(interval);
+    }, [step, email]);
 
     return (
         <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center p-4">

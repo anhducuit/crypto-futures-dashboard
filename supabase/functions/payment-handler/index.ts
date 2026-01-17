@@ -18,21 +18,37 @@ serve(async (req) => {
         );
 
         const body = await req.json();
-        console.log("PAYMENT WEBHOOK RECEIVED:", body);
+        console.log("PAYMENT WEBHOOK RECEIVED:", JSON.stringify(body));
 
-        // LOGIC MATCHING (Example for SePay/Casso webhook)
-        // SePay sends: { content: "REG-1234 ...", transferAmount: 250000, ... }
-        const description = body.content || body.description || "";
-        const amount = body.transferAmount || body.amount || 0;
+        // 1. Get transaction info from multiple possible fields
+        const content = body.content || "";
+        const description = body.description || "";
+        const code = body.code || "";
+        const subAccount = body.subAccount || "";
 
-        // 1. Find the registration by tx_code in the description
-        const txMatch = description.match(/REG-\d{4}/);
+        // Combine all text fields to search for the code
+        const fullText = `${content} ${description} ${code} ${subAccount}`;
+        console.log("Full searching text:", fullText);
+
+        // Dynamic regex to find REG-xxxx or REGxxxx or just xxxx
+        const txMatch = fullText.match(/REG-?\d+/);
         if (!txMatch) {
-            return new Response(JSON.stringify({ error: "No REG code found" }), { status: 400 });
+            console.error("No REG code found in payload");
+            return new Response(JSON.stringify({ error: "No REG code found", payload: body }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
-        const txCode = txMatch[0];
+        let txCode = txMatch[0];
+        // Ensure format is REG-xxxx for DB query (in case it came as REGxxxx)
+        if (txCode.startsWith('REG') && !txCode.includes('-')) {
+            txCode = txCode.replace('REG', 'REG-');
+        }
 
+        console.log("Searching for txCode:", txCode);
+
+        // 2. Find registration
         const { data: reg, error: fetchError } = await supabaseClient
             .from('user_registrations')
             .select('*')
@@ -41,16 +57,22 @@ serve(async (req) => {
             .single();
 
         if (fetchError || !reg) {
-            return new Response(JSON.stringify({ error: "Registration not found or already paid" }), { status: 404 });
+            console.error("Registration not found or already paid:", txCode, fetchError);
+            return new Response(JSON.stringify({ error: "Registration not found", txCode }), {
+                status: 404,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
         }
 
-        // 2. Mark as completed
-        await supabaseClient
+        // 3. Update status
+        const { error: updateError } = await supabaseClient
             .from('user_registrations')
             .update({ payment_status: 'completed' })
             .eq('id', reg.id);
 
-        // 3. Create actual Supabase Auth user
+        if (updateError) console.error("Update status error:", updateError);
+
+        // 4. Create Auth User
         const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
             email: reg.email,
             password: reg.password_hash,
@@ -59,16 +81,18 @@ serve(async (req) => {
 
         if (authError) {
             console.error("AUTH CREATION ERROR:", authError);
+        } else {
+            console.log("Auth user created successfully:", reg.email);
         }
 
-        // 4. Send Telegram Notification to Owner
+        // 5. Notifications
         const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
         const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
         const adminEmail = "anhduc541996@gmail.com";
-
-        const msg = `💰 **THANH TOÁN THÀNH CÔNG**\n\n👤 User: ${reg.email}\n💵 Số tiền: ${amount}đ\n🔑 Mã: ${txCode}\n🚀 Trạng thái: **Đã cấp tài khoản tự động**. Bạn không cần làm gì thêm.`;
+        const amount = body.transferAmount || body.amount || 0;
 
         if (botToken && chatId) {
+            const msg = `💰 **THANH TOÁN THÀNH CÔNG**\n\n👤 User: ${reg.email}\n💵 Số tiền: ${amount}đ\n🔑 Mã: ${txCode}\n🚀 Trạng thái: **Đã cấp tài khoản tự động**.`;
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -76,29 +100,25 @@ serve(async (req) => {
             });
         }
 
-        // 5. Send Email via Resend (To Admin & User)
         const resendKey = Deno.env.get('RESEND_API_KEY');
         if (resendKey) {
-            await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${resendKey}`
-                },
-                body: JSON.stringify({
-                    from: 'Anh Duc Trader <system@trading.anhduc.pro>',
-                    to: [adminEmail, reg.email],
-                    subject: `[KÍCH HOẠT] Tài khoản ${reg.email} đã được mở`,
-                    html: `
-                        <h1>Thanh toán thành công!</h1>
-                        <p>Chào <b>${reg.email}</b>,</p>
-                        <p>Hệ thống đã nhận được khoản thanh toán cho mã <b>${txCode}</b>.</p>
-                        <p>Tài khoản của bạn đã được kích hoạt thành công. Bạn có thể đăng nhập ngay bây giờ.</p>
-                        <hr/>
-                        <p><i>Thông báo tự động từ Hệ thống Anh Duc Trader</i></p>
-                    `
-                })
-            });
+            try {
+                await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${resendKey}`
+                    },
+                    body: JSON.stringify({
+                        from: 'Anh Duc Trader <system@trading.anhduc.pro>',
+                        to: [adminEmail, reg.email],
+                        subject: `[KÍCH HOẠT] Tài khoản ${reg.email} đã được mở`,
+                        html: `<h1>Thanh toán thành công!</h1><p>Tài khoản <b>${reg.email}</b> đã được kích hoạt mã <b>${txCode}</b>.</p>`
+                    })
+                });
+            } catch (e) {
+                console.error("Resend error:", e);
+            }
         }
 
         return new Response(JSON.stringify({ success: true, email: reg.email }), {
@@ -106,6 +126,7 @@ serve(async (req) => {
         });
 
     } catch (err: any) {
+        console.error("GLOBAL ERROR:", err);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
