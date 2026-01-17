@@ -62,7 +62,13 @@ export const TradeAnalytics: React.FC = () => {
             if (data) {
 
                 // Calculate Stats
-                const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {};
+                const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {
+                    'BTCUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'ETHUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'SOLUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'BNBUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'XRPUSDT': { wins: 0, losses: 0, tfMap: {} }
+                };
                 let totalWin = 0, totalLoss = 0;
 
                 data.forEach(t => {
