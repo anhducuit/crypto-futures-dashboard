@@ -175,10 +175,10 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                         className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
                     >
                         <option value="All">All</option>
-                        <option value="1 Phút">1m</option>
-                        <option value="15 Phút">15m</option>
-                        <option value="1 Giờ">1h</option>
-                        <option value="4 Giờ">4h</option>
+                        <option value="1m">1m</option>
+                        <option value="15m">15m</option>
+                        <option value="1h">1h</option>
+                        <option value="4h">4h</option>
                     </select>
 
                     <select
