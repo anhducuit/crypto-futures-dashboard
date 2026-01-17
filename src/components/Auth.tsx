@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShieldCheck, Mail, Lock, LogIn, Zap, DollarSign, Dog, Wallet, Bitcoin, TrendingUp, TrendingDown, Coins } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, LogIn, Zap, DollarSign, Dog, Wallet, Bitcoin, TrendingUp, TrendingDown, Coins, BarChart3 } from 'lucide-react';
 
 interface Bubble {
     id: number;
@@ -255,13 +255,20 @@ export const Auth: React.FC = () => {
                         <p className="text-[10px] text-slate-500 italic">
                             Chỉ dành cho tài khoản được cấp quyền.
                         </p>
-                        <div className="border-t border-white/5 pt-3">
+                        <div className="border-t border-white/5 pt-3 space-y-3">
                             <a
                                 href="/register"
                                 className="text-xs font-bold text-[var(--color-golden)] hover:underline flex items-center justify-center gap-1"
                             >
                                 <Zap size={14} />
                                 CHƯA CÓ TÀI KHOẢN? ĐĂNG KÝ NGAY
+                            </a>
+                            <a
+                                href="/intro"
+                                className="text-[10px] font-bold text-slate-400 hover:text-white flex items-center justify-center gap-1.5 uppercase tracking-widest mt-2"
+                            >
+                                <BarChart3 size={12} className="text-[var(--color-golden)]" />
+                                Xem giới thiệu tính năng hệ thống
                             </a>
                         </div>
                     </div>

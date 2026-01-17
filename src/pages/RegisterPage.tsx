@@ -69,7 +69,16 @@ export const RegisterPage: React.FC = () => {
                     <h1 className="text-2xl font-black text-white tracking-tighter uppercase italic">
                         Kích hoạt Tài khoản <span className="text-[var(--color-golden)]">PRO</span>
                     </h1>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">Bạn cần thanh toán phí duy trì hệ thống là 10$ (~250.000đ)</p>
+                    <div className="mt-3 inline-flex flex-col items-center">
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 line-through text-base font-bold">10$</span>
+                            <span className="text-[var(--color-golden)] text-2xl font-black">5$</span>
+                        </div>
+                        <span className="text-[9px] font-black text-red-400 uppercase tracking-widest bg-red-400/10 px-3 py-1 rounded-full mt-1 border border-red-400/20">
+                            Ưu đãi giảm 50% tháng đầu tiên
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">~125.000đ DUY TRÌ HỆ THỐNG</p>
                 </div>
 
                 <div className="p-8">
@@ -122,7 +131,7 @@ export const RegisterPage: React.FC = () => {
                         <div className="text-center space-y-6">
                             <div className="bg-white p-4 rounded-2xl inline-block mx-auto shadow-2xl">
                                 <img
-                                    src={`https://img.vietqr.io/image/MB-208999999999-compact2.png?amount=250000&addInfo=${txCode}&accountName=TRAN%20ANH%20DUC`}
+                                    src={`https://img.vietqr.io/image/MB-208999999999-compact2.png?amount=125000&addInfo=${txCode}&accountName=TRAN%20ANH%20DUC`}
                                     alt="VietQR Thanh Toán"
                                     className="w-64 h-auto rounded-lg"
                                 />

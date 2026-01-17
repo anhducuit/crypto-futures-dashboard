@@ -26,6 +26,7 @@ import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
 import { TradeMonitor } from './components/TradeMonitor';
 import { RegisterPage } from './pages/RegisterPage';
+import IntroPage from './pages/IntroPage';
 import './index.css';
 
 function App() {
@@ -97,6 +98,9 @@ function App() {
   if (!session) {
     // Basic routing logic for Login/Register without full React Router
     const path = window.location.pathname;
+    if (path === '/intro') {
+      return <IntroPage />;
+    }
     if (path === '/register') {
       return <RegisterPage />;
     }
