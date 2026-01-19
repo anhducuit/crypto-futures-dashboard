@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AreaChart, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { RefreshCw, Zap, TrendingUp, TrendingDown, CheckCircle2, Activity, Info, BarChart3, Clock, ArrowRight, AreaChart, PieChart, ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNumber } from '../utils/calculations';
 
@@ -35,6 +35,14 @@ export const MarketAnomaliesPanel: React.FC = () => {
         avgTime: 0
     });
 
+    const [analytics, setAnalytics] = useState<{
+        byTimeframe: Record<string, { total: number, rate: number }>,
+        byType: Record<string, { total: number, rate: number }>,
+        bestCoins: { symbol: string, rate: number }[]
+    } | null>(null);
+
+    const [showAnalytics, setShowAnalytics] = useState(false);
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -63,28 +71,66 @@ export const MarketAnomaliesPanel: React.FC = () => {
                 setAnomalies(data as Anomaly[]);
                 if (count !== null) setTotalCount(count);
 
-                // Calculate Stats (only for the current view or fetch all for accurate stats?)
-                // Actually, stats should probably be overall, but let's stick to visible/recent for now or fetch a separate summary.
+                // Quick view stats
                 const recovered = data.filter(a => a.status === 'RECOVERED');
                 const total = data.filter(a => a.status !== 'TRACKING').length;
-
                 let avgTime = 0;
                 if (recovered.length > 0) {
                     const times = recovered.map(a => {
                         const start = new Date(a.created_at).getTime();
                         const end = new Date(a.recovered_at!).getTime();
-                        return (end - start) / (1000 * 60); // minutes
+                        return (end - start) / (1000 * 60);
                     });
                     avgTime = times.reduce((a, b) => a + b, 0) / times.length;
                 }
 
                 setStats({
                     total: count || 0,
-                    recovered: recovered.length, // This is just for current page, maybe fine for now
+                    recovered: recovered.length,
                     rate: total > 0 ? (recovered.length / total) * 100 : 0,
                     avgTime
                 });
             }
+
+            // Fetch Global Analytics (ignore filters for this)
+            const { data: allData } = await supabase
+                .from('market_anomalies')
+                .select('timeframe, status, anomaly_type, symbol')
+                .neq('status', 'TRACKING');
+
+            if (allData) {
+                const tfMap: Record<string, { total: number, rec: number }> = {};
+                const typeMap: Record<string, { total: number, rec: number }> = {};
+                const coinMap: Record<string, { total: number, rec: number }> = {};
+
+                allData.forEach(a => {
+                    // By Timeframe
+                    if (!tfMap[a.timeframe]) tfMap[a.timeframe] = { total: 0, rec: 0 };
+                    tfMap[a.timeframe].total++;
+                    if (a.status === 'RECOVERED') tfMap[a.timeframe].rec++;
+
+                    // By Type
+                    if (!typeMap[a.anomaly_type]) typeMap[a.anomaly_type] = { total: 0, rec: 0 };
+                    typeMap[a.anomaly_type].total++;
+                    if (a.status === 'RECOVERED') typeMap[a.anomaly_type].rec++;
+
+                    // By Coin
+                    if (!coinMap[a.symbol]) coinMap[a.symbol] = { total: 0, rec: 0 };
+                    coinMap[a.symbol].total++;
+                    if (a.status === 'RECOVERED') coinMap[a.symbol].rec++;
+                });
+
+                const analyticsData = {
+                    byTimeframe: Object.fromEntries(Object.entries(tfMap).map(([k, v]) => [k, { total: v.total, rate: (v.rec / v.total) * 100 }])),
+                    byType: Object.fromEntries(Object.entries(typeMap).map(([k, v]) => [k, { total: v.total, rate: (v.rec / v.total) * 100 }])),
+                    bestCoins: Object.entries(coinMap)
+                        .map(([k, v]) => ({ symbol: k, rate: (v.rec / v.total) * 100 }))
+                        .sort((a, b) => b.rate - a.rate)
+                        .slice(0, 3)
+                };
+                setAnalytics(analyticsData);
+            }
+
         } catch (e) {
             console.error('Error fetching anomalies:', e);
         } finally {
@@ -94,7 +140,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 30000); // 30s refresh
+        const interval = setInterval(fetchData, 60000); // 1 minute
         return () => clearInterval(interval);
     }, [filter, statusFilter, symbolFilter, page]);
 
@@ -124,30 +170,42 @@ export const MarketAnomaliesPanel: React.FC = () => {
         <div className="card h-full flex flex-col">
             <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
-                    <AreaChart size={16} className="text-pink-500" />
-                    BOT THEO DÕI BIẾN ĐỘNG ĐỘT BIẾN
+                    <Zap size={16} className="text-pink-500" />
+                    BOT THEO DÕI BIẾN ĐỘNG
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowAnalytics(!showAnalytics)}
+                        className={`p-1.5 rounded transition-colors ${showAnalytics ? 'bg-pink-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-pink-400'}`}
+                        title="Báo cáo chuyên sâu"
+                    >
+                        <BarChart3 size={14} />
+                    </button>
+                    <button
+                        onClick={() => {
+                            setPage(0);
+                            fetchData();
+                        }}
+                        disabled={loading}
+                        className="p-1.5 bg-slate-800 text-slate-400 rounded hover:text-pink-400 disabled:opacity-50"
+                        title="Tải lại"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                    </button>
+
                     <button
                         onClick={async () => {
                             try {
-                                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tnmagcatofooeshzdhac.supabase.co';
-                                const res = await fetch(`${supabaseUrl}/functions/v1/check-trades?action=backfill-anomalies`, { method: 'POST' });
-                                if (res.ok) {
-                                    alert('Đang kích hoạt nạp dữ liệu 24h... Vui lòng đợi 30s.');
-                                    setTimeout(fetchData, 15000);
-                                } else {
-                                    alert('Kích hoạt thất bại. Thử lại sau.');
-                                }
+                                const response = await fetch(`${supabase.storage.from('check-trades').getPublicUrl('check-trades').data.publicUrl}?action=backfill-anomalies`);
+                                if (response.ok) fetchData();
                             } catch (e) {
-                                console.error(e);
-                                alert('Lỗi kết nối bộ lọc (CORS). Bot vẫn đang chạy ngầm.');
+                                console.error('Backfill error:', e);
                             }
                         }}
-                        className="p-1 hover:text-pink-400 text-slate-500 transition-colors"
-                        title="Nạp dữ liệu 24h"
+                        className="p-1.5 bg-slate-800 text-slate-400 rounded hover:text-pink-400"
+                        title="Nạp dữ liệu cũ"
                     >
-                        <Activity size={12} />
+                        <Activity size={14} />
                     </button>
 
                     <select
@@ -197,6 +255,74 @@ export const MarketAnomaliesPanel: React.FC = () => {
                 </div>
             </div>
 
+            {/* Analytics Section */}
+            {showAnalytics && analytics && (
+                <div className="mx-4 mb-4 p-4 bg-slate-900/50 rounded-lg border border-pink-500/20 grid grid-cols-3 gap-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <Clock size={12} className="text-pink-400" />
+                            Hiệu suất theo khung giờ
+                        </div>
+                        <div className="space-y-4">
+                            {['1m', '15m', '1h', '4h'].map(tf => (
+                                <div key={tf} className="space-y-1">
+                                    <div className="flex justify-between text-[10px]">
+                                        <span className="text-slate-300 font-mono uppercase">{tf}</span>
+                                        <span className="text-pink-400 font-bold">{analytics.byTimeframe[tf]?.rate.toFixed(1) || 0}%</span>
+                                    </div>
+                                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-pink-500 rounded-full transition-all duration-1000"
+                                            style={{ width: `${analytics.byTimeframe[tf]?.rate || 0}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="text-[8px] text-slate-500 text-right">Mẫu: {analytics.byTimeframe[tf]?.total || 0}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <PieChart size={12} className="text-pink-400" />
+                            Đặc tính biến động
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {['PUMP', 'DUMP'].map(type => (
+                                <div key={type} className="p-3 bg-slate-800/40 rounded border border-slate-700/50">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className={`text-[10px] font-black ${type === 'PUMP' ? 'text-green-500' : 'text-red-500'}`}>{type}</span>
+                                        <span className="text-xs font-bold text-white">{analytics.byType[type]?.rate.toFixed(1) || 0}% hồi</span>
+                                    </div>
+                                    <div className="text-[9px] text-slate-500">Tín hiệu ghi nhận: {analytics.byType[type]?.total || 0}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4 p-2 bg-blue-500/5 rounded border border-blue-500/10 text-[9px] text-blue-300 leading-relaxed italic">
+                            💡 Mẹo: Khung giờ có mẫu (N) > 50 sẽ có độ tin cậy thống kê cao nhất.
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <TrendingUp size={12} className="text-pink-400" />
+                            Top Coin hồi tốt nhất
+                        </div>
+                        <div className="space-y-2">
+                            {analytics.bestCoins.map((coin, i) => (
+                                <div key={coin.symbol} className="flex items-center justify-between p-2 bg-slate-800/40 rounded border border-slate-700/30">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-black text-slate-500 italic">#{i + 1}</span>
+                                        <span className="text-[10px] font-bold text-slate-200">{coin.symbol.replace('USDT', '')}</span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-green-400">{coin.rate.toFixed(1)}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Quick Stats */}
             <div className="p-4 grid grid-cols-3 gap-2 border-b border-white/5 bg-white/5">
                 <div className="text-center p-2 bg-black/20 rounded-xl border border-white/5">
@@ -226,9 +352,9 @@ export const MarketAnomaliesPanel: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {loading && anomalies.length === 0 ? (
-                            <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-gray-500 italic">Đang tải dữ liệu...</td></tr>
+                            <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-gray-500 italic">Đang tải dữ liệu...</td></tr>
                         ) : anomalies.length === 0 ? (
-                            <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-gray-500 italic">Chưa phát hiện biến động đột biến nào...</td></tr>
+                            <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-gray-500 italic">Chưa phát hiện biến động đột biến nào...</td></tr>
                         ) : (
                             anomalies.map((a) => (
                                 <tr key={a.id} className="hover:bg-white/5 transition-colors group">
