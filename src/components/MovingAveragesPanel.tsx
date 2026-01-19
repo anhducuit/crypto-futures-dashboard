@@ -97,16 +97,10 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                             key={tf.timeframe}
                             onClick={() => {
                                 if (onTimeframeChange) {
-                                    if (tf.timeframe === '1m') onTimeframeChange('1');
-                                    else if (tf.timeframe === '15m') onTimeframeChange('15');
-                                    else if (tf.timeframe === '1h') onTimeframeChange('60');
-                                    else if (tf.timeframe === '4h') onTimeframeChange('240');
+                                    onTimeframeChange(tf.timeframe);
                                 }
                             }}
-                            className={`p-3 rounded-lg space-y-2 cursor-pointer transition-all ${(activeTimeframe === '1' && tf.timeframe === '1m') ||
-                                (activeTimeframe === '15' && tf.timeframe === '15m') ||
-                                (activeTimeframe === '60' && tf.timeframe === '1h') ||
-                                (activeTimeframe === '240' && tf.timeframe === '4h')
+                            className={`p-3 rounded-lg space-y-2 cursor-pointer transition-all ${activeTimeframe === tf.timeframe
                                 ? 'bg-[var(--color-golden)]/20 border border-[var(--color-golden)]/50'
                                 : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-tertiary)]/80 border border-transparent'
                                 }`}
