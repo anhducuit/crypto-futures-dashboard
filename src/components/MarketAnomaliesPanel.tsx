@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AreaChart, AlertTriangle, CheckCircle2, Filter, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { AreaChart, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNumber } from '../utils/calculations';
 
@@ -22,6 +22,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
     const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [stats, setStats] = useState({
         total: 0,
         recovered: 0,
@@ -40,6 +41,10 @@ export const MarketAnomaliesPanel: React.FC = () => {
 
             if (filter !== 'all') {
                 query = query.eq('timeframe', filter);
+            }
+
+            if (statusFilter !== 'all') {
+                query = query.eq('status', statusFilter);
             }
 
             const { data, error } = await query;
@@ -80,7 +85,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
         fetchData();
         const interval = setInterval(fetchData, 30000); // 30s refresh
         return () => clearInterval(interval);
-    }, [filter]);
+    }, [filter, statusFilter]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -96,23 +101,33 @@ export const MarketAnomaliesPanel: React.FC = () => {
 
     return (
         <div className="card h-full flex flex-col">
-            <div className="card-header flex justify-between items-center">
+            <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <AreaChart size={16} className="text-pink-500" />
                     BOT THEO DÕI BIẾN ĐỘNG ĐỘT BIẾN
                 </div>
-                <div className="flex items-center gap-2">
-                    <Filter size={14} className="text-gray-500" />
+                <div className="flex gap-2">
                     <select
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
-                        className="bg-black/20 border-none text-[10px] font-bold text-gray-400 focus:ring-0 rounded cursor-pointer"
+                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
                     >
                         <option value="all">TẤT CẢ TF</option>
-                        <option value="1m">1 PHÚT</option>
-                        <option value="15m">15 PHÚT</option>
-                        <option value="1h">1 GIỜ</option>
-                        <option value="4h">4 GIỜ</option>
+                        <option value="1m">1m</option>
+                        <option value="15m">15m</option>
+                        <option value="1h">1h</option>
+                        <option value="4h">4h</option>
+                    </select>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
+                    >
+                        <option value="all">Trạng Thái</option>
+                        <option value="RECOVERED">ĐÃ HỒI PHỤC</option>
+                        <option value="TRACKING">ĐANG THEO DÕI</option>
+                        <option value="EXPIRED">HẾT HẠN</option>
                     </select>
                 </div>
             </div>

@@ -304,48 +304,48 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                 </div>
                             </div>
                         ))}
-
-                        {/* Pagination Controls */}
-                        {totalPages > 1 && (
-                            <div className="flex justify-center items-center gap-1 py-4 border-t border-slate-800 mt-4">
-                                <button
-                                    onClick={() => setPage(1)}
-                                    disabled={page === 1}
-                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                                >
-                                    Đầu
-                                </button>
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                                >
-                                    Trước
-                                </button>
-
-                                <span className="px-3 text-[10px] text-slate-400">
-                                    Trang <span className="text-[var(--color-golden)] font-bold">{page}</span> / {totalPages}
-                                </span>
-
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                                >
-                                    Sau
-                                </button>
-                                <button
-                                    onClick={() => setPage(totalPages)}
-                                    disabled={page === totalPages}
-                                    className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                                >
-                                    Cuối
-                                </button>
-                            </div>
-                        )}
                     </>
                 )}
             </div>
+
+            {/* Fixed Pagination Bar */}
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-1 py-4 border-t border-slate-800 bg-[var(--color-bg-secondary)] mt-auto px-4">
+                    <button
+                        onClick={() => setPage(1)}
+                        disabled={page === 1}
+                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                    >
+                        Đầu
+                    </button>
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                    >
+                        Trước
+                    </button>
+
+                    <span className="px-3 text-[10px] text-slate-400">
+                        Trang <span className="text-[var(--color-golden)] font-bold">{page}</span> / {totalPages}
+                    </span>
+
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                    >
+                        Sau
+                    </button>
+                    <button
+                        onClick={() => setPage(totalPages)}
+                        disabled={page === totalPages}
+                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
+                    >
+                        Cuối
+                    </button>
+                </div>
+            )}
 
             {sharingItem && (
                 <PnLShareModal

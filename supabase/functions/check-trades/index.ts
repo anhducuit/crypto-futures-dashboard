@@ -1,8 +1,8 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /* --- CONSTANTS & CONFIG --- */
-const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
+const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
+const BACKFILL_START_TIME = new Date('2026-01-19T00:00:00Z').getTime();
 const TF_CONFIG = [
     { interval: '1m', limit: 300 },
     { interval: '15m', limit: 100 },
@@ -364,9 +364,9 @@ Deno.serve(async (req) => {
             const supabase = createClient(supabaseUrl, supabaseKey)
 
             const { data: settings } = await supabase.from('bot_settings').select('value').eq('key', 'target_symbols').single();
-            const SYMBOLS_TO_SCAN = settings?.value || DEFAULT_SYMBOLS;
+            const SYMBOLS_SCAN_FOR_SUMMARY = settings?.value || DEFAULT_SYMBOLS;
 
-            for (const symbol of SYMBOLS_TO_SCAN) {
+            for (const symbol of SYMBOLS_SCAN_FOR_SUMMARY) {
                 const analyses: any = {};
                 try {
                     for (const cfg of TF_CONFIG) {
@@ -539,20 +539,99 @@ Deno.serve(async (req) => {
         const newSignals: any[] = [];
 
         /* =========================================
+       ACTION: BACKFILL ANOMALIES (Jan 19)
+       ========================================= */
+        if (action === 'backfill-anomalies') {
+            console.log("Starting Backfill for Jan 19...");
+            for (const symbol of DEFAULT_SYMBOLS) {
+                for (const tf of ['1m', '15m', '1h', '4h']) {
+                    try {
+                        const res = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${tf}&limit=1000`);
+                        const klines = await res.json();
+
+                        for (let i = 1; i < klines.length; i++) {
+                            const [time, open, high, low, close] = klines[i].map(Number);
+                            if (time < BACKFILL_START_TIME) continue;
+
+                            const prevClose = Number(klines[i - 1][4]);
+                            const change = ((close - prevClose) / prevClose) * 100;
+                            const absChange = Math.abs(change);
+
+                            const thresholds: Record<string, number> = { '1m': 1.0, '15m': 1.8, '1h': 3.5, '4h': 6.0 };
+                            if (absChange >= (thresholds[tf] || 2.0)) {
+                                const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
+
+                                // Check if already exists
+                                const { data: exist } = await supabase
+                                    .from('market_anomalies')
+                                    .select('id')
+                                    .eq('symbol', symbol)
+                                    .eq('timeframe', tf)
+                                    .eq('created_at', new Date(time).toISOString())
+                                    .limit(1);
+
+                                if (!exist || exist.length === 0) {
+                                    // Find recovery in subsequent klines
+                                    let status = 'EXPIRED';
+                                    let recoveredAt = null;
+                                    for (let j = i + 1; j < klines.length; j++) {
+                                        const nextClose = Number(klines[j][4]);
+                                        const nextTime = Number(klines[j][0]);
+                                        if (anomalyType === 'DUMP' && nextClose >= open) {
+                                            status = 'RECOVERED';
+                                            recoveredAt = new Date(nextTime).toISOString();
+                                            break;
+                                        }
+                                        if (anomalyType === 'PUMP' && nextClose <= open) {
+                                            status = 'RECOVERED';
+                                            recoveredAt = new Date(nextTime).toISOString();
+                                            break;
+                                        }
+                                        // 48h limit for recovery
+                                        if ((nextTime - time) > 48 * 60 * 60 * 1000) break;
+                                    }
+
+                                    await supabase.from('market_anomalies').insert({
+                                        symbol,
+                                        timeframe: tf,
+                                        anomaly_type: anomalyType,
+                                        start_price: open,
+                                        extreme_price: anomalyType === 'PUMP' ? high : low,
+                                        recovery_price: open,
+                                        change_percent: change,
+                                        status,
+                                        recovered_at: recoveredAt,
+                                        created_at: new Date(time).toISOString()
+                                    });
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Backfill error for ${symbol} ${tf}:`, e.message);
+                    }
+                }
+            }
+            return new Response(JSON.stringify({ message: "Backfill completed" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        /* =========================================
            PART 0: FETCH BOT SETTINGS
            ========================================= */
         const { data: settingsData } = await supabase
             .from('bot_settings')
             .select('key, value')
-            .in('key', ['allowed_timeframes', 'subscriber_ids', 'target_symbols']);
+            .in('key', ['allowed_timeframes', 'subscriber_ids', 'target_symbols', 'enable_bot']);
 
-        const settingsMap = Object.fromEntries(settingsData?.map(s => [s.key, s.value]) || []);
+        const settings = (settingsData || []).reduce((acc: any, s) => {
+            acc[s.key] = s.value;
+            return acc;
+        }, {});
 
-        const SYMBOLS_TO_SCAN: string[] = settingsMap['target_symbols'] || DEFAULT_SYMBOLS;
+        const SYMBOLS_TO_SCAN: string[] = settings['target_symbols'] || DEFAULT_SYMBOLS;
 
         // Default allow all if not set
-        const allowedTimeframes: string[] = settingsMap['allowed_timeframes'] || ['1m', '15m', '1h', '4h'];
-        const subscriberIds: (string | number)[] = settingsMap['subscriber_ids'] || [];
+        const allowedTimeframes: string[] = settings['allowed_timeframes'] || ['1m', '15m', '1h', '4h'];
+        const subscriberIds: (string | number)[] = settings['subscriber_ids'] || [];
 
         /* =========================================
            PART 1: AUDIT EXISTING TRADES

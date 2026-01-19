@@ -87,10 +87,10 @@ function App() {
   // Automated Signal Generator (Disabled - Logic moved to Server)
   useSignalGenerator();
 
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+
 
   if (authLoading) {
     return (
@@ -232,10 +232,10 @@ function App() {
             <div className="flex-shrink-0">
               <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
-            <div className="h-[500px] flex-shrink-0">
+            <div className="h-[600px] flex-shrink-0">
               <HistoryDashboard symbol={symbol} />
             </div>
-            <div className="h-[400px]">
+            <div className="h-[500px]">
               <MarketAnomaliesPanel />
             </div>
           </div>
