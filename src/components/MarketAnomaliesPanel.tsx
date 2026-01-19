@@ -140,16 +140,21 @@ export const MarketAnomaliesPanel: React.FC = () => {
                         <Activity size={12} />
                     </button>
 
-                    <input
-                        type="text"
-                        placeholder="Tìm Coin..."
+                    <select
                         value={symbolFilter}
                         onChange={(e) => {
                             setSymbolFilter(e.target.value);
                             setPage(0);
                         }}
-                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none w-20 focus:border-pink-500 transition-colors uppercase"
-                    />
+                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none w-24 focus:border-pink-500 transition-colors uppercase"
+                    >
+                        <option value="">TẤT CẢ COIN</option>
+                        <option value="BTCUSDT">BTC</option>
+                        <option value="ETHUSDT">ETH</option>
+                        <option value="SOLUSDT">SOL</option>
+                        <option value="XRPUSDT">XRP</option>
+                        <option value="BNBUSDT">BNB</option>
+                    </select>
 
                     <select
                         value={filter}
