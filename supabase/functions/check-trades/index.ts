@@ -298,7 +298,7 @@ async function sendTelegram(message: string, replyToId?: number, chatIds?: (stri
             }
 
             return data;
-        } catch (e) {
+        } catch (e: any) {
             console.error(`sendTelegram Error for ${chatId}:`, e.message);
             return { ok: false };
         }
@@ -550,6 +550,7 @@ Deno.serve(async (req) => {
        ========================================= */
         if (action === 'backfill-anomalies') {
             console.log("Starting Backfill for Jan 19...");
+            let insertedCount = 0;
             for (const symbol of DEFAULT_SYMBOLS) {
                 for (const tf of ['1m', '15m', '1h', '4h']) {
                     try {
@@ -558,15 +559,32 @@ Deno.serve(async (req) => {
 
                         for (let i = 1; i < klines.length; i++) {
                             const [time, open, high, low, close] = klines[i].map(Number);
+                            const change = ((close - Number(klines[i - 1][1])) / Number(klines[i - 1][1])) * 100; // Use open of prev as baseline for window change
                             if (time < BACKFILL_START_TIME) continue;
 
                             const prevClose = Number(klines[i - 1][4]);
-                            const change = ((close - prevClose) / prevClose) * 100;
-                            const absChange = Math.abs(change);
+                            const candleChange = ((close - prevClose) / prevClose) * 100;
+                            const absChange = Math.abs(candleChange);
 
+                            // Calculate ATR for backfill (Dynamic)
                             const thresholds: Record<string, number> = { '1m': 0.5, '15m': 1.0, '1h': 2.5, '4h': 4.5 };
-                            if (absChange >= (thresholds[tf] || 1.5)) {
-                                const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
+                            const prevKlines = klines.slice(Math.max(0, i - 20), i);
+                            let atr = 0;
+                            if (prevKlines.length >= 10) {
+                                const trs = prevKlines.map((pk: any, idx: number) => {
+                                    if (idx === 0) return 0;
+                                    const h = Number(pk[2]);
+                                    const l = Number(pk[3]);
+                                    const pc = Number(prevKlines[idx - 1][4]);
+                                    return Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+                                });
+                                atr = trs.reduce((a: number, b: number) => a + b, 0) / trs.length;
+                            }
+
+                            const isRelativeAnomaly = atr > 0 && (Math.abs(high - low) > atr * 3.5 || Math.abs(close - open) > atr * 2.5);
+
+                            if (absChange >= (thresholds[tf] || 1.5) || isRelativeAnomaly) {
+                                const anomalyType = candleChange > 0 ? 'PUMP' : 'DUMP';
 
                                 // Check if already exists
                                 const { data: exist } = await supabase
@@ -598,27 +616,33 @@ Deno.serve(async (req) => {
                                         if ((nextTime - time) > 48 * 60 * 60 * 1000) break;
                                     }
 
-                                    await supabase.from('market_anomalies').insert({
+                                    const { error: insErr } = await supabase.from('market_anomalies').insert({
                                         symbol,
                                         timeframe: tf,
                                         anomaly_type: anomalyType,
                                         start_price: open,
                                         extreme_price: anomalyType === 'PUMP' ? high : low,
                                         recovery_price: open,
-                                        change_percent: change,
+                                        change_percent: candleChange,
                                         status,
                                         recovered_at: recoveredAt,
                                         created_at: new Date(time).toISOString()
                                     });
+                                    if (!insErr) {
+                                        insertedCount++;
+                                        console.log(`[BACKFILL] Inserted ${symbol} ${tf} ${anomalyType} @ ${new Date(time).toISOString()}`);
+                                    } else {
+                                        console.error(`[BACKFILL] Error inserting:`, insErr.message);
+                                    }
                                 }
                             }
                         }
                     } catch (e) {
-                        console.error(`Backfill error for ${symbol} ${tf}:`, e.message);
+                        console.error(`Backfill error for ${symbol} ${tf}:`, (e as any).message);
                     }
                 }
             }
-            return new Response(JSON.stringify({ message: "Backfill completed" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ message: "Backfill completed", insertedCount }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         /* =========================================
@@ -958,23 +982,30 @@ Deno.serve(async (req) => {
                     };
                 }
 
-                // --- NEW: MARKET ANOMALY DETECTION ---
+                // --- NEW: MARKET ANOMALY DETECTION (Dynamic & Static) ---
                 const openPrice = parseFloat(data[data.length - 1][1]);
                 const highPrice = parseFloat(data[data.length - 1][2]);
                 const lowPrice = parseFloat(data[data.length - 1][3]);
                 const closePrice = parseFloat(data[data.length - 1][4]);
+                const candleRange = highPrice - lowPrice;
+                const candleBody = Math.abs(closePrice - openPrice);
 
                 const change = ((closePrice - openPrice) / openPrice) * 100;
                 const absChange = Math.abs(change);
 
-                // Define thresholds per TF
-                const thresholds: Record<string, number> = { '1m': 0.6, '15m': 1.0, '1h': 2.0, '4h': 4.0 };
+                // 1. Static Thresholds
+                const thresholds: Record<string, number> = { '1m': 0.5, '15m': 1.0, '1h': 2.5, '4h': 4.5 };
                 const currentThreshold = thresholds[cfg.interval] || 1.5;
 
-                if (absChange >= currentThreshold) {
-                    const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
+                // 2. Relative Volatility (ATR-based)
+                const atr = calculateATR(highs, lows, closes, 20);
+                const isRelativeAnomaly = atr > 0 && (candleRange > atr * 3.5 || candleBody > atr * 2.5);
 
-                    // Avoid duplicate anomalies for the same timeframe and recent time (last 10 mins)
+                if (absChange >= currentThreshold || isRelativeAnomaly) {
+                    const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
+                    const triggerType = absChange >= currentThreshold ? 'STATIC' : 'RELATIVE';
+
+                    // Avoid duplicate anomalies
                     const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
                     const { data: recent } = await supabase
                         .from('market_anomalies')
@@ -997,7 +1028,7 @@ Deno.serve(async (req) => {
                             rsi_at_anomaly: rsi,
                             status: 'TRACKING'
                         });
-                        console.log(`[ANOMALY DETECTED] ${symbol} ${cfg.interval} ${anomalyType} ${change.toFixed(2)}%`);
+                        console.log(`[ANOMALY DETECTED] ${symbol} ${cfg.interval} ${anomalyType} (${triggerType}) ${change.toFixed(2)}% (Body/ATR: ${(candleBody / atr).toFixed(1)}x)`);
                     }
                 }
             }
@@ -1054,12 +1085,12 @@ Deno.serve(async (req) => {
                 const tf15mTrend = tf15m.close > tf15m.sma20 ? 'BULLISH' : 'BEARISH';
 
                 // School 1: Scalping (EMA5/13)
-                const scalpVol = tf1m_scalp.volRatio > 1.5;
-                const scalpDist = tf1m_scalp.distFromEMA < 0.005; // Even stricter (0.5% limit)
+                const scalpVol = tf1m_scalp.volRatio > 1.2; // Relaxed from 1.5
+                const scalpDist = tf1m_scalp.distFromEMA < 0.008; // Relaxed from 0.005
 
-                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 50 && tf1m_scalp.rsi < 80 && !tf1m_scalp.isExtremeVol && scalpDist) {
+                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 45 && tf1m_scalp.rsi < 85 && scalpDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 50 && tf1m_scalp.rsi > 20 && !tf1m_scalp.isExtremeVol && scalpDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 55 && tf1m_scalp.rsi > 15 && scalpDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
                 }
 
@@ -1193,7 +1224,7 @@ Deno.serve(async (req) => {
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-    } catch (err) {
+    } catch (err: any) {
         console.error('Main Handler Error:', err.message);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
