@@ -215,6 +215,13 @@ function App() {
 
             {/* EMA Trend Bias */}
             <EMATrendBias trends={emaTrends} />
+
+            {/* Advanced Analysis Panels */}
+            <div className="grid grid-cols-1 gap-4">
+              <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            </div>
           </div>
 
           {/* Center - TradingView Chart & History */}
@@ -243,13 +250,6 @@ function App() {
 
             {/* Win/Loss Analytics Report */}
             <TradeAnalytics />
-
-            {/* Advanced Analysis Panels */}
-            <div className="grid grid-cols-1 gap-4">
-              <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-              <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-              <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-            </div>
           </div>
         </div>
       </main>
