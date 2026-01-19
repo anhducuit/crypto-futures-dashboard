@@ -1220,6 +1220,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({
             success: true,
             server_time: new Date().toISOString(),
+            action_processed: action || 'none',
             new_signals: newSignals
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
