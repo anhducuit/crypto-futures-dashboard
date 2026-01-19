@@ -23,6 +23,10 @@ export const MarketAnomaliesPanel: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [page, setPage] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
+    const pageSize = 50;
+
     const [stats, setStats] = useState({
         total: 0,
         recovered: 0,
@@ -35,9 +39,9 @@ export const MarketAnomaliesPanel: React.FC = () => {
         try {
             let query = supabase
                 .from('market_anomalies')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .range(page * pageSize, (page + 1) * pageSize - 1);
 
             if (filter !== 'all') {
                 query = query.eq('timeframe', filter);
@@ -47,13 +51,15 @@ export const MarketAnomaliesPanel: React.FC = () => {
                 query = query.eq('status', statusFilter);
             }
 
-            const { data, error } = await query;
+            const { data, error, count } = await query;
             if (error) throw error;
 
             if (data) {
                 setAnomalies(data as Anomaly[]);
+                if (count !== null) setTotalCount(count);
 
-                // Calculate Stats
+                // Calculate Stats (only for the current view or fetch all for accurate stats?)
+                // Actually, stats should probably be overall, but let's stick to visible/recent for now or fetch a separate summary.
                 const recovered = data.filter(a => a.status === 'RECOVERED');
                 const total = data.filter(a => a.status !== 'TRACKING').length;
 
@@ -68,8 +74,8 @@ export const MarketAnomaliesPanel: React.FC = () => {
                 }
 
                 setStats({
-                    total,
-                    recovered: recovered.length,
+                    total: count || 0,
+                    recovered: recovered.length, // This is just for current page, maybe fine for now
                     rate: total > 0 ? (recovered.length / total) * 100 : 0,
                     avgTime
                 });
@@ -85,7 +91,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
         fetchData();
         const interval = setInterval(fetchData, 30000); // 30s refresh
         return () => clearInterval(interval);
-    }, [filter, statusFilter]);
+    }, [filter, statusFilter, page]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -94,7 +100,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
             case 'TRACKING':
                 return <span className="flex items-center gap-1 text-[10px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase animate-pulse"><Activity size={10} /> ĐANG THEO DÕI</span>;
             case 'EXPIRED':
-                return <span className="flex items-center gap-1 text-[10px] font-black text-gray-500 bg-gray-500/10 px-2 py-0.5 rounded-full uppercase">HẾT HẠN</span>;
+                return <span className="flex items-center gap-1 text-[10px] font-black text-gray-500 bg-gray-500/10 px-2 py-0.5 rounded-full uppercase">KHÔNG HỒI PHỤC</span>;
             default: return null;
         }
     };
@@ -130,7 +136,10 @@ export const MarketAnomaliesPanel: React.FC = () => {
                     </button>
                     <select
                         value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
+                        onChange={(e) => {
+                            setFilter(e.target.value);
+                            setPage(0);
+                        }}
                         className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
                     >
                         <option value="all">TẤT CẢ TF</option>
@@ -142,13 +151,16 @@ export const MarketAnomaliesPanel: React.FC = () => {
 
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => {
+                            setStatusFilter(e.target.value);
+                            setPage(0);
+                        }}
                         className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
                     >
                         <option value="all">Trạng Thái</option>
                         <option value="RECOVERED">ĐÃ HỒI PHỤC</option>
                         <option value="TRACKING">ĐANG THEO DÕI</option>
-                        <option value="EXPIRED">HẾT HẠN</option>
+                        <option value="EXPIRED">KHÔNG HỒI PHỤC</option>
                     </select>
                 </div>
             </div>
@@ -217,7 +229,26 @@ export const MarketAnomaliesPanel: React.FC = () => {
                 </table>
             </div>
 
-            <div className="p-3 border-t border-white/5 bg-black/20">
+            <div className="p-3 border-t border-white/5 bg-black/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setPage(Math.max(0, page - 1))}
+                        disabled={page === 0 || loading}
+                        className="px-3 py-1 bg-white/5 hover:bg-white/10 disabled:opacity-30 rounded text-[10px] font-bold text-gray-400 border border-white/5 transition-colors"
+                    >
+                        TRƯỚC
+                    </button>
+                    <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                        TRANG {page + 1} / {Math.ceil(totalCount / pageSize) || 1}
+                    </span>
+                    <button
+                        onClick={() => setPage(page + 1)}
+                        disabled={anomalies.length < pageSize || (page + 1) * pageSize >= totalCount || loading}
+                        className="px-3 py-1 bg-white/5 hover:bg-white/10 disabled:opacity-30 rounded text-[10px] font-bold text-gray-400 border border-white/5 transition-colors"
+                    >
+                        TIẾP
+                    </button>
+                </div>
                 <p className="text-[9px] text-gray-500 flex items-center gap-2 italic">
                     <AlertTriangle size={12} className="text-yellow-500" />
                     Dữ liệu dựa trên Mean Reversion thực tế từ sàn Binance 24/7.

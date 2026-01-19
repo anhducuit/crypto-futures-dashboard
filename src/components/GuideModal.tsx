@@ -275,7 +275,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 <ul className="space-y-2 text-[11px] text-gray-400">
                                     <li className="flex gap-2">
                                         <b className="text-white min-w-[60px]">Mẫu (N):</b>
-                                        <span>Số lượng biến động được ghi nhận trong phiên làm việc.</span>
+                                        <span>Số lượng biến động được ghi nhận trong hệ thống.</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <b className="text-white min-w-[60px]">Tỉ lệ hồi:</b>
@@ -296,10 +296,20 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                         <p className="text-[10px] text-gray-400"><b>Đã hồi phục:</b> Giá đã quay lại mức giá trước khi xảy ra biến động.</p>
                                     </div>
                                     <div className="flex items-start gap-2">
-                                        <div className="mt-1 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[9px] font-black rounded uppercase">EXPIRED</div>
-                                        <p className="text-[10px] text-gray-400"><b>Hết hạn:</b> Sau 48 giờ giá vẫn không hồi lại điểm cũ.</p>
+                                        <div className="mt-1 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[9px] font-black rounded uppercase">KHÔNG HỒI PHỤC</div>
+                                        <p className="text-[10px] text-gray-400"><b>Không hồi:</b> Giá không quay lại điểm cũ sau một thời gian theo dõi quy định.</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                                <p className="text-[10px] font-bold text-cyan-400 mb-2 uppercase">THỜI GIAN THEO DÕI</p>
+                                <ul className="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
+                                    <li>• Khung 1m: <b>1 giờ</b></li>
+                                    <li>• Khung 15m: <b>4 giờ</b></li>
+                                    <li>• Khung 1h: <b>24 giờ</b></li>
+                                    <li>• Khung 4h: <b>48 giờ</b></li>
+                                </ul>
                             </div>
                         </div>
 

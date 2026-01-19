@@ -599,6 +599,11 @@ Deno.serve(async (req) => {
                                     // Find recovery in subsequent klines
                                     let status = 'EXPIRED';
                                     let recoveredAt = null;
+
+                                    // Dynamic expiry threshold based on timeframe
+                                    const expiryThresholds: Record<string, number> = { '1m': 1, '15m': 4, '1h': 24, '4h': 48 };
+                                    const expiryHrs = expiryThresholds[tf] || 48;
+
                                     for (let j = i + 1; j < klines.length; j++) {
                                         const nextClose = Number(klines[j][4]);
                                         const nextTime = Number(klines[j][0]);
@@ -612,8 +617,8 @@ Deno.serve(async (req) => {
                                             recoveredAt = new Date(nextTime).toISOString();
                                             break;
                                         }
-                                        // 48h limit for recovery
-                                        if ((nextTime - time) > 48 * 60 * 60 * 1000) break;
+                                        // Dynamic limit for recovery
+                                        if ((nextTime - time) > expiryHrs * 60 * 60 * 1000) break;
                                     }
 
                                     const { error: insErr } = await supabase.from('market_anomalies').insert({
@@ -783,9 +788,12 @@ Deno.serve(async (req) => {
                             recovered_at: new Date().toISOString()
                         }).eq('id', anomaly.id);
                     } else {
-                        // Mark as EXPIRED after 48 hours
+                        // Dynamic expiry thresholds: 1m:1h, 15m:4h, 1h:24h, 4h:48h
+                        const expiryThresholds: Record<string, number> = { '1m': 1, '15m': 4, '1h': 24, '4h': 48 };
+                        const expiryHrs = expiryThresholds[anomaly.timeframe] || 48;
+
                         const ageHrs = (new Date().getTime() - new Date(anomaly.created_at).getTime()) / (1000 * 60 * 60);
-                        if (ageHrs > 48) {
+                        if (ageHrs > expiryHrs) {
                             await supabase.from('market_anomalies').update({ status: 'EXPIRED' }).eq('id', anomaly.id);
                         }
                     }
