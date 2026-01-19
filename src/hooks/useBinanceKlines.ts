@@ -123,10 +123,10 @@ function findSwingPoints(klines: KlineData[]): { swingHigh: number; swingLow: nu
 }
 
 const timeframeConfigs = [
-    { interval: '1', label: '1 Phút', limit: 500 },
-    { interval: '15', label: '15 Phút', limit: 500 },
-    { interval: '60', label: '1 Giờ', limit: 500 },
-    { interval: '240', label: '4 Giờ', limit: 500 },
+    { interval: '1m', label: '1 Phút', limit: 500, tvKey: '1' },
+    { interval: '15m', label: '15 Phút', limit: 500, tvKey: '15' },
+    { interval: '1h', label: '1 Giờ', limit: 500, tvKey: '60' },
+    { interval: '4h', label: '4 Giờ', limit: 500, tvKey: '240' },
 ];
 
 export function useBinanceKlines(symbol: string) {
@@ -196,8 +196,8 @@ export function useBinanceKlines(symbol: string) {
                     let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral';
                     let ma50, ma200, ma12, ma26, cross;
 
-                    // 240 (4H) Analysis (MA50/MA200)
-                    if (tf.interval === '240') {
+                    // Analysis based on interval
+                    if (tf.interval === '4h') {
                         const ma50Arr = calculateSMAArray(closes, 50);
                         const ma200Arr = calculateSMAArray(closes, 200);
 
@@ -214,11 +214,11 @@ export function useBinanceKlines(symbol: string) {
                         if (ma50 > ma200) trend = 'bullish';
                         else if (ma50 < ma200) trend = 'bearish';
 
-                    } else if (tf.interval === '60') {
+                    } else if (tf.interval === '1h') {
                         ma50 = calculateSMA(closes, 50);
                         if (ma20 > ma50) trend = 'bullish';
                         else if (ma20 < ma50) trend = 'bearish';
-                    } else if (tf.interval === '15') {
+                    } else if (tf.interval === '15m') {
                         const ma12Array = calculateSMAArray(closes, 12);
                         const ma26Array = calculateSMAArray(closes, 26);
                         ma12 = ma12Array[ma12Array.length - 1];
@@ -232,7 +232,7 @@ export function useBinanceKlines(symbol: string) {
 
                         trend = ma12 > ma26 ? 'bullish' : 'bearish';
                     } else {
-                        const threshold = tf.interval === '1' ? 0.05 : 0.5;
+                        const threshold = tf.interval === '1m' ? 0.05 : 0.5;
                         if (priceGap > threshold) trend = 'bullish';
                         else if (priceGap < -threshold) trend = 'bearish';
                     }
@@ -249,7 +249,7 @@ export function useBinanceKlines(symbol: string) {
                     }
 
                     results.push({
-                        timeframe: tf.interval,
+                        timeframe: (tf as any).tvKey,
                         label: tf.label,
                         ma20, ma50, ma200, ma12, ma26, cross: cross as any,
                         currentPrice,
