@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Zap, TrendingUp, TrendingDown, CheckCircle2, Activity, Info, BarChart3, Clock, ArrowRight, AreaChart, PieChart, ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Zap, TrendingUp, CheckCircle2, Activity, BarChart3, Clock, PieChart, ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNumber } from '../utils/calculations';
 
