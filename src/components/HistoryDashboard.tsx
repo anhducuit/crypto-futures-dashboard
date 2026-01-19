@@ -33,7 +33,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [sharingItem, setSharingItem] = useState<HistoryItem | null>(null);
-    const ITEMS_PER_PAGE = 20;
+    const ITEMS_PER_PAGE = 15;
 
     const fetchHistory = async () => {
         try {

@@ -219,7 +219,7 @@ function App() {
             <div className="flex-shrink-0">
               <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
-            <div className="flex-1 min-h-[400px]">
+            <div className="h-[650px] lg:flex-1">
               <HistoryDashboard symbol={symbol} />
             </div>
           </div>
