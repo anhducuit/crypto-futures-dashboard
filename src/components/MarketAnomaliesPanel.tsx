@@ -23,6 +23,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [symbolFilter, setSymbolFilter] = useState<string>('');
     const [page, setPage] = useState(0);
     const [totalCount, setTotalCount] = useState(0);
     const pageSize = 50;
@@ -49,6 +50,10 @@ export const MarketAnomaliesPanel: React.FC = () => {
 
             if (statusFilter !== 'all') {
                 query = query.eq('status', statusFilter);
+            }
+
+            if (symbolFilter.trim() !== '') {
+                query = query.ilike('symbol', `%${symbolFilter.trim().toUpperCase()}%`);
             }
 
             const { data, error, count } = await query;
@@ -91,7 +96,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
         fetchData();
         const interval = setInterval(fetchData, 30000); // 30s refresh
         return () => clearInterval(interval);
-    }, [filter, statusFilter, page]);
+    }, [filter, statusFilter, symbolFilter, page]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -134,6 +139,18 @@ export const MarketAnomaliesPanel: React.FC = () => {
                     >
                         <Activity size={12} />
                     </button>
+
+                    <input
+                        type="text"
+                        placeholder="Tìm Coin..."
+                        value={symbolFilter}
+                        onChange={(e) => {
+                            setSymbolFilter(e.target.value);
+                            setPage(0);
+                        }}
+                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none w-20 focus:border-pink-500 transition-colors uppercase"
+                    />
+
                     <select
                         value={filter}
                         onChange={(e) => {

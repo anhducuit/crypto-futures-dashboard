@@ -281,6 +281,10 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                         <b className="text-white min-w-[60px]">Tỉ lệ hồi:</b>
                                         <span>Xác suất giá quay về điểm bắt đầu sau khi đột biến (Mean Reversion).</span>
                                     </li>
+                                    <li className="flex gap-2">
+                                        <b className="text-white min-w-[60px]">Trung bình hồi:</b>
+                                        <span>Thời gian trung bình (phút) để giá phục hồi hoàn toàn. Số càng nhỏ nghĩa là giá hồi càng nhanh.</span>
+                                    </li>
                                 </ul>
                             </div>
 
