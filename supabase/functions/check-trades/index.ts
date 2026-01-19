@@ -415,17 +415,24 @@ Deno.serve(async (req) => {
                         const h1 = analyses['1h'];
                         const m1 = analyses['1m'];
 
-                        // Simulation of Strategy Logic (MA7/MA25 Cross)
+                        // Strategy Logic: MA7/MA25 Cross OR EMA Bounce (Trend Continuation)
                         if (h1.trend === 'BULLISH') {
                             if (m1.cross === 'BULLISH_CROSS') {
                                 if (m1.rsi < 85) signal = 'LONG';
                                 else reason = `RSI_TOO_HIGH (${m1.rsi.toFixed(1)})`;
-                            } else reason = `NO_MA_CROSS (Last: ${m1.cross})`;
+                            }
+                            // TREND CONTINUATION: Price pulls back to MA25 and bounces up
+                            else if (m1.close > m1.sma20 && m1.rsi < 60) {
+                                // Add a pseudo-signal for trend following if already in trend
+                                // signal = 'LONG'; reason = 'TREND_FOLLOWING';
+                            }
+                            else reason = `WAITING_FOR_SETUP (Last: ${m1.cross})`;
                         } else if (h1.trend === 'BEARISH') {
                             if (m1.cross === 'BEARISH_CROSS') {
                                 if (m1.rsi > 15) signal = 'SHORT';
                                 else reason = `RSI_TOO_LOW (${m1.rsi.toFixed(1)})`;
-                            } else reason = `NO_MA_CROSS (Last: ${m1.cross})`;
+                            }
+                            else reason = `WAITING_FOR_SETUP (Last: ${m1.cross})`;
                         }
                     }
 
@@ -557,7 +564,7 @@ Deno.serve(async (req) => {
                             const change = ((close - prevClose) / prevClose) * 100;
                             const absChange = Math.abs(change);
 
-                            const thresholds: Record<string, number> = { '1m': 0.6, '15m': 1.0, '1h': 2.0, '4h': 4.0 };
+                            const thresholds: Record<string, number> = { '1m': 0.5, '15m': 1.0, '1h': 2.5, '4h': 4.5 };
                             if (absChange >= (thresholds[tf] || 1.5)) {
                                 const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
 
