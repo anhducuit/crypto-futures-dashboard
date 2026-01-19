@@ -68,15 +68,6 @@ function calculateSMAArray(data: number[], period: number): number[] {
 }
 
 
-function calculateEMAArray(data: number[], period: number): number[] {
-    if (data.length < period) return [];
-    const k = 2 / (period + 1);
-    const result = [data[0]];
-    for (let i = 1; i < data.length; i++) {
-        result.push(data[i] * k + result[i - 1] * (1 - k));
-    }
-    return result;
-}
 
 function calculateIchimoku(highs: number[], lows: number[]) {
     const calculatePeak = (h: number[], l: number[], period: number) => {

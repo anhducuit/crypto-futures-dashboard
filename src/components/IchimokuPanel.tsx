@@ -16,7 +16,6 @@ export function IchimokuPanel({ data, activeTimeframe }: IchimokuPanelProps) {
     const price = tfData?.currentPrice || 0;
     const isAboveCloud = price > spanA && price > spanB;
     const isBelowCloud = price < spanA && price < spanB;
-    const isInsideCloud = !isAboveCloud && !isBelowCloud;
 
     const getStatusColor = () => {
         if (isAboveCloud) return 'text-green-500';
