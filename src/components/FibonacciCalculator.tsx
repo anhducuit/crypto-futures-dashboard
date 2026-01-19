@@ -19,7 +19,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
     maLoading,
     onRefreshMA
 }) => {
-    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('15m');
+    const [selectedTimeframe, setSelectedTimeframe] = useState<string>('15');
     const [swingHigh, setSwingHigh] = useState<string>('');
     const [swingLow, setSwingLow] = useState<string>('');
     const [levels, setLevels] = useState<Array<{ ratio: number; price: number; isGoldenZone: boolean }>>([]);
@@ -62,10 +62,10 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
         : '';
 
     const timeframeOptions = [
-        { value: '1m', label: '1 Phút' },
-        { value: '15m', label: '15 Phút' },
-        { value: '1h', label: '1 Giờ' },
-        { value: '4h', label: '4 Giờ' },
+        { value: '1', label: '1 Phút' },
+        { value: '15', label: '15 Phút' },
+        { value: '60', label: '1 Giờ' },
+        { value: '240', label: '4 Giờ' },
     ];
 
     const handleTimeframeChange = (tf: string) => {
@@ -78,7 +78,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
             <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <Layers size={16} className="text-[var(--color-golden)]" />
-                    FIBONACCI RETRACEMENT
+                    BỘ TÍNH FIBONACCI
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -174,7 +174,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                            Swing High ($)
+                            Đỉnh (High) ($)
                         </label>
                         <input
                             type="number"
@@ -187,7 +187,7 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                     <div>
                         <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                            Swing Low ($)
+                            Đáy (Low) ($)
                         </label>
                         <input
                             type="number"
@@ -233,11 +233,11 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-2 bg-[var(--color-bg-primary)] rounded">
-                                        <div className="text-xs text-green-400 mb-1">Swing High</div>
+                                        <div className="text-xs text-green-400 mb-1">Giá Đỉnh</div>
                                         <div className="font-mono font-bold text-white text-xs">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
                                     </div>
                                     <div className="p-2 bg-[var(--color-bg-primary)] rounded">
-                                        <div className="text-xs text-red-400 mb-1">Swing Low</div>
+                                        <div className="text-xs text-red-400 mb-1">Giá Đáy</div>
                                         <div className="font-mono font-bold text-white text-xs">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
                                     </div>
                                 </div>
@@ -261,8 +261,8 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                             {levels.length > 0 ? (
                                 <>
                                     <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)] mb-2">
-                                        <span>RET LEVEL</span>
-                                        <span>GIÁ DỰ KIẾN ($)</span>
+                                        <span>TỶ LỆ (RATIO)</span>
+                                        <span>MỨC GIÁ ($)</span>
                                     </div>
                                     {levels.map((level) => (
                                         <div
