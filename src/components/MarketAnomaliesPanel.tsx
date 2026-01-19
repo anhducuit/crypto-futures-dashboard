@@ -299,7 +299,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
                             ))}
                         </div>
                         <div className="mt-4 p-2 bg-blue-500/5 rounded border border-blue-500/10 text-[9px] text-blue-300 leading-relaxed italic">
-                            💡 Mẹo: Khung giờ có mẫu (N) > 50 sẽ có độ tin cậy thống kê cao nhất.
+                            💡 Mẹo: Khung giờ có mẫu (N) &gt; 50 sẽ có độ tin cậy thống kê cao nhất.
                         </div>
                     </div>
 
