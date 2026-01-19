@@ -18,6 +18,7 @@ interface HistoryItem {
     volume_ratio: number;
     target_price?: number;
     stop_loss?: number;
+    trade_id?: string;
 }
 
 interface HistoryDashboardProps {
@@ -232,6 +233,11 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                             {item.signal === 'NEUTRAL' ? 'SIDELINES' : item.signal}
                                         </span>
                                         <span className="text-xs font-bold">{item.symbol}</span>
+                                        {item.trade_id && (
+                                            <span className="text-[10px] font-mono text-[var(--color-golden)] bg-[var(--color-golden)]/10 px-1 rounded">
+                                                #{item.trade_id}
+                                            </span>
+                                        )}
                                         <span className="text-[10px] text-slate-500">{item.timeframe}</span>
                                     </div>
                                     <div className="flex items-center gap-2">

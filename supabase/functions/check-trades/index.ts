@@ -800,7 +800,11 @@ Deno.serve(async (req) => {
                     const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
                     const timestampStr = `${vnNow.getUTCHours().toString().padStart(2, '0')}:${vnNow.getUTCMinutes().toString().padStart(2, '0')} ${vnNow.getUTCDate().toString().padStart(2, '0')}/${(vnNow.getUTCMonth() + 1).toString().padStart(2, '0')}`;
 
+                    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const tradeId = `${symbol.replace('USDT', '')}-${shortId}`;
+
                     const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
+                        `ID: <b>#${tradeId}</b>\n` +
                         `Trường phái: <b>${sig.name}</b>\n` +
                         `Type: <b>${sig.type}</b>\n` +
                         `Entry: $${sig.ref.close}\n` +
@@ -821,7 +825,8 @@ Deno.serve(async (req) => {
                         status: 'PENDING',
                         telegram_message_id: msgId,
                         rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
-                        strategy_name: sig.name
+                        strategy_name: sig.name,
+                        trade_id: tradeId
                     };
 
                     const { error: insertError } = await supabase.from('trading_history').insert(signalData);
@@ -830,7 +835,8 @@ Deno.serve(async (req) => {
                     if (insertError && insertError.message.includes('column') && insertError.message.includes('not exist')) {
                         console.warn('New columns missing in DB, falling back to basic insert');
                         delete signalData.strategy_name;
-                        delete signalData.pnl_reason; // just in case
+                        delete signalData.pnl_reason;
+                        delete signalData.trade_id;
                         await supabase.from('trading_history').insert(signalData);
                     }
 
