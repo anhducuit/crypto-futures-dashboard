@@ -154,11 +154,9 @@ export function useBinanceKlines(symbol: string) {
 
         try {
             const normalizedSymbol = targetSymbol.toUpperCase().replace('/', '');
-            const results: MAAnalysis['timeframes'] = [];
 
-            for (const tf of timeframeConfigs) {
-                if (currentSymbolRef.current !== targetSymbol) return;
-
+            // Fetch all timeframes in parallel
+            const fetchPromises = timeframeConfigs.map(async (tf) => {
                 try {
                     const response = await fetch(
                         `https://fapi.binance.com/fapi/v1/klines?symbol=${normalizedSymbol}&interval=${tf.interval}&limit=${tf.limit}`,
@@ -167,7 +165,7 @@ export function useBinanceKlines(symbol: string) {
 
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
                     const rawData = await response.json();
-                    if (!Array.isArray(rawData) || rawData.length === 0) continue;
+                    if (!Array.isArray(rawData) || rawData.length === 0) return null;
 
                     const klines: KlineData[] = rawData.map((k: any[]) => ({
                         openTime: k[0],
@@ -200,20 +198,15 @@ export function useBinanceKlines(symbol: string) {
                     if (tf.interval === '4h') {
                         const ma50Arr = calculateSMAArray(closes, 50);
                         const ma200Arr = calculateSMAArray(closes, 200);
-
                         ma50 = ma50Arr[ma50Arr.length - 1];
                         ma200 = ma200Arr[ma200Arr.length - 1];
-
                         const ma50_prev = ma50Arr[ma50Arr.length - 2];
                         const ma200_prev = ma200Arr[ma200Arr.length - 2];
-
                         cross = 'none';
                         if (ma50_prev <= ma200_prev && ma50 > ma200) cross = 'golden_cross';
                         else if (ma50_prev >= ma200_prev && ma50 < ma200) cross = 'death_cross';
-
                         if (ma50 > ma200) trend = 'bullish';
                         else if (ma50 < ma200) trend = 'bearish';
-
                     } else if (tf.interval === '1h') {
                         ma50 = calculateSMA(closes, 50);
                         if (ma20 > ma50) trend = 'bullish';
@@ -225,11 +218,9 @@ export function useBinanceKlines(symbol: string) {
                         ma26 = ma26Array[ma26Array.length - 1];
                         const ma12_prev = ma12Array[ma12Array.length - 2];
                         const ma26_prev = ma26Array[ma26Array.length - 2];
-
                         cross = 'none';
                         if (ma12_prev <= ma26_prev && ma12 > ma26) cross = 'bullish_cross';
                         else if (ma12_prev >= ma26_prev && ma12 < ma26) cross = 'bearish_cross';
-
                         trend = ma12 > ma26 ? 'bullish' : 'bearish';
                     } else {
                         const threshold = tf.interval === '1m' ? 0.05 : 0.5;
@@ -240,16 +231,18 @@ export function useBinanceKlines(symbol: string) {
                     const ichimoku = calculateIchimoku(highs, lows);
                     const pivots = calculatePivots(highs[highs.length - 2], lows[lows.length - 2], closes[closes.length - 2]);
 
-                    // RSI Divergence calculation (expensive, only if needed)
                     let divergence = 'none';
                     if (closes.length >= 50) {
                         const subRsi = [];
-                        for (let i = closes.length - 50; i <= closes.length; i++) subRsi.push(calculateRSI(closes.slice(0, i)));
+                        // Pre-calculate RSI only once for each needed point
+                        for (let i = closes.length - 50; i <= closes.length; i++) {
+                            subRsi.push(calculateRSI(closes.slice(0, i)));
+                        }
                         divergence = detectDivergence(closes.slice(-50), subRsi.slice(-50));
                     }
 
-                    results.push({
-                        timeframe: (tf as any).tvKey,
+                    return {
+                        timeframe: tf.tvKey,
                         label: tf.label,
                         ma20, ma50, ma200, ma12, ma26, cross: cross as any,
                         currentPrice,
@@ -264,16 +257,19 @@ export function useBinanceKlines(symbol: string) {
                         ichimoku,
                         pivots,
                         divergence
-                    });
-
+                    };
                 } catch (e: any) {
                     if (e.name !== 'AbortError') console.error(`Error fetching ${tf.interval}:`, e);
+                    return null;
                 }
-            }
+            });
+
+            const resultsRaw = await Promise.all(fetchPromises);
+            const results = resultsRaw.filter((r): r is NonNullable<typeof r> => r !== null);
 
             if (results.length === 0) {
                 setError(`Không tìm thấy dữ liệu cho ${normalizedSymbol}`);
-                setData(null);
+                // Don't clear data immediately if we have old data, unless it's a new symbol
                 return;
             }
 
@@ -286,10 +282,27 @@ export function useBinanceKlines(symbol: string) {
                 else if (h1.trend === 'bearish' && (m15.cross === 'bearish_cross' || m15.trend === 'bearish')) overallBias = 'short';
             }
 
-            setData({
-                timeframes: results,
-                overallBias,
-                confidence: 80
+            setData(prev => {
+                // If we are missing some timeframes in this update, merge with previous data
+                if (prev && results.length < timeframeConfigs.length) {
+                    const mergedTimeframes = [...prev.timeframes];
+                    results.forEach(newTf => {
+                        const idx = mergedTimeframes.findIndex(t => t.timeframe === newTf.timeframe);
+                        if (idx !== -1) mergedTimeframes[idx] = newTf;
+                        else mergedTimeframes.push(newTf);
+                    });
+                    return {
+                        ...prev,
+                        timeframes: mergedTimeframes,
+                        overallBias,
+                        confidence: 80
+                    };
+                }
+                return {
+                    timeframes: results,
+                    overallBias,
+                    confidence: 80
+                };
             });
             setError(null);
         } catch (e: any) {

@@ -35,7 +35,7 @@ export function IchimokuPanel({ data, activeTimeframe }: IchimokuPanelProps) {
             <div className="card-header flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
                 <div className="flex items-center gap-2">
                     <Cloud size={18} className="text-blue-400" />
-                    <span className="font-bold tracking-wider uppercase text-xs">Mây Ichimoku</span>
+                    <span className="font-bold tracking-wider uppercase text-xs">Mây Ichimoku ({activeTimeframe === '60' ? '1H' : activeTimeframe === '240' ? '4H' : activeTimeframe + 'm'})</span>
                 </div>
                 <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/5 ${getStatusColor()}`}>
                     {getStatusText()}

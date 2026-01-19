@@ -13,11 +13,11 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
     if (!maAnalysis) return null;
 
     // 2. Trend Analysis (1H: MA20 vs MA50) - Major Trend
-    const tf1h = maAnalysis.timeframes.find(t => t.timeframe === '1h');
+    const tf1h = maAnalysis.timeframes.find(t => t.timeframe === '60');
     const majorTrend: 'long' | 'short' | 'neutral' = tf1h?.trend === 'bullish' ? 'long' : tf1h?.trend === 'bearish' ? 'short' : 'neutral';
 
     // 3. Signal Trigger (15M: MA12 Cross MA26) - Entry
-    const tf15m = maAnalysis.timeframes.find(t => t.timeframe === '15m');
+    const tf15m = maAnalysis.timeframes.find(t => t.timeframe === '15');
     let signalTrigger: 'bullish' | 'bearish' | 'neutral' = 'neutral';
 
     if (tf15m?.cross === 'bullish_cross') signalTrigger = 'bullish';
@@ -26,9 +26,11 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
     else if (majorTrend === 'long' && tf15m?.trend === 'bullish') signalTrigger = 'neutral'; // 'neutral' but implicitly bullish context
 
     // 4. Filters
-    const isOverbought = (tf15m?.rsi || 50) > 75;
-    const isOversold = (tf15m?.rsi || 50) < 25;
-    const isStrongVolume = (tf15m?.volumeRatio || 1) > 1.5;
+    const rsi15m = tf15m?.rsi;
+    const isOverbought = rsi15m !== undefined && rsi15m > 75;
+    const isOversold = rsi15m !== undefined && rsi15m < 25;
+    const volRatio = tf15m?.volumeRatio;
+    const isStrongVolume = volRatio !== undefined && volRatio > 1.5;
 
     // 5. Final Recommendation
     let recommendation: 'long' | 'short' | 'wait' = 'wait';
@@ -161,16 +163,16 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
                         <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                             <Activity size={12} /> RSI (15m)
                         </div>
-                        <span className={`text-xs font-mono font-bold ${(tf15m?.rsi || 50) > 70 ? 'text-rose-400' : (tf15m?.rsi || 50) < 30 ? 'text-emerald-400' : 'text-slate-300'}`}>
-                            {(tf15m?.rsi || 50).toFixed(1)}
+                        <span className={`text-xs font-mono font-bold ${rsi15m !== undefined && rsi15m > 70 ? 'text-rose-400' : rsi15m !== undefined && rsi15m < 30 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                            {rsi15m !== undefined ? rsi15m.toFixed(1) : '--'}
                         </span>
                     </div>
                     <div className="flex-1 p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                             <BarChart3 size={12} /> Vol Ratio
                         </div>
-                        <span className={`text-xs font-mono font-bold ${(tf15m?.volumeRatio || 1) > 1.5 ? 'text-emerald-400' : (tf15m?.volumeRatio || 1) < 0.7 ? 'text-rose-400' : 'text-slate-300'}`}>
-                            {(tf15m?.volumeRatio || 1).toFixed(2)}x
+                        <span className={`text-xs font-mono font-bold ${volRatio !== undefined && volRatio > 1.5 ? 'text-emerald-400' : volRatio !== undefined && volRatio < 0.7 ? 'text-rose-400' : 'text-slate-300'}`}>
+                            {volRatio !== undefined ? `${volRatio.toFixed(2)}x` : '--'}
                         </span>
                     </div>
                 </div>

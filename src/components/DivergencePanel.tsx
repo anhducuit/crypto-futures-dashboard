@@ -19,7 +19,7 @@ export function DivergencePanel({ data, activeTimeframe }: DivergencePanelProps)
             <div className="card-header border-b border-[var(--color-border)] pb-3 mb-4">
                 <div className="flex items-center gap-2">
                     <Target size={18} className="text-purple-400" />
-                    <span className="font-bold tracking-wider uppercase text-xs">Phân tích Phân Kỳ</span>
+                    <span className="font-bold tracking-wider uppercase text-xs">Phân tích Phân Kỳ ({activeTimeframe === '60' ? '1H' : activeTimeframe === '240' ? '4H' : activeTimeframe + 'm'})</span>
                 </div>
             </div>
 

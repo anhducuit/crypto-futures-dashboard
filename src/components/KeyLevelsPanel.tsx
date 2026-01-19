@@ -37,7 +37,7 @@ export function KeyLevelsPanel({ data, activeTimeframe }: KeyLevelsPanelProps) {
             <div className="card-header flex items-center justify-between border-b border-[var(--color-border)] pb-3 mb-4">
                 <div className="flex items-center gap-2">
                     <Layers size={18} className="text-orange-400" />
-                    <span className="font-bold tracking-wider uppercase text-xs">Vùng Cản Quan Trọng</span>
+                    <span className="font-bold tracking-wider uppercase text-xs">Vùng Cản Quan Trọng ({activeTimeframe === '60' ? '1H' : activeTimeframe === '240' ? '4H' : activeTimeframe + 'm'})</span>
                 </div>
                 <Anchor size={14} className="text-[var(--color-text-secondary)] opacity-50" />
             </div>
