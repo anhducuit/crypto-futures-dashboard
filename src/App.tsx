@@ -26,6 +26,9 @@ import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
 import { TradeMonitor } from './components/TradeMonitor';
 import { RegisterPage } from './pages/RegisterPage';
+import { IchimokuPanel } from './components/IchimokuPanel';
+import { DivergencePanel } from './components/DivergencePanel';
+import { KeyLevelsPanel } from './components/KeyLevelsPanel';
 import IntroPage from './pages/IntroPage';
 import './index.css';
 
@@ -240,6 +243,13 @@ function App() {
 
             {/* Win/Loss Analytics Report */}
             <TradeAnalytics />
+
+            {/* Advanced Analysis Panels */}
+            <div className="grid grid-cols-1 gap-4">
+              <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            </div>
           </div>
         </div>
       </main>

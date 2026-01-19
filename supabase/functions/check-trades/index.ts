@@ -79,6 +79,112 @@ function calculateATR(highs: number[], lows: number[], closes: number[], period:
     return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
 }
 
+function calculateIchimoku(highs: number[], lows: number[]) {
+    const calculatePeak = (h: number[], l: number[], period: number) => {
+        const sliceH = h.slice(-period);
+        const sliceL = l.slice(-period);
+        return (Math.max(...sliceH) + Math.min(...sliceL)) / 2;
+    };
+
+    const tenkan = calculatePeak(highs, lows, 9);
+    const kijun = calculatePeak(highs, lows, 26);
+
+    // Senkou Span A (at current candle, calculated 26 candles ago)
+    const spanA_current = (calculatePeak(highs.slice(0, -26), lows.slice(0, -26), 9) + calculatePeak(highs.slice(0, -26), lows.slice(0, -26), 26)) / 2;
+
+    // Senkou Span B (at current candle, calculated from 52 periods 26 candles ago)
+    const spanB_current = calculatePeak(highs.slice(0, -26), lows.slice(0, -26), 52);
+
+    return { tenkan, kijun, spanA: spanA_current, spanB: spanB_current };
+}
+
+function detectRSIDivergence(prices: number[], rsi: number[]) {
+    // Basic peak/trough detection
+    const isPeak = (arr: number[], i: number) => arr[i] > arr[i - 1] && arr[i] > arr[i + 1];
+    const isTrough = (arr: number[], i: number) => arr[i] < arr[i - 1] && arr[i] < arr[i + 1];
+
+    const findLastTwoPeaks = (arr: number[]) => {
+        const peaks = [];
+        for (let i = arr.length - 2; i > 1 && peaks.length < 2; i--) {
+            if (isPeak(arr, i)) peaks.push({ val: arr[i], idx: i });
+        }
+        return peaks;
+    };
+
+    const findLastTwoTroughs = (arr: number[]) => {
+        const troughs = [];
+        for (let i = arr.length - 2; i > 1 && troughs.length < 2; i--) {
+            if (isTrough(arr, i)) troughs.push({ val: arr[i], idx: i });
+        }
+        return troughs;
+    };
+
+    const pricePeaks = findLastTwoPeaks(prices);
+    const rsiPeaks = findLastTwoPeaks(rsi);
+
+    const priceTroughs = findLastTwoTroughs(prices);
+    const rsiTroughs = findLastTwoTroughs(rsi);
+
+    let result = 'NONE';
+
+    // Bearish Divergence: Price higher peak, RSI lower peak
+    if (pricePeaks.length === 2 && rsiPeaks.length === 2) {
+        if (pricePeaks[0].val > pricePeaks[1].val && rsiPeaks[0].val < rsiPeaks[1].val) result = 'BEARISH';
+    }
+
+    // Bullish Divergence: Price lower trough, RSI higher trough
+    if (priceTroughs.length === 2 && rsiTroughs.length === 2) {
+        if (priceTroughs[0].val < priceTroughs[1].val && rsiTroughs[0].val > rsiTroughs[1].val) result = 'BULLISH';
+    }
+
+    return result; // Aligned with end of data
+}
+
+function calculatePivotPoints(high: number, low: number, close: number) {
+    const pivot = (high + low + close) / 3;
+    return {
+        pivot,
+        r1: (2 * pivot) - low,
+        r2: pivot + (high - low),
+        r3: high + 2 * (pivot - low),
+        s1: (2 * pivot) - high,
+        s2: pivot - (high - low),
+        s3: low - 2 * (high - pivot)
+    };
+}
+
+
+function detectPriceAction(opens: number[], highs: number[], lows: number[], closes: number[]) {
+    const i = closes.length - 1; // Current candle
+    const bodySize = Math.abs(closes[i] - opens[i]);
+    const candleRange = highs[i] - lows[i];
+    const upperShadow = highs[i] - Math.max(opens[i], closes[i]);
+    const lowerShadow = Math.min(opens[i], closes[i]) - lows[i];
+
+    // 1. PIN BAR detection
+    let pinBar = 'NONE';
+    if (candleRange > 0) {
+        // Bullish Pin Bar: Small body, long lower shadow
+        if (lowerShadow > bodySize * 2 && upperShadow < bodySize) pinBar = 'BULLISH';
+        // Bearish Pin Bar: Small body, long upper shadow
+        if (upperShadow > bodySize * 2 && lowerShadow < bodySize) pinBar = 'BEARISH';
+    }
+
+    // 2. ENGULFING detection
+    let engulfing = 'NONE';
+    if (i > 0) {
+        const prevBody = Math.abs(closes[i - 1] - opens[i - 1]);
+        const currBody = Math.abs(closes[i] - opens[i]);
+        if (currBody > prevBody) {
+            if (closes[i] > opens[i] && closes[i - 1] < opens[i - 1] && closes[i] > opens[i - 1] && opens[i] < closes[i - 1]) engulfing = 'BULLISH';
+            if (closes[i] < opens[i] && closes[i - 1] > opens[i - 1] && closes[i] < opens[i - 1] && opens[i] > closes[i - 1]) engulfing = 'BEARISH';
+        }
+    }
+
+    return { pinBar, engulfing };
+}
+
+
 function calculateDynamicTPSL(
     entryPrice: number,
     signal: 'LONG' | 'SHORT',
@@ -574,6 +680,17 @@ Deno.serve(async (req) => {
                 const volRatio = avgVol20 > 0 ? (currentVol / avgVol20) : 1;
                 const rsi = calculateRSI(closes);
 
+                // RSI Array for Divergence (last 50)
+                const rsiArr = [];
+                for (let i = Math.max(14, closes.length - 50); i <= closes.length; i++) {
+                    rsiArr.push(calculateRSI(closes.slice(0, i)));
+                }
+                const divergence = detectRSIDivergence(closes.slice(-50), rsiArr.slice(-50));
+
+                const ichimoku = calculateIchimoku(highs, lows);
+                const pivots = calculatePivotPoints(highs[highs.length - 2], lows[lows.length - 2], closes[closes.length - 2]); // Use previous full candle for pivots
+                const priceAction = detectPriceAction(data.map((x: any) => parseFloat(x[1])), highs, lows, closes);
+
                 // 4H Analysis (EMA20/50 Cross - More active than MA50/200)
                 if (cfg.interval === '4h') {
                     const ema20Arr = calculateEMAArray(closes, 20);
@@ -600,7 +717,8 @@ Deno.serve(async (req) => {
                             rsi, volRatio,
                             ema20: ema20_curr,
                             ema50: ema50_curr,
-                            atr, distFromEMA
+                            atr, distFromEMA,
+                            ichimoku, pivots, divergence, priceAction
                         };
                     }
                 }
@@ -629,7 +747,8 @@ Deno.serve(async (req) => {
                         close: currentClose,
                         rsi, volRatio, atr, distFromEMA,
                         swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows)
+                        swingLow: Math.min(...lows),
+                        ichimoku, pivots, divergence, priceAction
                     }
                 }
 
@@ -776,10 +895,59 @@ Deno.serve(async (req) => {
                 const safeDist = tf1m_safe.distFromEMA < 0.003; // Ultra strict for 1m safe (0.3% limit)
                 if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
+                } else if (tf1m_safe.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
                 }
             }
+
+            // --- STRATEGY 4: RSI DIVERGENCE (15M/1H) ---
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                if (tf.divergence === 'BULLISH' && tf.rsi < 40) {
+                    signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BULLISH (${tfName})` });
+                } else if (tf.divergence === 'BEARISH' && tf.rsi > 60) {
+                    signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BEARISH (${tfName})` });
+                }
+            });
+
+            // --- STRATEGY 5: ICHIMOKU CLOUD BREAK (1H/4H) ---
+            [tf1h, tf4h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '1h' : '4h';
+                const { tenkan, kijun, spanA, spanB } = tf.ichimoku;
+                const aboveCloud = tf.close > spanA && tf.close > spanB;
+                const belowCloud = tf.close < spanA && tf.close < spanB;
+
+                if (aboveCloud && tenkan > kijun && tf.rsi > 50) {
+                    signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `ICHIMOKU BULLISH (${tfName})` });
+                } else if (belowCloud && tenkan < kijun && tf.rsi < 50) {
+                    signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `ICHIMOKU BEARISH (${tfName})` });
+                }
+            });
+
+            // --- STRATEGY 6: KEY LEVELS + PRICE ACTION (15M/1H) ---
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                const { pivot, r1, r2, r3, s1, s2, s3 } = tf.pivots;
+                const { pinBar, engulfing } = tf.priceAction;
+
+                const nearLevel = (price: number, level: number) => Math.abs(price - level) / level < 0.003; // Within 0.3%
+
+                // LONG at Support
+                if (pinBar === 'BULLISH' || engulfing === 'BULLISH') {
+                    if (nearLevel(tf.close, s1) || nearLevel(tf.close, s2) || nearLevel(tf.close, s3) || nearLevel(tf.close, pivot)) {
+                        signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `PA AT SUPPORT (${tfName})` });
+                    }
+                }
+                // SHORT at Resistance
+                if (pinBar === 'BEARISH' || engulfing === 'BEARISH') {
+                    if (nearLevel(tf.close, r1) || nearLevel(tf.close, r2) || nearLevel(tf.close, r3) || nearLevel(tf.close, pivot)) {
+                        signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PA AT RESISTANCE (${tfName})` });
+                    }
+                }
+            });
 
             for (const sig of signals_to_process) {
                 if (!allowedTimeframes.includes(sig.tf)) continue;

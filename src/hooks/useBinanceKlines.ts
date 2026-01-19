@@ -29,6 +29,9 @@ export interface MAAnalysis {
         currentVolume: number;
         volumeRatio: number;
         priceGap: number;
+        ichimoku?: any;
+        pivots?: any;
+        divergence?: string;
     }[];
     overallBias: 'long' | 'short' | 'neutral';
     confidence: number;
@@ -62,6 +65,60 @@ function calculateSMAArray(data: number[], period: number): number[] {
         result.push(sum / period);
     }
     return result;
+}
+
+
+function calculateEMAArray(data: number[], period: number): number[] {
+    if (data.length < period) return [];
+    const k = 2 / (period + 1);
+    const result = [data[0]];
+    for (let i = 1; i < data.length; i++) {
+        result.push(data[i] * k + result[i - 1] * (1 - k));
+    }
+    return result;
+}
+
+function calculateIchimoku(highs: number[], lows: number[]) {
+    const calculatePeak = (h: number[], l: number[], period: number) => {
+        const sliceH = h.slice(-period);
+        const sliceL = l.slice(-period);
+        return (Math.max(...sliceH) + Math.min(...sliceL)) / 2;
+    };
+    if (highs.length < 52) return null;
+    return {
+        tenkan: calculatePeak(highs, lows, 9),
+        kijun: calculatePeak(highs, lows, 26),
+        spanA: (calculatePeak(highs.slice(0, -26), lows.slice(0, -26), 9) + calculatePeak(highs.slice(0, -26), lows.slice(0, -26), 26)) / 2,
+        spanB: calculatePeak(highs.slice(0, -26), lows.slice(0, -26), 52)
+    };
+}
+
+function detectDivergence(prices: number[], rsi: number[]) {
+    const isPeak = (arr: number[], i: number) => arr[i] > arr[i - 1] && arr[i] > arr[i + 1];
+    const isTrough = (arr: number[], i: number) => arr[i] < arr[i - 1] && arr[i] < arr[i + 1];
+    const findPeaks = (arr: number[]) => {
+        const p = [];
+        for (let i = arr.length - 2; i > 1 && p.length < 2; i--) if (isPeak(arr, i)) p.push({ v: arr[i], idx: i });
+        return p;
+    };
+    const findTroughs = (arr: number[]) => {
+        const t = [];
+        for (let i = arr.length - 2; i > 1 && t.length < 2; i--) if (isTrough(arr, i)) t.push({ v: arr[i], idx: i });
+        return t;
+    };
+    const pP = findPeaks(prices); const rP = findPeaks(rsi);
+    if (pP.length === 2 && rP.length === 2 && pP[0].v > pP[1].v && rP[0].v < rP[1].v) return 'bearish';
+    const pT = findTroughs(prices); const rT = findTroughs(rsi);
+    if (pT.length === 2 && rT.length === 2 && pT[0].v < pT[1].v && rT[0].v > rT[1].v) return 'bullish';
+    return 'none';
+}
+
+function calculatePivots(high: number, low: number, close: number) {
+    const p = (high + low + close) / 3;
+    return {
+        p, r1: 2 * p - low, r2: p + (high - low), r3: high + 2 * (p - low),
+        s1: 2 * p - high, s2: p - (high - low), s3: low - 2 * (high - p)
+    };
 }
 
 function findSwingPoints(klines: KlineData[]): { swingHigh: number; swingLow: number } {
@@ -132,6 +189,8 @@ export function useBinanceKlines(symbol: string) {
                     }));
 
                     const closes = klines.map(k => k.close);
+                    const highs = klines.map(k => k.high);
+                    const lows = klines.map(k => k.low);
                     const volumes = klines.map(k => k.volume);
 
                     const ma20 = calculateSMA(closes, 20);
@@ -187,6 +246,17 @@ export function useBinanceKlines(symbol: string) {
                         else if (priceGap < -threshold) trend = 'bearish';
                     }
 
+                    const ichimoku = calculateIchimoku(highs, lows);
+                    const pivots = calculatePivots(highs[highs.length - 2], lows[lows.length - 2], closes[closes.length - 2]);
+
+                    // RSI Divergence calculation (expensive, only if needed)
+                    let divergence = 'none';
+                    if (closes.length >= 50) {
+                        const subRsi = [];
+                        for (let i = closes.length - 50; i <= closes.length; i++) subRsi.push(calculateRSI(closes.slice(0, i)));
+                        divergence = detectDivergence(closes.slice(-50), subRsi.slice(-50));
+                    }
+
                     results.push({
                         timeframe: tf.interval,
                         label: tf.label,
@@ -199,7 +269,10 @@ export function useBinanceKlines(symbol: string) {
                         avgVolume,
                         currentVolume,
                         volumeRatio,
-                        priceGap
+                        priceGap,
+                        ichimoku,
+                        pivots,
+                        divergence
                     });
 
                 } catch (e: any) {
