@@ -110,6 +110,16 @@ export const MarketAnomaliesPanel: React.FC = () => {
         }
     };
 
+    const getRecoveryDuration = (start: string, end: string | null) => {
+        if (!end) return '-';
+        const durationMs = new Date(end).getTime() - new Date(start).getTime();
+        const minutes = Math.floor(durationMs / (1000 * 60));
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        if (hours > 0) return `${hours}h ${mins}m`;
+        return `${mins}m`;
+    };
+
     return (
         <div className="card h-full flex flex-col">
             <div className="card-header justify-between">
@@ -209,6 +219,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
                         <tr className="text-[10px] font-bold text-gray-500 uppercase border-b border-white/5">
                             <th className="px-4 py-3">Thời gian / Cặp</th>
                             <th className="px-4 py-3">TF</th>
+                            <th className="px-4 py-3 text-center">Thời gian hồi</th>
                             <th className="px-4 py-3 text-right">Biến Động</th>
                             <th className="px-4 py-3 text-center">Trạng Thái</th>
                         </tr>
@@ -229,6 +240,11 @@ export const MarketAnomaliesPanel: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className="px-2 py-0.5 bg-white/5 rounded text-[10px] font-bold text-gray-400">{a.timeframe}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`text-[10px] font-mono ${a.status === 'RECOVERED' ? 'text-blue-400' : 'text-gray-600'}`}>
+                                            {a.status === 'RECOVERED' ? getRecoveryDuration(a.created_at, a.recovered_at) : (a.status === 'TRACKING' ? 'Đang hồi...' : '-')}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex flex-col items-end">
