@@ -25,6 +25,7 @@ import { TradingViewWidget } from './components/TradingViewWidget';
 import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
+import { MarketAnomaliesPanel } from './components/MarketAnomaliesPanel';
 import { TradeMonitor } from './components/TradeMonitor';
 import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
@@ -231,8 +232,11 @@ function App() {
             <div className="flex-shrink-0">
               <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
-            <div className="h-[650px] lg:flex-1">
+            <div className="h-[500px] flex-shrink-0">
               <HistoryDashboard symbol={symbol} />
+            </div>
+            <div className="h-[400px]">
+              <MarketAnomaliesPanel />
             </div>
           </div>
 

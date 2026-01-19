@@ -649,7 +649,44 @@ Deno.serve(async (req) => {
         }
 
         /* =========================================
-           PART 2: GENERATE NEW SIGNALS (MA CROSS)
+           PART 1.5: TRACK MARKET ANOMALIES (RECOVERY)
+           ========================================= */
+        const { data: trackingAnomalies } = await supabase
+            .from('market_anomalies')
+            .select('*')
+            .eq('status', 'TRACKING');
+
+        if (trackingAnomalies && trackingAnomalies.length > 0) {
+            for (const anomaly of trackingAnomalies) {
+                try {
+                    const priceRes = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${anomaly.symbol}`);
+                    const priceData = await priceRes.json();
+                    const currentPrice = parseFloat(priceData.price);
+
+                    let isRecovered = false;
+                    if (anomaly.anomaly_type === 'DUMP' && currentPrice >= anomaly.recovery_price) isRecovered = true;
+                    if (anomaly.anomaly_type === 'PUMP' && currentPrice <= anomaly.recovery_price) isRecovered = true;
+
+                    if (isRecovered) {
+                        await supabase.from('market_anomalies').update({
+                            status: 'RECOVERED',
+                            recovered_at: new Date().toISOString()
+                        }).eq('id', anomaly.id);
+                    } else {
+                        // Mark as EXPIRED after 48 hours
+                        const ageHrs = (new Date().getTime() - new Date(anomaly.created_at).getTime()) / (1000 * 60 * 60);
+                        if (ageHrs > 48) {
+                            await supabase.from('market_anomalies').update({ status: 'EXPIRED' }).eq('id', anomaly.id);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error tracking anomaly ${anomaly.id}:`, e.message);
+                }
+            }
+        }
+
+        /* =========================================
+           PART 2: GENERATE NEW SIGNALS & DETECT ANOMALIES
            ========================================= */
 
         const results = await Promise.allSettled(SYMBOLS_TO_SCAN.map(async (symbol) => {
@@ -828,6 +865,49 @@ Deno.serve(async (req) => {
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows)
                     };
+                }
+
+                // --- NEW: MARKET ANOMALY DETECTION ---
+                const openPrice = parseFloat(data[data.length - 1][1]);
+                const highPrice = parseFloat(data[data.length - 1][2]);
+                const lowPrice = parseFloat(data[data.length - 1][3]);
+                const closePrice = parseFloat(data[data.length - 1][4]);
+
+                const change = ((closePrice - openPrice) / openPrice) * 100;
+                const absChange = Math.abs(change);
+
+                // Define thresholds per TF
+                const thresholds: Record<string, number> = { '1m': 1.0, '15m': 1.8, '1h': 3.5, '4h': 6.0 };
+                const currentThreshold = thresholds[cfg.interval] || 2.0;
+
+                if (absChange >= currentThreshold) {
+                    const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
+
+                    // Avoid duplicate anomalies for the same timeframe and recent time (last 10 mins)
+                    const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+                    const { data: recent } = await supabase
+                        .from('market_anomalies')
+                        .select('id')
+                        .eq('symbol', symbol)
+                        .eq('timeframe', cfg.interval)
+                        .eq('anomaly_type', anomalyType)
+                        .gt('created_at', tenMinsAgo)
+                        .limit(1);
+
+                    if (!recent || recent.length === 0) {
+                        await supabase.from('market_anomalies').insert({
+                            symbol,
+                            timeframe: cfg.interval,
+                            anomaly_type: anomalyType,
+                            start_price: openPrice,
+                            extreme_price: anomalyType === 'PUMP' ? highPrice : lowPrice,
+                            recovery_price: openPrice,
+                            change_percent: change,
+                            rsi_at_anomaly: rsi,
+                            status: 'TRACKING'
+                        });
+                        console.log(`[ANOMALY DETECTED] ${symbol} ${cfg.interval} ${anomalyType} ${change.toFixed(2)}%`);
+                    }
                 }
             }
 

@@ -1,0 +1,192 @@
+import React, { useEffect, useState } from 'react';
+import { AreaChart, AlertTriangle, CheckCircle2, Filter, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { formatNumber } from '../utils/calculations';
+
+interface Anomaly {
+    id: string;
+    created_at: string;
+    symbol: string;
+    timeframe: string;
+    anomaly_type: 'PUMP' | 'DUMP';
+    start_price: number;
+    extreme_price: number;
+    recovery_price: number;
+    status: 'TRACKING' | 'RECOVERED' | 'EXPIRED';
+    recovered_at: string | null;
+    change_percent: number;
+    rsi_at_anomaly: number;
+}
+
+export const MarketAnomaliesPanel: React.FC = () => {
+    const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<string>('all');
+    const [stats, setStats] = useState({
+        total: 0,
+        recovered: 0,
+        rate: 0,
+        avgTime: 0
+    });
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            let query = supabase
+                .from('market_anomalies')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (filter !== 'all') {
+                query = query.eq('timeframe', filter);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            if (data) {
+                setAnomalies(data as Anomaly[]);
+
+                // Calculate Stats
+                const recovered = data.filter(a => a.status === 'RECOVERED');
+                const total = data.filter(a => a.status !== 'TRACKING').length;
+
+                let avgTime = 0;
+                if (recovered.length > 0) {
+                    const times = recovered.map(a => {
+                        const start = new Date(a.created_at).getTime();
+                        const end = new Date(a.recovered_at!).getTime();
+                        return (end - start) / (1000 * 60); // minutes
+                    });
+                    avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+                }
+
+                setStats({
+                    total,
+                    recovered: recovered.length,
+                    rate: total > 0 ? (recovered.length / total) * 100 : 0,
+                    avgTime
+                });
+            }
+        } catch (e) {
+            console.error('Error fetching anomalies:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 30000); // 30s refresh
+        return () => clearInterval(interval);
+    }, [filter]);
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'RECOVERED':
+                return <span className="flex items-center gap-1 text-[10px] font-black text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full uppercase"><CheckCircle2 size={10} /> ĐÃ HỒI PHỤC</span>;
+            case 'TRACKING':
+                return <span className="flex items-center gap-1 text-[10px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase animate-pulse"><Activity size={10} /> ĐANG THEO DÕI</span>;
+            case 'EXPIRED':
+                return <span className="flex items-center gap-1 text-[10px] font-black text-gray-500 bg-gray-500/10 px-2 py-0.5 rounded-full uppercase">HẾT HẠN</span>;
+            default: return null;
+        }
+    };
+
+    return (
+        <div className="card h-full flex flex-col">
+            <div className="card-header flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <AreaChart size={16} className="text-pink-500" />
+                    BOT THEO DÕI BIẾN ĐỘNG ĐỘT BIẾN
+                </div>
+                <div className="flex items-center gap-2">
+                    <Filter size={14} className="text-gray-500" />
+                    <select
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                        className="bg-black/20 border-none text-[10px] font-bold text-gray-400 focus:ring-0 rounded cursor-pointer"
+                    >
+                        <option value="all">TẤT CẢ TF</option>
+                        <option value="1m">1 PHÚT</option>
+                        <option value="15m">15 PHÚT</option>
+                        <option value="1h">1 GIỜ</option>
+                        <option value="4h">4 GIỜ</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="p-4 grid grid-cols-3 gap-2 border-b border-white/5 bg-white/5">
+                <div className="text-center p-2 bg-black/20 rounded-xl border border-white/5">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Tỉ lệ hồi phục</p>
+                    <p className="text-lg font-black text-green-400">{stats.rate.toFixed(1)}%</p>
+                </div>
+                <div className="text-center p-2 bg-black/20 rounded-xl border border-white/5">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Trung bình hồi</p>
+                    <p className="text-lg font-black text-blue-400">{stats.avgTime.toFixed(0)}m</p>
+                </div>
+                <div className="text-center p-2 bg-black/20 rounded-xl border border-white/5">
+                    <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Mẫu (N)</p>
+                    <p className="text-lg font-black text-white">{stats.total}</p>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar">
+                <table className="w-full text-left">
+                    <thead className="sticky top-0 bg-[var(--color-bg-secondary)] z-10 shadow-sm">
+                        <tr className="text-[10px] font-bold text-gray-500 uppercase border-b border-white/5">
+                            <th className="px-4 py-3">Thời gian / Cặp</th>
+                            <th className="px-4 py-3">TF</th>
+                            <th className="px-4 py-3 text-right">Biến Động</th>
+                            <th className="px-4 py-3 text-center">Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {loading && anomalies.length === 0 ? (
+                            <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-gray-500 italic">Đang tải dữ liệu...</td></tr>
+                        ) : anomalies.length === 0 ? (
+                            <tr><td colSpan={4} className="px-4 py-8 text-center text-xs text-gray-500 italic">Chưa phát hiện biến động đột biến nào...</td></tr>
+                        ) : (
+                            anomalies.map((a) => (
+                                <tr key={a.id} className="hover:bg-white/5 transition-colors group">
+                                    <td className="px-4 py-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-white">{a.symbol}</span>
+                                            <span className="text-[9px] font-bold text-gray-500">{new Date(a.created_at).toLocaleTimeString()} {new Date(a.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className="px-2 py-0.5 bg-white/5 rounded text-[10px] font-bold text-gray-400">{a.timeframe}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="flex flex-col items-end">
+                                            <div className={`flex items-center gap-1 text-xs font-black ${a.anomaly_type === 'PUMP' ? 'text-green-500' : 'text-red-500'}`}>
+                                                {a.anomaly_type === 'PUMP' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                                {a.change_percent.toFixed(2)}%
+                                            </div>
+                                            <span className="text-[9px] font-mono text-gray-500">${formatNumber(a.start_price, 2)} → ${formatNumber(a.extreme_price, 2)}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <div className="flex justify-center">
+                                            {getStatusBadge(a.status)}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="p-3 border-t border-white/5 bg-black/20">
+                <p className="text-[9px] text-gray-500 flex items-center gap-2 italic">
+                    <AlertTriangle size={12} className="text-yellow-500" />
+                    Dữ liệu dựa trên Mean Reversion thực tế từ sàn Binance 24/7.
+                </p>
+            </div>
+        </div>
+    );
+};
