@@ -123,9 +123,9 @@ function findSwingPoints(klines: KlineData[]): { swingHigh: number; swingLow: nu
 }
 
 const timeframeConfigs = [
-    { interval: '1m', label: '1 Phút', limit: 50 },
-    { interval: '15m', label: '15 Phút', limit: 50 },
-    { interval: '1h', label: '1 Giờ', limit: 50 },
+    { interval: '1m', label: '1 Phút', limit: 100 },
+    { interval: '15m', label: '15 Phút', limit: 100 },
+    { interval: '1h', label: '1 Giờ', limit: 100 },
     { interval: '4h', label: '4 Giờ', limit: 200 },
 ];
 
