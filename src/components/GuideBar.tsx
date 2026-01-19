@@ -16,6 +16,7 @@ export const GuideBar: React.FC = () => {
         { id: 'KEY_LEVELS', label: 'Vùng Cản', icon: <Target size={14} />, color: 'text-yellow-400' },
         { id: 'FIBONACCI', label: 'Bộ tính Fibonacci', icon: <Sparkles size={14} />, color: 'text-amber-500' },
         { id: 'ANALYTICS', label: 'Trading Analytics', icon: <PieChart size={14} />, color: 'text-cyan-400' },
+        { id: 'ANOMALY', label: 'Bot Biến Động', icon: <Activity size={14} />, color: 'text-pink-400' },
     ];
 
     return (

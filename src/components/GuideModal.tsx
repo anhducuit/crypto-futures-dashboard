@@ -10,7 +10,8 @@ export type GuideType =
     | 'DIVERGENCE'
     | 'KEY_LEVELS'
     | 'FIBONACCI'
-    | 'ANALYTICS';
+    | 'ANALYTICS'
+    | 'ANOMALY';
 
 interface GuideModalProps {
     type: GuideType;
@@ -253,10 +254,58 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 <p className="text-white/40 uppercase font-bold mb-1">Win Rate</p>
                                 <p className="text-gray-300">Tỉ lệ lệnh chiến thắng trong tổng số lệnh Robot đã chốt.</p>
                             </div>
-                            <div className="p-2 border border-white/5 rounded-lg">
-                                <p className="text-white/40 uppercase font-bold mb-1">Best Hours</p>
-                                <p className="text-gray-300">Khung giờ giao diện có xác suất thắng cao nhất (Sáng/Chiều/Tối).</p>
+                        </div>
+                    </div>
+                );
+            case 'ANOMALY':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-pink-500/10 border border-pink-500/20 rounded-xl">
+                            <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
+                                <Activity size={18} /> BOT THEO DÕI BIẾN ĐỘNG
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Hệ thống phát hiện sớm các cú "Bơm/Xả" (Pump/Dump) bất thường dựa trên chênh lệch giá % và biến động tương đối (ATR).
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                                <p className="text-[10px] font-bold text-blue-400 mb-2 uppercase">GIẢI THÍCH CHỈ SỐ</p>
+                                <ul className="space-y-2 text-[11px] text-gray-400">
+                                    <li className="flex gap-2">
+                                        <b className="text-white min-w-[60px]">Mẫu (N):</b>
+                                        <span>Số lượng biến động được ghi nhận trong phiên làm việc.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <b className="text-white min-w-[60px]">Tỉ lệ hồi:</b>
+                                        <span>Xác suất giá quay về điểm bắt đầu sau khi đột biến (Mean Reversion).</span>
+                                    </li>
+                                </ul>
                             </div>
+
+                            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                                <p className="text-[10px] font-bold text-yellow-500 mb-2 uppercase">CÁC TRẠNG THÁI</p>
+                                <div className="space-y-2">
+                                    <div className="flex items-start gap-2">
+                                        <div className="mt-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-black rounded uppercase">TRACKING</div>
+                                        <p className="text-[10px] text-gray-400"><b>Đang theo dõi:</b> Bot vừa phát hiện giá sập/bơm và đang chờ xem giá có hồi lại hay không.</p>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                        <div className="mt-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[9px] font-black rounded uppercase">RECOVERED</div>
+                                        <p className="text-[10px] text-gray-400"><b>Đã hồi phục:</b> Giá đã quay lại mức giá trước khi xảy ra biến động.</p>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                        <div className="mt-1 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[9px] font-black rounded uppercase">EXPIRED</div>
+                                        <p className="text-[10px] text-gray-400"><b>Hết hạn:</b> Sau 48 giờ giá vẫn không hồi lại điểm cũ.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                            <p className="text-[10px] font-bold text-blue-400 mb-1 uppercase">CƠ CHẾ KÍCH HOẠT</p>
+                            <p className="text-[10px] text-gray-400 italic">"Bot quét từng giây, phát hiện nến dài gấp 3 lần bình thường (ATR) hoặc vọt ngưỡng % cố định để báo động."</p>
                         </div>
                     </div>
                 );
@@ -274,6 +323,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
             case 'KEY_LEVELS': return 'Vùng Cản Quan Trọng';
             case 'FIBONACCI': return 'Bộ tính Fibonacci';
             case 'ANALYTICS': return 'Trading Analytics';
+            case 'ANOMALY': return 'Bot Theo Dõi Biến Động';
         }
     };
 
