@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /* --- CONSTANTS & CONFIG --- */
 const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
-const BACKFILL_START_TIME = new Date('2026-01-19T00:00:00Z').getTime();
+const BACKFILL_START_TIME = new Date('2026-01-18T17:00:00Z').getTime(); // 00:00 Jan 19 VN
 const TF_CONFIG = [
     { interval: '1m', limit: 300 },
     { interval: '15m', limit: 100 },
@@ -557,8 +557,8 @@ Deno.serve(async (req) => {
                             const change = ((close - prevClose) / prevClose) * 100;
                             const absChange = Math.abs(change);
 
-                            const thresholds: Record<string, number> = { '1m': 1.0, '15m': 1.8, '1h': 3.5, '4h': 6.0 };
-                            if (absChange >= (thresholds[tf] || 2.0)) {
+                            const thresholds: Record<string, number> = { '1m': 0.6, '15m': 1.0, '1h': 2.0, '4h': 4.0 };
+                            if (absChange >= (thresholds[tf] || 1.5)) {
                                 const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
 
                                 // Check if already exists
@@ -888,13 +888,18 @@ Deno.serve(async (req) => {
                     const isExtremeVol = atr > 0 && currentRange > (atr * 2.5);
                     const distFromEMA = Math.abs(currentClose - ema20) / ema20;
 
+                    const emaDistance = Math.abs(ema12_curr - ema26_curr) / ema26_curr;
+                    const emaDistancePrev = Math.abs(ema12_prev - ema26_prev) / ema26_prev;
+                    const isTrendStrengthening = emaDistance > emaDistancePrev;
+
                     analyses['15m'] = {
                         cross: cross,
                         close: currentClose,
                         swingHigh: Math.max(...highs),
                         swingLow: Math.min(...lows),
                         rsi, volRatio,
-                        atr, isExtremeVol, distFromEMA, ema20
+                        atr, isExtremeVol, distFromEMA, ema20,
+                        isTrendStrengthening, emaDistance
                     }
                 }
 
@@ -956,8 +961,8 @@ Deno.serve(async (req) => {
                 const absChange = Math.abs(change);
 
                 // Define thresholds per TF
-                const thresholds: Record<string, number> = { '1m': 1.0, '15m': 1.8, '1h': 3.5, '4h': 6.0 };
-                const currentThreshold = thresholds[cfg.interval] || 2.0;
+                const thresholds: Record<string, number> = { '1m': 0.6, '15m': 1.0, '1h': 2.0, '4h': 4.0 };
+                const currentThreshold = thresholds[cfg.interval] || 1.5;
 
                 if (absChange >= currentThreshold) {
                     const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
@@ -1026,11 +1031,13 @@ Deno.serve(async (req) => {
 
             // Strategy 3: 1H Trend + 15M Cross
             if (tf1h && tf15m) {
-                const volConfirm = tf15m.volRatio > 1.2;
-                const notOverextended = tf15m.distFromEMA < 0.01; // Stricter (1% limit)
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && tf15m.rsi < 70 && !tf15m.isExtremeVol && notOverextended) {
+                const volConfirm = tf15m.volRatio > 1.5; // Increased from 1.2
+                const notOverextended = tf15m.distFromEMA < 0.01;
+                const trendStrong = tf15m.isTrendStrengthening;
+
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && tf15m.rsi < 75 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
                     signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && tf15m.rsi > 45 && !tf15m.isExtremeVol && notOverextended) {
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && tf15m.rsi > 25 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
                     signals_to_process.push({ type: 'SHORT', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
                 }
             }

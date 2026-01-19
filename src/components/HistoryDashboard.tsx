@@ -195,6 +195,23 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                 </div>
             </div>
 
+            {/* Sticky Stats Row - Compact */}
+            {!loading && history.length > 0 && (
+                <div className="flex items-center gap-4 px-3 py-2 mb-3 bg-slate-800/40 rounded-lg border border-slate-700/50 flex-shrink-0 text-[10px]">
+                    <div className="flex items-center gap-2">
+                        <span className="text-slate-400 uppercase tracking-tighter">Thắng ({filter}):</span>
+                        <span className="text-sm font-black text-green-400">{successRate.toFixed(1)}%</span>
+                        <span className="text-slate-500">({winCount})</span>
+                    </div>
+                    <div className="w-px h-3 bg-slate-700"></div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-slate-400 uppercase tracking-tighter">Thua ({filter}):</span>
+                        <span className="text-sm font-black text-red-400">{lossRate.toFixed(1)}%</span>
+                        <span className="text-slate-500">({lossCount})</span>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                 {loading ? (
                     <div className="text-center py-4 text-slate-500">Đang tải...</div>
@@ -202,22 +219,6 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                     <div className="text-center py-4 text-slate-500 text-xs">Chưa có lịch sử đề xuất</div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="p-3 bg-slate-800/50 rounded-lg flex flex-col items-center border border-slate-700/50">
-                                <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Tỉ lệ thắng ({filter})</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-lg font-black text-green-400">{successRate.toFixed(1)}%</span>
-                                    <span className="text-[10px] text-slate-500">({winCount} lệnh)</span>
-                                </div>
-                            </div>
-                            <div className="p-3 bg-slate-800/50 rounded-lg flex flex-col items-center border border-slate-700/50">
-                                <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Tỉ lệ thua ({filter})</span>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-lg font-black text-red-400">{lossRate.toFixed(1)}%</span>
-                                    <span className="text-[10px] text-slate-500">({lossCount} lệnh)</span>
-                                </div>
-                            </div>
-                        </div>
 
                         {history.map((item) => (
                             <div

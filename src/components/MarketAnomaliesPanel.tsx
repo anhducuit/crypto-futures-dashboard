@@ -106,7 +106,28 @@ export const MarketAnomaliesPanel: React.FC = () => {
                     <AreaChart size={16} className="text-pink-500" />
                     BOT THEO DÕI BIẾN ĐỘNG ĐỘT BIẾN
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={async () => {
+                            try {
+                                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tnmagcatofooeshzdhac.supabase.co';
+                                const res = await fetch(`${supabaseUrl}/functions/v1/check-trades?action=backfill-anomalies`, { method: 'POST' });
+                                if (res.ok) {
+                                    alert('Đang kích hoạt nạp dữ liệu 24h... Vui lòng đợi 30s.');
+                                    setTimeout(fetchData, 15000);
+                                } else {
+                                    alert('Kích hoạt thất bại. Thử lại sau.');
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                alert('Lỗi kết nối bộ lọc (CORS). Bot vẫn đang chạy ngầm.');
+                            }
+                        }}
+                        className="p-1 hover:text-pink-400 text-slate-500 transition-colors"
+                        title="Nạp dữ liệu 24h"
+                    >
+                        <Activity size={12} />
+                    </button>
                     <select
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}

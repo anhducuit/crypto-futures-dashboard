@@ -232,10 +232,10 @@ function App() {
             <div className="flex-shrink-0">
               <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
-            <div className="h-[600px] flex-shrink-0">
+            <div className="h-[1000px] flex-shrink-0">
               <HistoryDashboard symbol={symbol} />
             </div>
-            <div className="h-[500px]">
+            <div className="h-[1000px]">
               <MarketAnomaliesPanel />
             </div>
           </div>
