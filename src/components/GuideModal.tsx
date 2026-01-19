@@ -1,0 +1,320 @@
+import React from 'react';
+import { X, BookOpen, Zap, BarChart3, Layers, TrendingUp, Target, Sparkles, Activity, ShieldCheck, ChevronRight } from 'lucide-react';
+
+export type GuideType =
+    | 'MA_CROSS'
+    | 'VOLUME'
+    | 'MULTI_TF_MA'
+    | 'EMA_TREND'
+    | 'ICHIMOKU'
+    | 'DIVERGENCE'
+    | 'KEY_LEVELS'
+    | 'FIBONACCI'
+    | 'ANALYTICS';
+
+interface GuideModalProps {
+    type: GuideType;
+    onClose: () => void;
+}
+
+export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
+    const renderContent = () => {
+        switch (type) {
+            case 'MA_CROSS':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                            <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2">
+                                <Zap size={18} /> CƠ CHẾ HOẠT ĐỘNG
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Robot sử dụng các đường EMA (Exponential Moving Average) để xác định điểm đảo chiều sớm. Có 2 trường phái chính:
+                            </p>
+                            <ul className="mt-3 space-y-2 text-xs text-gray-400">
+                                <li className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-blue-500 mt-0.5" />
+                                    <span><b>Scalping (1m):</b> Cặp EMA 5 & 13. Phản ứng cực nhanh với biến động ngắn hạn.</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-blue-500 mt-0.5" />
+                                    <span><b>An Toàn (15m/1h):</b> Cặp EMA 12 & 26. Giảm nhiễu và bắt sóng trung hạn ổn định.</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                <p className="text-[10px] font-bold text-green-400 mb-1 uppercase">BULLISH CROSS</p>
+                                <p className="text-xs text-gray-400">Đường nhanh cắt lên đường chậm. Tín hiệu MUA (LONG).</p>
+                            </div>
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                                <p className="text-[10px] font-bold text-red-400 mb-1 uppercase">BEARISH CROSS</p>
+                                <p className="text-xs text-gray-400">Đường nhanh cắt xuống đường chậm. Tín hiệu BÁN (SHORT).</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'VOLUME':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
+                            <h3 className="text-orange-400 font-bold mb-2 flex items-center gap-2">
+                                <BarChart3 size={18} /> VOLUME RATIO (Tỉ lệ khối lượng)
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                So sánh khối lượng giao dịch hiện tại với trung bình 20 cây nến gần nhất.
+                            </p>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="p-2 bg-green-500/20 rounded-lg text-green-500 font-bold text-xs">&gt; 1.5x</div>
+                                <div className="text-xs text-gray-300"><b>Đột phá:</b> Dòng tiền lớn đang vào, xác nhận xu hướng mạnh.</div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500 font-bold text-xs">0.8x - 1.2x</div>
+                                <div className="text-xs text-gray-300"><b>Bình ổn:</b> Thị trường đang lưỡng lự hoặc tích lũy.</div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="p-2 bg-red-500/20 rounded-lg text-red-500 font-bold text-xs">&lt; 0.5x</div>
+                                <div className="text-xs text-gray-300"><b>Cạn kiệt:</b> Thiếu thanh khoản, dễ xảy ra đảo chiều hoặc "quét" râu nến.</div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'MULTI_TF_MA':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                            <h3 className="text-purple-400 font-bold mb-2 flex items-center gap-2">
+                                <Layers size={18} /> PHÂN TÍCH ĐA KHUNG (MTF)
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Quy tắc vàng: <b>"Thuận xu hướng lớn, bắt sóng khung nhỏ"</b>. Robot tự động tổng hợp xu hướng từ 4 khung thời gian để đưa ra xác suất thắng (Confidence).
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="p-3 bg-white/5 rounded-lg border-l-4 border-purple-500">
+                                <p className="text-xs font-bold text-white uppercase">Overall Bias</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Gợi ý hướng đánh dựa trên sự đồng thuận của 1m, 15m, 1h và 4h.</p>
+                            </div>
+                            <div className="p-3 bg-white/5 rounded-lg border-l-4 border-yellow-500">
+                                <p className="text-xs font-bold text-white uppercase">Confidence (%)</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Độ tin cậy của tín hiệu. Trên 70% được coi là tín hiệu mạnh.</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'EMA_TREND':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                            <h3 className="text-emerald-400 font-bold mb-2 flex items-center gap-2">
+                                <TrendingUp size={18} /> EMA TREND BIAS
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Sử dụng 3 đường hầm EMA (20, 50, 200) để xác định "vùng định giá" của thị trường.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 text-xs">
+                            <div className="flex justify-between p-2 rounded-lg bg-green-500/5">
+                                <span className="text-green-500 font-bold">Giá &gt; EMA 200</span>
+                                <span className="text-gray-400">Xu hướng TĂNG dài hạn</span>
+                            </div>
+                            <div className="flex justify-between p-2 rounded-lg bg-red-500/5">
+                                <span className="text-red-500 font-bold">Giá &lt; EMA 200</span>
+                                <span className="text-gray-400">Xu hướng GIẢM dài hạn</span>
+                            </div>
+                            <div className="flex justify-between p-2 rounded-lg bg-yellow-500/5">
+                                <span className="text-yellow-500 font-bold">GAP (%)</span>
+                                <span className="text-gray-400">Khoảng cách từ giá tới EMA. Gap quá lớn (&gt;2-3%) dễ bị điều chỉnh (Rebound).</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'ICHIMOKU':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                            <h3 className="text-indigo-400 font-bold mb-2 flex items-center gap-2">
+                                <Sparkles size={18} /> MÂY ICHIMOKU
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Hệ thống xác định xu hướng và vùng hỗ trợ/kháng cự động thông qua "Mây" (Kumo Cloud).
+                            </p>
+                        </div>
+                        <ul className="space-y-2 text-xs text-gray-400">
+                            <li className="flex gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5"></div>
+                                <span><b>Trên Mây:</b> Thị trường cực mạnh, ưu tiên lệnh LONG.</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5"></div>
+                                <span><b>Dưới Mây:</b> Thị trường cực yếu, ưu tiên lệnh SHORT.</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-500 mt-1.5"></div>
+                                <span><b>Trong Mây:</b> Vùng tích lũy, không rõ xu hướng. Hạn chế vào lệnh.</span>
+                            </li>
+                            <li className="flex gap-2 border-t border-white/5 pt-2 mt-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5"></div>
+                                <span><b>Tenkan &gt; Kijun:</b> Tín hiệu tăng giá sớm.</span>
+                            </li>
+                        </ul>
+                    </div>
+                );
+            case 'DIVERGENCE':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-pink-500/10 border border-pink-500/20 rounded-xl">
+                            <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
+                                <Activity size={18} /> PHÂN KỲ RSI
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Hiện tượng giá và RSI đi ngược chiều nhau, báo hiệu một cú đảo chiều mạnh sắp xảy ra.
+                            </p>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                <p className="text-xs font-bold text-green-400 uppercase">Bullish Divergence (Hội tụ)</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Giá tạo đáy thấp mới nhưng RSI tạo đáy cao hơn. Báo hiệu sức bán cạn kiệt, giá chuẩn bị bay.</p>
+                            </div>
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                                <p className="text-xs font-bold text-red-400 uppercase">Bearish Divergence (Phân kỳ)</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Giá tạo đỉnh cao mới nhưng RSI tạo đỉnh thấp hơn. Báo hiệu sức mua cạn kiệt, giá chuẩn bị sập.</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'KEY_LEVELS':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                            <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
+                                <Target size={18} /> VÙNG CẢN QUAN TRỌNG (PIVOT)
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Robot tính toán các mức Pivot Point dựa trên biến động của ngày/giờ trước đó để tìm ra các "bến đỗ" của giá.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                <span className="block text-red-400 font-bold mb-1">R1/R2/R3</span>
+                                <span className="text-[10px] text-gray-400">Kháng cự (Resistance). Nơi phe Bán tập trung.</span>
+                            </div>
+                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                <span className="block text-green-400 font-bold mb-1">S1/S2/S3</span>
+                                <span className="text-[10px] text-gray-400">Hỗ trợ (Support). Nơi phe Mua chờ đợi.</span>
+                            </div>
+                        </div>
+                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                            <p className="text-[10px] font-bold text-blue-400 mb-1 uppercase">CHIẾN THUẬT QUYẾT ĐỊNH</p>
+                            <p className="text-xs text-gray-400 italic">"Chờ giá chạm Cản + Xuất hiện nến đảo chiều (Pinbar/Engulfing) = Vào lệnh."</p>
+                        </div>
+                    </div>
+                );
+            case 'FIBONACCI':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-amber-600/10 border border-amber-600/20 rounded-xl">
+                            <h3 className="text-amber-500 font-bold mb-2 flex items-center gap-2">
+                                <Sparkles size={18} /> BỘ TÍNH FIBONACCI
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Công cụ tìm điểm "hồi mã thương". Giá thường quay lại các tỷ lệ Fibonacci vàng để lấy đà trước khi tiếp tục xu hướng.
+                            </p>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="p-3 bg-[var(--color-golden)]/10 border border-[var(--color-golden)]/20 rounded-xl flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-bold text-[var(--color-golden)] uppercase italic">Golden Zone</p>
+                                    <p className="text-[10px] text-gray-400">Mức 0.5 - 0.618</p>
+                                </div>
+                                <span className="text-[10px] text-gray-400 text-right">Vùng vào lệnh đẹp nhất.</span>
+                            </div>
+                            <div className="text-xs text-gray-400 p-2 border-l-2 border-white/20 ml-2">
+                                <p>• <b>0.236 / 0.382:</b> Điều chỉnh nông, xu hướng rất mạnh.</p>
+                                <p className="mt-1">• <b>0.786:</b> Điều chỉnh sâu, ranh giới cuối cùng của xu hướng.</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'ANALYTICS':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
+                            <h3 className="text-cyan-400 font-bold mb-2 flex items-center gap-2">
+                                <BarChart3 size={18} /> TRADING ANALYTICS
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Nhật ký và dữ liệu thống kê hiệu suất thực tế của Robot để tối ưu hóa lợi nhuận.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            <div className="p-2 border border-white/5 rounded-lg">
+                                <p className="text-white/40 uppercase font-bold mb-1">Win Rate</p>
+                                <p className="text-gray-300">Tỉ lệ lệnh chiến thắng trong tổng số lệnh Robot đã chốt.</p>
+                            </div>
+                            <div className="p-2 border border-white/5 rounded-lg">
+                                <p className="text-white/40 uppercase font-bold mb-1">Best Hours</p>
+                                <p className="text-gray-300">Khung giờ giao diện có xác suất thắng cao nhất (Sáng/Chiều/Tối).</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+        }
+    };
+
+    const getTitle = () => {
+        switch (type) {
+            case 'MA_CROSS': return 'Chiến lược MA Cross';
+            case 'VOLUME': return 'Phân tích Khối lượng';
+            case 'MULTI_TF_MA': return 'Phân tích Đa khung';
+            case 'EMA_TREND': return 'Xu hướng EMA';
+            case 'ICHIMOKU': return 'Mây Ichimoku';
+            case 'DIVERGENCE': return 'Phân tích Phân Kỳ';
+            case 'KEY_LEVELS': return 'Vùng Cản Quan Trọng';
+            case 'FIBONACCI': return 'Bộ tính Fibonacci';
+            case 'ANALYTICS': return 'Trading Analytics';
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)] bg-gradient-to-r from-blue-500/10 to-transparent">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[var(--color-golden)] text-black rounded-lg">
+                            <BookOpen size={18} />
+                        </div>
+                        <div>
+                            <h2 className="font-black uppercase text-sm tracking-tight">{getTitle()}</h2>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hướng dẫn đọc hiểu</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 max-h-[70vh] overflow-y-auto">
+                    {renderContent()}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-[var(--color-border)] flex items-center justify-between bg-black/20">
+                    <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase italic">
+                        <ShieldCheck size={14} className="text-green-500" />
+                        Kiến thức Trading Pro
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2 bg-[var(--color-bg-tertiary)] hover:bg-white/10 text-white rounded-xl font-bold transition-all text-xs"
+                    >
+                        ĐÃ HIỂU
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

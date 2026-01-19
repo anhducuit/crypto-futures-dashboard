@@ -13,6 +13,7 @@ import { LivePriceDisplay } from './components/LivePriceDisplay';
 import { DirectionSelector } from './components/DirectionSelector';
 import { PriceTicker } from './components/PriceTicker';
 import { EventTicker } from './components/EventTicker';
+import { GuideBar } from './components/GuideBar';
 import { MarketTrends } from './components/MarketTrends';
 import { MovingAveragesPanel } from './components/MovingAveragesPanel';
 import { EMATrendBias } from './components/EMATrendBias';
@@ -154,6 +155,7 @@ function App() {
       </header>
 
       <EventTicker />
+      <GuideBar />
 
       {/* Main Content */}
       <main className="max-w-[1920px] mx-auto p-4">
