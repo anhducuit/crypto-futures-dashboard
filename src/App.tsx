@@ -31,6 +31,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
 import { DivergencePanel } from './components/DivergencePanel';
 import { KeyLevelsPanel } from './components/KeyLevelsPanel';
+import { BacktestDashboard } from './components/BacktestDashboard';
 import IntroPage from './pages/IntroPage';
 import './index.css';
 
@@ -256,6 +257,9 @@ function App() {
 
             {/* Win/Loss Analytics Report */}
             <TradeAnalytics />
+
+            {/* Backtest Dashboard */}
+            <BacktestDashboard />
           </div>
         </div>
       </main>
