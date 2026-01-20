@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Clock, TrendingUp, TrendingDown, BarChart3, RefreshCw, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Play, Clock, BarChart3, RefreshCw, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNumber } from '../utils/calculations';
 
