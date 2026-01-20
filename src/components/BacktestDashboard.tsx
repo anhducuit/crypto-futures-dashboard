@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Play, Clock, BarChart3, RefreshCw, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNumber } from '../utils/calculations';
@@ -42,13 +42,7 @@ export const BacktestDashboard: React.FC = () => {
 
     const [isRunning, setIsRunning] = useState(false);
 
-    useEffect(() => {
-        fetchRuns();
-        const interval = setInterval(fetchRuns, 5000); // Poll every 5 seconds
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchRuns = async () => {
+    const fetchRuns = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from('backtest_runs')
@@ -63,7 +57,13 @@ export const BacktestDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchRuns();
+        const interval = setInterval(fetchRuns, 5000); // Poll every 5 seconds
+        return () => clearInterval(interval);
+    }, [fetchRuns]);
 
     const handleRunBacktest = async () => {
         setIsRunning(true);
