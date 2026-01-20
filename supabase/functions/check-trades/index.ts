@@ -1092,13 +1092,13 @@ Deno.serve(async (req) => {
             if (tf1h && tf15m && tf1m_scalp && tf1m_safe) {
                 const tf15mTrend = tf15m.close > tf15m.sma20 ? 'BULLISH' : 'BEARISH';
 
-                // School 1: Scalping (EMA5/13) - RELAXED FILTERS
-                const scalpVol = tf1m_scalp.volRatio > 1.1; // Relaxed from 1.2
-                const scalpDist = tf1m_scalp.distFromEMA < 0.015; // Relaxed from 0.008 (1.5% limit)
+                // School 1: Scalping (EMA5/13) - VERY RELAXED FILTERS
+                const scalpVol = tf1m_scalp.volRatio > 1.0; // Very relaxed - any volume increase
+                const scalpDist = tf1m_scalp.distFromEMA < 0.02; // 2% limit (very relaxed)
 
-                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 40 && tf1m_scalp.rsi < 85 && scalpDist) {
+                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 35 && tf1m_scalp.rsi < 90 && scalpDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 60 && tf1m_scalp.rsi > 15 && scalpDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 65 && tf1m_scalp.rsi > 10 && scalpDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
                 }
 
