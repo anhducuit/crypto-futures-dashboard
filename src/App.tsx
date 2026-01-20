@@ -258,8 +258,8 @@ function App() {
             {/* Win/Loss Analytics Report */}
             <TradeAnalytics />
 
-            {/* Backtest Dashboard */}
-            <BacktestDashboard />
+            {/* Backtest Dashboard - DISABLED: Causing app crash, needs debugging */}
+            {/* <BacktestDashboard /> */}
           </div>
         </div>
       </main>
