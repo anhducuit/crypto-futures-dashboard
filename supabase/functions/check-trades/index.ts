@@ -1077,8 +1077,8 @@ Deno.serve(async (req) => {
 
             // Strategy 3: 1H Trend + 15M Cross
             if (tf1h && tf15m) {
-                const volConfirm = tf15m.volRatio > 1.5; // Increased from 1.2
-                const notOverextended = tf15m.distFromEMA < 0.01;
+                const volConfirm = tf15m.volRatio > 1.2; // Relaxed from 1.5
+                const notOverextended = tf15m.distFromEMA < 0.015; // Relaxed from 0.01
                 const trendStrong = tf15m.isTrendStrengthening;
 
                 if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && tf15m.rsi < 75 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
@@ -1103,11 +1103,11 @@ Deno.serve(async (req) => {
                 }
 
                 // School 2: Safe Mode (EMA12/26)
-                const safeVol = tf1m_safe.volRatio > 1.3;
-                const safeDist = tf1m_safe.distFromEMA < 0.003; // Ultra strict for 1m safe (0.3% limit)
+                const safeVol = tf1m_safe.volRatio > 1.2; // Relaxed from 1.3
+                const safeDist = tf1m_safe.distFromEMA < 0.005; // Relaxed from 0.003
                 if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
-                } else if (tf1m_safe.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
                 }
             }
