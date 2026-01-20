@@ -1081,9 +1081,9 @@ Deno.serve(async (req) => {
                 const notOverextended = tf15m.distFromEMA < 0.015; // Relaxed from 0.01
                 const trendStrong = tf15m.isTrendStrengthening;
 
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 50 && tf15m.rsi < 75 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 45 && tf15m.rsi < 75 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
                     signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 50 && tf15m.rsi > 25 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 55 && tf15m.rsi > 25 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
                     signals_to_process.push({ type: 'SHORT', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
                 }
             }
@@ -1116,24 +1116,25 @@ Deno.serve(async (req) => {
             [tf15m, tf1h].forEach((tf, idx) => {
                 if (!tf) return;
                 const tfName = idx === 0 ? '15m' : '1h';
-                if (tf.divergence === 'BULLISH' && tf.rsi < 40) {
+                if (tf.divergence === 'BULLISH' && tf.rsi < 45) { // Relaxed from 40
                     signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BULLISH (${tfName})` });
-                } else if (tf.divergence === 'BEARISH' && tf.rsi > 60) {
+                } else if (tf.divergence === 'BEARISH' && tf.rsi > 55) { // Relaxed from 60
                     signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BEARISH (${tfName})` });
                 }
             });
 
-            // --- STRATEGY 5: ICHIMOKU CLOUD BREAK (1H/4H) ---
-            [tf1h, tf4h].forEach((tf, idx) => {
+            // --- STRATEGY 5: ICHIMOKU CLOUD BREAK (15M/1H/4H) ---
+            [tf15m, tf1h, tf4h].forEach((tf, idx) => {
                 if (!tf) return;
-                const tfName = idx === 0 ? '1h' : '4h';
+                const names = ['15m', '1h', '4h'];
+                const tfName = names[idx];
                 const { tenkan, kijun, spanA, spanB } = tf.ichimoku;
                 const aboveCloud = tf.close > spanA && tf.close > spanB;
                 const belowCloud = tf.close < spanA && tf.close < spanB;
 
-                if (aboveCloud && tenkan > kijun && tf.rsi > 50) {
+                if (aboveCloud && tenkan > kijun && tf.rsi > 45) { // Relaxed from 50
                     signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `ICHIMOKU BULLISH (${tfName})` });
-                } else if (belowCloud && tenkan < kijun && tf.rsi < 50) {
+                } else if (belowCloud && tenkan < kijun && tf.rsi < 55) { // Relaxed from 50
                     signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `ICHIMOKU BEARISH (${tfName})` });
                 }
             });
@@ -1145,7 +1146,8 @@ Deno.serve(async (req) => {
                 const { pivot, r1, r2, r3, s1, s2, s3 } = tf.pivots;
                 const { pinBar, engulfing } = tf.priceAction;
 
-                const nearLevel = (price: number, level: number) => Math.abs(price - level) / level < 0.003; // Within 0.3%
+                const threshold = tfName === '15m' ? 0.006 : 0.008; // 0.6% for 15m, 0.8% for 1h
+                const nearLevel = (price: number, level: number) => Math.abs(price - level) / level < threshold;
 
                 // LONG at Support
                 if (pinBar === 'BULLISH' || engulfing === 'BULLISH') {
