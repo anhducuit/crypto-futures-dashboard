@@ -31,7 +31,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
 import { DivergencePanel } from './components/DivergencePanel';
 import { KeyLevelsPanel } from './components/KeyLevelsPanel';
-import { BacktestDashboard } from './components/BacktestDashboard';
+// import { BacktestDashboard } from './components/BacktestDashboard'; // Disabled temporarily
 import IntroPage from './pages/IntroPage';
 import './index.css';
 
