@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     Zap,
-    TrendingUp,
-    ArrowUpRight,
-    ArrowDownRight,
-    AlertTriangle,
-    Clock,
-    Filter,
-    BarChart3,
-    Target,
     ShieldAlert,
     ChevronLeft,
     ChevronRight
