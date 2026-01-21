@@ -31,6 +31,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
 import { DivergencePanel } from './components/DivergencePanel';
 import { KeyLevelsPanel } from './components/KeyLevelsPanel';
+import { PriceActionBot } from './components/PriceActionBot';
 // import { BacktestDashboard } from './components/BacktestDashboard'; // Disabled temporarily
 import IntroPage from './pages/IntroPage';
 import './index.css';
@@ -237,7 +238,11 @@ function App() {
               <HistoryDashboard symbol={symbol} />
             </div>
             <div className="h-[1000px]">
+              {/* Bot theo dõi biến động */}
               <MarketAnomaliesPanel />
+
+              {/* Price Action Bot - Bot #3 */}
+              <PriceActionBot />
             </div>
           </div>
 
