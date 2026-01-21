@@ -1,0 +1,17 @@
+{
+    "name": "Anh Duc Pro Trading",
+    "short_name": "Anh Duc",
+    "description": "Pro Crypto Futures Analysis Dashboard by Anh Duc",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f0f14",
+    "theme_color": "#0f0f14",
+    "icons": [
+        {
+            "src": "/logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
