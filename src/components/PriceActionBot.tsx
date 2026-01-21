@@ -132,7 +132,7 @@ export const PriceActionBot: React.FC = () => {
     };
 
     return (
-        <div className="bg-[#0f172a] rounded-3xl border border-white/5 overflow-hidden flex flex-col h-full shadow-2xl">
+        <div className="card flex flex-col h-full shadow-2xl">
             {/* Header */}
             <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ export const PriceActionBot: React.FC = () => {
             {/* Table Content */}
             <div className="flex-1 overflow-y-auto no-scrollbar max-h-[600px]">
                 <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-[#0f172a] z-10 shadow-sm">
+                    <thead className="sticky top-0 bg-[var(--color-bg-secondary)] z-10 shadow-sm">
                         <tr className="text-[10px] font-bold text-gray-500 uppercase border-b border-white/5">
                             <th className="px-4 py-3">Thời gian / Cặp</th>
                             <th className="px-4 py-3">Loại / Pattern</th>

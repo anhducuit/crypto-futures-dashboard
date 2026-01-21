@@ -237,7 +237,7 @@ function App() {
             <div className="h-[1000px] flex-shrink-0">
               <HistoryDashboard symbol={symbol} />
             </div>
-            <div className="h-[1000px]">
+            <div className="space-y-4">
               {/* Bot theo dõi biến động */}
               <MarketAnomaliesPanel />
 
