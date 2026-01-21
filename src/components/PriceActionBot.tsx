@@ -137,7 +137,7 @@ export const PriceActionBot: React.FC = () => {
             <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 flex items-center justify-center shadow-lg shadow-pink-500/20">
-                        <Zap size={18} className="text-white fill-white" />
+                        <Zap size={18} className="text-white fill-current" />
                     </div>
                     <div>
                         <h3 className="text-sm font-black text-white tracking-tight uppercase">PRICE ACTION BOT</h3>
