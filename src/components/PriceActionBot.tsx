@@ -225,7 +225,7 @@ export const PriceActionBot: React.FC = () => {
             </div>
 
             {/* Table Content */}
-            <div className="flex-1 overflow-y-auto no-scrollbar max-h-[600px]">
+            <div className="flex-1 overflow-y-auto no-scrollbar">
                 <table className="w-full text-left">
                     <thead className="sticky top-0 bg-[var(--color-bg-secondary)] z-10 shadow-sm">
                         <tr className="text-[10px] font-bold text-gray-500 uppercase border-b border-white/5">

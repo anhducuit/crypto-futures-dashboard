@@ -238,11 +238,11 @@ function App() {
               <HistoryDashboard symbol={symbol} />
             </div>
             <div className="flex flex-col space-y-4">
-              <div className="h-[500px]">
+              <div className="h-[800px]">
                 <MarketAnomaliesPanel />
               </div>
 
-              <div className="h-[500px]">
+              <div className="h-[800px]">
                 <PriceActionBot />
               </div>
             </div>
