@@ -52,7 +52,7 @@ function calculateVolumeRatio(candles: Candle[]): number {
  */
 async function scanForPriceActionSignals(supabase: any) {
     const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'];
-    const timeframes = ['15m', '1h', '4h'];
+    const timeframes = ['1m', '15m', '1h', '4h']; // Thêm 1m để match với webapp
 
     const signals = [];
 
