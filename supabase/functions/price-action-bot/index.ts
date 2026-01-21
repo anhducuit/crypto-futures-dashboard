@@ -59,6 +59,7 @@ async function scanForPriceActionSignals(supabase: any) {
     for (const symbol of symbols) {
         for (const tf of timeframes) {
             try {
+                console.log(`[PRICE ACTION] Scanning ${symbol} ${tf}...`);
                 // 1. Fetch candles
                 const candles = await fetchKlines(symbol, tf, 100);
                 const currentPrice = candles[candles.length - 1].close;
@@ -71,6 +72,10 @@ async function scanForPriceActionSignals(supabase: any) {
 
                 // 4. Calculate volume
                 const volumeRatio = calculateVolumeRatio(candles);
+
+                if (zones.length > 0) {
+                    console.log(`[PRICE ACTION] ${symbol} ${tf}: Found ${zones.length} zones, Trend: ${structure.trend}, Vol Ratio: ${volumeRatio.toFixed(2)}`);
+                }
 
                 // 5. Check for signals
 

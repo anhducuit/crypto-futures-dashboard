@@ -807,6 +807,7 @@ Deno.serve(async (req) => {
            PART 2: GENERATE NEW SIGNALS & DETECT ANOMALIES
            ========================================= */
 
+        console.log(`[CHECK TRADES] Starting scan for ${SYMBOLS_TO_SCAN.length} symbols...`);
         const results = await Promise.allSettled(SYMBOLS_TO_SCAN.map(async (symbol) => {
             const analyses: Record<string, any> = {};
             let failed = false;
@@ -820,6 +821,7 @@ Deno.serve(async (req) => {
             );
 
             const responses = await Promise.all(fetches);
+            console.log(`[CHECK TRADES] ${symbol}: Fetched ${responses.filter(r => r.data).length}/${TF_CONFIG.length} timeframes`);
 
             for (const { cfg, data } of responses) {
                 if (!Array.isArray(data)) { failed = true; break; }
@@ -1163,8 +1165,15 @@ Deno.serve(async (req) => {
                 }
             });
 
+            if (signals_to_process.length > 0) {
+                console.log(`[CHECK TRADES] ${symbol}: Found ${signals_to_process.length} raw signals`);
+            }
+
             for (const sig of signals_to_process) {
-                if (!allowedTimeframes.includes(sig.tf)) continue;
+                if (!allowedTimeframes.includes(sig.tf)) {
+                    console.log(`[CHECK TRADES] ${symbol}: Skipping signal ${sig.name} - Timeframe ${sig.tf} not allowed`);
+                    continue;
+                }
 
                 const { data: active } = await supabase
                     .from('trading_history')
@@ -1172,8 +1181,13 @@ Deno.serve(async (req) => {
                     .eq('symbol', symbol)
                     .eq('status', 'PENDING')
                     .eq('timeframe', sig.tf)
-                    .eq('strategy_name', sig.name) // Distinguish by name
+                    .eq('strategy_name', sig.name)
                     .limit(1);
+
+                if (active && active.length > 0) {
+                    console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} ignored - Trade already PENDING`);
+                    continue;
+                }
 
                 if (!active || active.length === 0) {
                     const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
