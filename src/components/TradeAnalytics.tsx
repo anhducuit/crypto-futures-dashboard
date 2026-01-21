@@ -67,7 +67,17 @@ export const TradeAnalytics: React.FC = () => {
                     'ETHUSDT': { wins: 0, losses: 0, tfMap: {} },
                     'SOLUSDT': { wins: 0, losses: 0, tfMap: {} },
                     'BNBUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'XRPUSDT': { wins: 0, losses: 0, tfMap: {} }
+                    'XRPUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'ADAUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'DOGEUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'LINKUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'AVAXUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'NEARUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'FTMUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'OPUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'ARBUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'TIAUSDT': { wins: 0, losses: 0, tfMap: {} },
+                    'INJUSDT': { wins: 0, losses: 0, tfMap: {} }
                 };
                 let totalWin = 0, totalLoss = 0;
 

@@ -40,7 +40,15 @@ async function testFunctions() {
 
             console.log(`Status: ${res.status} ${res.statusText}`);
             console.log(`Duration: ${duration}ms`);
-            console.log(`Body: ${res.body.substring(0, 500)}${res.body.length > 500 ? '...' : ''}`);
+            let parsedBody = {};
+            try { parsedBody = JSON.parse(res.body); } catch (e) { parsedBody = res.body; }
+
+            if (parsedBody.scan_report) {
+                console.log('--- SCAN REPORT ---');
+                parsedBody.scan_report.forEach(log => console.log(log));
+            }
+            const bodyString = typeof parsedBody === 'object' ? JSON.stringify(parsedBody, null, 2) : String(parsedBody);
+            console.log(`Body: ${bodyString.substring(0, 500)}${bodyString.length > 500 ? '...' : ''}`);
         } catch (error) {
             console.error(`Error invoking ${func}:`, error.message);
         }

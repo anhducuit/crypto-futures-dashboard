@@ -7,9 +7,10 @@ export interface TickerData {
     direction: 'up' | 'down' | null;
 }
 
-const TOP_10_SYMBOLS = [
+const BOT_SYMBOLS = [
     'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
-    'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'TRXUSDT', 'DOTUSDT'
+    'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'AVAXUSDT', 'NEARUSDT',
+    'FTMUSDT', 'OPUSDT', 'ARBUSDT', 'TIAUSDT', 'INJUSDT'
 ];
 
 export function useBinanceTicker() {
@@ -17,7 +18,7 @@ export function useBinanceTicker() {
     const wsRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        const streams = TOP_10_SYMBOLS.map(s => `${s.toLowerCase()}@ticker`).join('/');
+        const streams = BOT_SYMBOLS.map(s => `${s.toLowerCase()}@ticker`).join('/');
         const wsUrl = `wss://fstream.binance.com/stream?streams=${streams}`;
 
         const ws = new WebSocket(wsUrl);
@@ -58,5 +59,5 @@ export function useBinanceTicker() {
         };
     }, []);
 
-    return { tickers, symbols: TOP_10_SYMBOLS };
+    return { tickers, symbols: BOT_SYMBOLS };
 }

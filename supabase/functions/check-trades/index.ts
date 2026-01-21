@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /* --- CONSTANTS & CONFIG --- */
-const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
+const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'FTMUSDT', 'OPUSDT', 'ARBUSDT', 'TIAUSDT', 'INJUSDT'];
 const BACKFILL_START_TIME = new Date('2026-01-18T17:00:00Z').getTime(); // 00:00 Jan 19 VN
 const TF_CONFIG = [
     { interval: '1m', limit: 300 },
@@ -217,9 +217,9 @@ function calculateDynamicTPSL(
         stopLoss = entryPrice - volatilityBuffer;
 
         // Hard limits for safety and minimum R:R
-        const minRR = 1.3; // Increased from 1.2 for better quality
+        const minRR = 1.5; // Increased from 1.3 for Bot 1 optimization
         const maxSL = 0.035; // Max 3.5%
-        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.01));
+        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.012)); // Tightened 1m to 1.2%
 
         const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
@@ -232,9 +232,9 @@ function calculateDynamicTPSL(
         target = entryPrice - Math.max(range * 0.618, volatilityBuffer * 1.5);
         stopLoss = entryPrice + volatilityBuffer;
 
-        const minRR = 1.3;
+        const minRR = 1.5;
         const maxSL = 0.035;
-        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.01));
+        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.012));
 
         const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
@@ -245,10 +245,19 @@ function calculateDynamicTPSL(
         if (currentTPPercent < requiredTP) target = entryPrice * (1 - requiredTP);
     }
 
-    // ROUNDING FIX for floating point errors
+    // DYNAMIC ROUNDING based on price
+    const getDecimals = (p: number) => {
+        if (p < 1) return 6;
+        if (p < 10) return 4;
+        return 2;
+    };
+    const dEntry = getDecimals(entryPrice);
+    const dTarget = getDecimals(target);
+    const dSL = getDecimals(stopLoss);
+
     return {
-        target: Math.round(target * 100) / 100,
-        stopLoss: Math.round(stopLoss * 100) / 100
+        target: parseFloat(target.toFixed(dTarget)),
+        stopLoss: parseFloat(stopLoss.toFixed(dSL))
     };
 }
 
@@ -542,6 +551,15 @@ Deno.serve(async (req) => {
             .neq('status', 'PENDING');
 
         const logs: string[] = [];
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        // Custom logs for report
+        console.log = (...args) => { logs.push(args.join(' ')); originalLog(...args); };
+        console.warn = (...args) => { logs.push(`[WARN] ${args.join(' ')}`); originalWarn(...args); };
+        console.error = (...args) => { logs.push(`[ERROR] ${args.join(' ')}`); originalError(...args); };
+
         const updates: any[] = [];
         const newSignals: any[] = [];
 
@@ -824,7 +842,10 @@ Deno.serve(async (req) => {
             console.log(`[CHECK TRADES] ${symbol}: Fetched ${responses.filter(r => r.data).length}/${TF_CONFIG.length} timeframes`);
 
             for (const { cfg, data } of responses) {
-                if (!Array.isArray(data)) { failed = true; break; }
+                if (!Array.isArray(data)) {
+                    console.error(`[CHECK TRADES] ${symbol}: Failed to fetch ${cfg.interval}`);
+                    continue;
+                }
 
                 const closes = data.map((x: any) => parseFloat(x[4]));
                 const highs = data.map((x: any) => parseFloat(x[2]));
@@ -940,7 +961,8 @@ Deno.serve(async (req) => {
                         swingLow: Math.min(...lows),
                         rsi, volRatio,
                         atr, isExtremeVol, distFromEMA, ema20,
-                        isTrendStrengthening, emaDistance
+                        isTrendStrengthening, emaDistance,
+                        ichimoku, pivots, divergence, priceAction
                     }
                 }
 
@@ -981,14 +1003,16 @@ Deno.serve(async (req) => {
                         close: currentClose,
                         rsi, volRatio, ema20, atr, isExtremeVol, distFromEMA,
                         swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows)
+                        swingLow: Math.min(...lows),
+                        ichimoku, pivots, divergence, priceAction
                     };
                     analyses['1m_safe'] = {
                         cross: crossSafe,
                         close: currentClose,
                         rsi, volRatio, ema20, atr, isExtremeVol, distFromEMA,
                         swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows)
+                        swingLow: Math.min(...lows),
+                        ichimoku, pivots, divergence, priceAction
                     };
                 }
 
@@ -1043,7 +1067,8 @@ Deno.serve(async (req) => {
                 }
             }
 
-            if (failed || !analyses['1h'] || !analyses['15m']) {
+            if (!analyses['15m'] && !analyses['1m_scalp']) {
+                console.log(`[CHECK TRADES] ${symbol}: Missing core analyses (15m/1m)`);
                 return;
             }
 
@@ -1055,62 +1080,106 @@ Deno.serve(async (req) => {
 
             let signals_to_process: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
 
+
+
             // Strategy 1: 4H Major Trend (EMA20/50 Cross)
             if (tf4h) {
-                const volConfirm = tf4h.volRatio > 1.2;
-                const notOverextended = tf4h.distFromEMA < 0.02; // Stricter entry (2% limit)
-                if (tf4h.cross === 'BULLISH_CROSS' && volConfirm && tf4h.rsi > 50 && notOverextended) {
+                const volConfirm = tf4h.volRatio > 1.0;
+                const notOverextended = tf4h.distFromEMA < 0.05;
+                if (tf4h.cross === 'BULLISH_CROSS' && volConfirm && tf4h.rsi > 40 && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
-                } else if (tf4h.cross === 'BEARISH_CROSS' && volConfirm && tf4h.rsi < 50 && notOverextended) {
+                } else if (tf4h.cross === 'BEARISH_CROSS' && volConfirm && tf4h.rsi < 60 && notOverextended) {
                     signals_to_process.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
                 }
             }
 
             // Strategy 2: 1H Trend Optimization
             if (tf1h) {
-                const volConfirm = tf1h.volRatio > 1.2;
-                const notOverextended = tf1h.distFromEMA < 0.015; // 1.5% limit
-                if (tf1h.cross === 'BULLISH_CROSS' && volConfirm && tf1h.rsi > 50 && notOverextended) {
+                const volConfirm = tf1h.volRatio > 1.0;
+                const notOverextended = tf1h.distFromEMA < 0.03;
+                if (tf1h.cross === 'BULLISH_CROSS' && volConfirm && tf1h.rsi > 40 && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
-                } else if (tf1h.cross === 'BEARISH_CROSS' && volConfirm && tf1h.rsi < 50 && notOverextended) {
+                } else if (tf1h.cross === 'BEARISH_CROSS' && volConfirm && tf1h.rsi < 60 && notOverextended) {
                     signals_to_process.push({ type: 'SHORT', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
                 }
             }
 
             // Strategy 3: 1H Trend + 15M Cross
             if (tf1h && tf15m) {
-                const volConfirm = tf15m.volRatio > 1.2; // Relaxed from 1.5
-                const notOverextended = tf15m.distFromEMA < 0.015; // Relaxed from 0.01
-                const trendStrong = tf15m.isTrendStrengthening;
+                const volConfirm = tf15m.volRatio > 1.0; // Relaxed to 1.0
+                const notOverextended = tf15m.distFromEMA < 0.03; // Relaxed to 3%
+                const trendStrong = true; // Disabled for more sensitive entry
 
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 45 && tf15m.rsi < 75 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
+                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 40 && tf15m.rsi < 80 && notOverextended) {
                     signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 55 && tf15m.rsi > 25 && !tf15m.isExtremeVol && notOverextended && trendStrong) {
+                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 60 && tf15m.rsi > 20 && notOverextended) {
                     signals_to_process.push({ type: 'SHORT', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
                 }
             }
 
             // Strategy 3: 1m Duo Schools (Must align with 15m trend + 1h trend)
+            console.log(`[CHECK TRADES] ${symbol} Indicators: 1H Trend: ${tf1h?.trend}, 15M Trend: ${tf15m?.close > tf15m?.sma20 ? 'BULLISH' : 'BEARISH'}, 1M Scalp Cross: ${tf1m_scalp?.cross}, RSI(1m): ${tf1m_scalp?.rsi?.toFixed(1)}, VolRatio(1m): ${tf1m_scalp?.volRatio?.toFixed(2)}`);
             if (tf1h && tf15m && tf1m_scalp && tf1m_safe) {
                 const tf15mTrend = tf15m.close > tf15m.sma20 ? 'BULLISH' : 'BEARISH';
 
                 // School 1: Scalping (EMA5/13) - VERY RELAXED FILTERS
-                const scalpVol = tf1m_scalp.volRatio > 1.0; // Very relaxed - any volume increase
-                const scalpDist = tf1m_scalp.distFromEMA < 0.02; // 2% limit (very relaxed)
+                const scalpVol = tf1m_scalp.volRatio > 1.5; // Tightened from 1.0
+                const scalpDist = tf1m_scalp.distFromEMA < 0.02;
 
-                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 35 && tf1m_scalp.rsi < 90 && scalpDist) {
+                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 45 && tf1m_scalp.rsi < 75 && scalpDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 65 && tf1m_scalp.rsi > 10 && scalpDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 55 && tf1m_scalp.rsi > 25 && scalpDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
                 }
 
                 // School 2: Safe Mode (EMA12/26)
-                const safeVol = tf1m_safe.volRatio > 1.2; // Relaxed from 1.3
-                const safeDist = tf1m_safe.distFromEMA < 0.005; // Relaxed from 0.003
-                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 50 && tf1m_safe.rsi < 75 && !tf1m_safe.isExtremeVol && safeDist) {
+                const safeVol = tf1m_safe.volRatio > 1.0;
+                const safeDist = tf1m_safe.distFromEMA < 0.01;
+                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 40 && tf1m_safe.rsi < 85 && safeDist) {
                     signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 50 && tf1m_safe.rsi > 25 && !tf1m_safe.isExtremeVol && safeDist) {
+                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 60 && tf1m_safe.rsi > 15 && safeDist) {
                     signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
+                }
+            }
+
+            // --- STRATEGY 8: MOMENTUM & VOLATILITY BREAKOUT (1M/15M) ---
+            [tf1m_scalp, tf15m].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '1m' : '15m';
+                const volThreshold = tfName === '1m' ? 2.5 : 1.5; // Tightened 1m to 2.5
+
+                if (tf.volRatio > volThreshold) {
+                    // Trend following breakout
+                    if (tf.rsi > 70 && (!tf1h || tf1h.trend === 'BULLISH')) {
+                        signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
+                    } else if (tf.rsi < 30 && (!tf1h || tf1h.trend === 'BEARISH')) {
+                        signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
+                    }
+
+                    // COUNTER-TREND REVERSAL (High Vol Extreme RSI)
+                    if (tf.rsi > 85) {
+                        signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `REVERSAL OVERBOUGHT (${tfName})` });
+                    } else if (tf.rsi < 15) {
+                        signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `REVERSAL OVERSOLD (${tfName})` });
+                    }
+                }
+            });
+
+            // --- STRATEGY 9: TREND PULLBACK (1M / 15M) ---
+            if (tf1h && tf15m && tf1m_scalp) {
+                const h1Trend = tf1h.trend;
+                const m15Trend = tf15m.close > tf15m.ema20 ? 'BULLISH' : 'BEARISH';
+
+                if (h1Trend === 'BULLISH' && m15Trend === 'BULLISH') {
+                    // Pullback in 1m: RSI drops but price stays above EMA20
+                    if (tf1m_scalp.rsi < 45 && tf1m_scalp.close > tf1m_scalp.ema20 * 0.998) {
+                        signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m PULLBACK (BULLISH)' });
+                    }
+                } else if (h1Trend === 'BEARISH' && m15Trend === 'BEARISH') {
+                    // Pullback in 1m: RSI rises but price stays below EMA20
+                    if (tf1m_scalp.rsi > 55 && tf1m_scalp.close < tf1m_scalp.ema20 * 1.002) {
+                        signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m PULLBACK (BEARISH)' });
+                    }
                 }
             }
 
@@ -1199,13 +1268,19 @@ Deno.serve(async (req) => {
                     const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
                     const tradeId = `${symbol.replace('USDT', '')}-${shortId}`;
 
+                    const formatPrice = (p: number) => {
+                        if (p < 1) return p.toFixed(6);
+                        if (p < 10) return p.toFixed(4);
+                        return p.toFixed(2);
+                    };
+
                     const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
                         `ID: <b>#${tradeId}</b>\n` +
                         `Trường phái: <b>${sig.name}</b>\n` +
                         `Type: <b>${sig.type}</b>\n` +
-                        `Entry: $${sig.ref.close}\n` +
-                        `Target: $${target.toFixed(2)}\n` +
-                        `StopLoss: $${stopLoss.toFixed(2)}\n` +
+                        `Entry: $${formatPrice(sig.ref.close)}\n` +
+                        `Target: $${formatPrice(target)}\n` +
+                        `StopLoss: $${formatPrice(stopLoss)}\n` +
                         `Volume: <b>${sig.ref.volRatio.toFixed(2)}x</b>\n` +
                         `RSI: ${sig.ref.rsi.toFixed(1)}\n` +
                         `Time: ${timestampStr}`;
@@ -1245,12 +1320,12 @@ Deno.serve(async (req) => {
             success: true,
             server_time: new Date().toISOString(),
             action_processed: action || 'none',
-            new_signals: newSignals
+            new_signals: newSignals,
+            scan_report: logs
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     } catch (err: any) {
-        console.error('Main Handler Error:', err.message);
         return new Response(JSON.stringify({ error: err.message }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
