@@ -167,8 +167,8 @@ export const MarketAnomaliesPanel: React.FC = () => {
     };
 
     return (
-        <div className="card h-full flex flex-col">
-            <div className="card-header justify-between">
+        <div className="card h-full flex flex-col overflow-hidden p-0! border-[var(--color-border)]">
+            <div className="card-header justify-between p-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] mb-0">
                 <div className="flex items-center gap-2">
                     <Zap size={16} className="text-pink-500" />
                     BOT THEO DÕI BIẾN ĐỘNG
@@ -341,7 +341,7 @@ export const MarketAnomaliesPanel: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto no-scrollbar">
                 <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-[var(--color-bg-secondary)] z-10 shadow-sm">
+                    <thead className="sticky top-0 bg-[var(--color-bg-secondary)] z-10 backdrop-blur-sm">
                         <tr className="text-[10px] font-bold text-gray-500 uppercase border-b border-white/5">
                             <th className="px-4 py-3">Thời gian / Cặp</th>
                             <th className="px-4 py-3">TF</th>

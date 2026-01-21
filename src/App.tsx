@@ -237,12 +237,14 @@ function App() {
             <div className="h-[1000px] flex-shrink-0">
               <HistoryDashboard symbol={symbol} />
             </div>
-            <div className="space-y-4">
-              {/* Bot theo dõi biến động */}
-              <MarketAnomaliesPanel />
+            <div className="flex flex-col space-y-4">
+              <div className="h-[500px]">
+                <MarketAnomaliesPanel />
+              </div>
 
-              {/* Price Action Bot - Bot #3 */}
-              <PriceActionBot />
+              <div className="h-[500px]">
+                <PriceActionBot />
+              </div>
             </div>
           </div>
 
