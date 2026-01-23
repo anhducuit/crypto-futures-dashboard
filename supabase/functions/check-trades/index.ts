@@ -261,6 +261,64 @@ function calculateDynamicTPSL(
     };
 }
 
+/**
+ * SMART NOISE FILTER
+ * Chống nhiễu, chống spam và xử lý xung đột hướng lệnh
+ */
+async function applySmartNoiseFilter(supabase: any, symbol: string, currentSignal: any): Promise<{ allowed: boolean, reason?: string }> {
+    const now = new Date();
+    const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
+
+    // 1. Fetch recent history for this symbol (last 4 hours)
+    const { data: recentHistory } = await supabase
+        .from('trading_history')
+        .select('signal, timeframe, strategy_name, created_at, status')
+        .eq('symbol', symbol)
+        .gt('created_at', fourHoursAgo)
+        .order('created_at', { ascending: false });
+
+    if (!recentHistory || recentHistory.length === 0) return { allowed: true };
+
+    // Tín hiệu ưu tiên cao có quyền phá vỡ quy tắc xung đột hướng
+    const highPriorityKeywords = [
+        'VOL BREAKOUT',
+        'REVERSAL OVERBOUGHT',
+        'REVERSAL OVERSOLD',
+        'MOMENTUM BREAKOUT'
+    ];
+
+    const isHighPriority = highPriorityKeywords.some(keyword => currentSignal.name.includes(keyword));
+
+    for (const trade of recentHistory) {
+        const tradeTime = new Date(trade.created_at).getTime();
+        const isWithin30Mins = (now.getTime() - tradeTime) < (30 * 60 * 1000);
+
+        // A. CHỐNG SPAM (Cùng hướng trong 1 giờ cho cùng chiến lược)
+        const isSameStrategy = trade.strategy_name === currentSignal.name;
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).getTime();
+        if (isSameStrategy && tradeTime > oneHourAgo) {
+            return { allowed: false, reason: `Spam: Chiến lược ${currentSignal.name} vừa nổ trong 60p qua` };
+        }
+
+        // B. CHỐNG LẶP LẠI (Cùng hướng bất kể chiến lược trong 30p)
+        if (trade.signal === currentSignal.type && isWithin30Mins) {
+            return { allowed: false, reason: `Spam: Hướng ${trade.signal} vừa nổ trong 30p qua` };
+        }
+
+        // C. CHỐNG XUNG ĐỘT HƯỚNG (Ngược hướng trong 4h)
+        if (trade.signal !== currentSignal.type && trade.status === 'PENDING') {
+            if (!isHighPriority) {
+                return { allowed: false, reason: `Xung đột: Đang có lệnh ${trade.signal} (#${trade.strategy_name}) chờ khớp. Cần biến động cực mạnh để đảo chiều.` };
+            } else {
+                console.log(`[NOISE FILTER] ${symbol}: Tín hiệu mạnh ${currentSignal.name} được phép ghi đè lệnh ${trade.signal} cũ.`);
+            }
+        }
+    }
+
+    return { allowed: true };
+}
+
 async function sendTelegram(message: string, replyToId?: number, chatIds?: (string | number)[]) {
     const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const ownerChatId = Deno.env.get('TELEGRAM_CHAT_ID');
@@ -1244,21 +1302,13 @@ Deno.serve(async (req) => {
                     continue;
                 }
 
-                const { data: active } = await supabase
-                    .from('trading_history')
-                    .select('id')
-                    .eq('symbol', symbol)
-                    .eq('status', 'PENDING')
-                    .eq('timeframe', sig.tf)
-                    .eq('strategy_name', sig.name)
-                    .limit(1);
-
-                if (active && active.length > 0) {
-                    console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} ignored - Trade already PENDING`);
+                const filterResult = await applySmartNoiseFilter(supabase, symbol, sig);
+                if (!filterResult.allowed) {
+                    console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} rejected by Noise Filter: ${filterResult.reason}`);
                     continue;
                 }
 
-                if (!active || active.length === 0) {
+                if (filterResult.allowed) {
                     const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
                     const icon = sig.type === 'LONG' ? '🟢' : '🔴';
 
@@ -1285,30 +1335,38 @@ Deno.serve(async (req) => {
                         `RSI: ${sig.ref.rsi.toFixed(1)}\n` +
                         `Time: ${timestampStr}`;
 
-                    let msgId = null;
-                    const teleRes = await sendTelegram(msg, undefined, subscriberIds);
-                    if (teleRes && teleRes.ok) msgId = teleRes.result.message_id;
-
                     const signalData: any = {
                         symbol, timeframe: sig.tf, signal: sig.type,
                         price_at_signal: sig.ref.close,
                         target_price: target, stop_loss: stopLoss,
                         status: 'PENDING',
-                        telegram_message_id: msgId,
+                        telegram_message_id: null,
                         rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
                         strategy_name: sig.name,
                         trade_id: tradeId
                     };
 
-                    const { error: insertError } = await supabase.from('trading_history').insert(signalData);
+                    const { data: inserted, error: insertError } = await supabase.from('trading_history').insert(signalData).select('id').single();
 
-                    // FALLBACK: If new columns (strategy_name) are missing, insert without them
-                    if (insertError && insertError.message.includes('column') && insertError.message.includes('not exist')) {
-                        console.warn('New columns missing in DB, falling back to basic insert');
-                        delete signalData.strategy_name;
-                        delete signalData.pnl_reason;
-                        delete signalData.trade_id;
-                        await supabase.from('trading_history').insert(signalData);
+                    if (insertError) {
+                        console.error(`[CHECK TRADES] DB Insert Error for ${symbol}:`, insertError.message);
+                        // Fallback: If new columns are missing
+                        if (insertError.message.includes('column') && insertError.message.includes('not exist')) {
+                            delete signalData.strategy_name;
+                            delete signalData.trade_id;
+                            await supabase.from('trading_history').insert(signalData);
+                        }
+                    }
+
+                    // ONLY SEND TELEGRAM IF DB RECORD CREATED
+                    if (!insertError || (inserted && inserted.id)) {
+                        const teleRes = await sendTelegram(msg, undefined, subscriberIds);
+                        if (teleRes && teleRes.ok) {
+                            await supabase.from('trading_history').update({ telegram_message_id: teleRes.result.message_id }).eq('trade_id', tradeId);
+                        }
+                        newSignals.push({ symbol, signal: sig.type });
+                    } else {
+                        console.error(`[CHECK TRADES] Skipping Telegram for ${symbol} due to DB error.`);
                     }
 
                     newSignals.push({ symbol, signal: sig.type });

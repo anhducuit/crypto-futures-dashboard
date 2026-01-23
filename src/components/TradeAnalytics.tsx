@@ -43,7 +43,7 @@ export const TradeAnalytics: React.FC = () => {
                 query = query.gte('created_at', dateLimit.toISOString());
             }
 
-            let { data, error } = await query.limit(500);
+            let { data, error } = await query.limit(2000);
 
             // FALLBACK if columns are missing
             if (error && error.message.includes('column') && error.message.includes('not exist')) {
@@ -52,7 +52,7 @@ export const TradeAnalytics: React.FC = () => {
                     .select('id, created_at, symbol, signal, status, timeframe')
                     .order('created_at', { ascending: false });
 
-                const { data: fbData, error: fbError } = await fallbackQuery.limit(500);
+                const { data: fbData, error: fbError } = await fallbackQuery.limit(2000);
                 data = fbData as any;
                 error = fbError;
             }
@@ -61,24 +61,15 @@ export const TradeAnalytics: React.FC = () => {
 
             if (data) {
 
-                // Calculate Stats
-                const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {
-                    'BTCUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'ETHUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'SOLUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'BNBUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'XRPUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'ADAUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'DOGEUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'LINKUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'AVAXUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'NEARUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'FTMUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'OPUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'ARBUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'TIAUSDT': { wins: 0, losses: 0, tfMap: {} },
-                    'INJUSDT': { wins: 0, losses: 0, tfMap: {} }
-                };
+                // Calculate Stats Dynamically
+                const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {};
+
+                // Initialize with common symbols to ensure order, but allow dynamic growth
+                const baseSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'FTMUSDT', 'OPUSDT', 'ARBUSDT', 'TIAUSDT', 'INJUSDT'];
+                baseSymbols.forEach(s => {
+                    symbolMap[s] = { wins: 0, losses: 0, tfMap: {} };
+                });
+
                 let totalWin = 0, totalLoss = 0;
 
                 data.forEach(t => {
