@@ -1266,12 +1266,6 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // Fallback: Individual RSI Divergence (only if not already in a combo)
-            raw_signals.forEach(sig => {
-                if (sig.name.includes('PHÂN KỲ') && !final_signals.some(f => f.tf === sig.tf && f.type === sig.type)) {
-                    final_signals.push(sig);
-                }
-            });
 
             for (const sig of final_signals) {
                 if (!allowedTimeframes.includes(sig.tf)) {
