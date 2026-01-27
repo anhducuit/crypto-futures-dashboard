@@ -17,6 +17,7 @@ export const TradeAnalytics: React.FC = () => {
     const [stats, setStats] = useState<AnalyticsData[]>([]);
     const [timeFilter, setTimeFilter] = useState<'24h' | '7d' | '30d' | 'all'>('all');
     const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number }>>({});
+    const [strategyStats, setStrategyStats] = useState<Record<string, { wins: number, losses: number }>>({});
     const [lastScan, setLastScan] = useState<string | null>(null);
     const [botOnline, setBotOnline] = useState<boolean>(true);
     const [shareModalCoin, setShareModalCoin] = useState<AnalyticsData | null>(null);
@@ -115,6 +116,24 @@ export const TradeAnalytics: React.FC = () => {
                     else if (t.status === 'FAILED') hourMap[session].losses++;
                 });
                 setBestHours(hourMap);
+
+                // Calculate Strategy Stats
+                const strategyMap: Record<string, { wins: number, losses: number }> = {
+                    '💎 SÁT THỦ BẮT ĐỈNH ĐÁY': { wins: 0, losses: 0 },
+                    '⚔️ CHIẾN THẦN ĐU TREND': { wins: 0, losses: 0 },
+                    '🪤 BẪY GIÁ - SĂN THANH KHOẢN': { wins: 0, losses: 0 },
+                    '💣 QUẢ BOM ĐỘNG LƯỢNG': { wins: 0, losses: 0 },
+                    '⚖️ ĐỒNG THUẬN ĐA KHUNG': { wins: 0, losses: 0 }
+                };
+
+                data.forEach(t => {
+                    const strategyName = t.strategy_name;
+                    if (strategyName && strategyMap[strategyName]) {
+                        if (t.status === 'SUCCESS') strategyMap[strategyName].wins++;
+                        else if (t.status === 'FAILED') strategyMap[strategyName].losses++;
+                    }
+                });
+                setStrategyStats(strategyMap);
 
                 const calculatedStats: AnalyticsData[] = Object.entries(symbolMap).map(([symbol, counts]) => ({
                     symbol,
@@ -324,7 +343,7 @@ export const TradeAnalytics: React.FC = () => {
                 <div className="card-header flex justify-between items-center bg-[var(--color-bg-secondary)] p-4">
                     <div className="flex items-center gap-2">
                         <Clock size={16} className="text-[var(--color-golden)]" />
-                        <span className="font-bold tracking-tight uppercase">PHÂN TÍCH GIỜ VÀNG (SÁNG/TRƯA/CHIỀU/TỐI)</span>
+                        <span className="font-bold tracking-tight uppercase">PHÂN TÍCH GIỜ VÀNG VÀ CHIẾN LƯỢC</span>
                     </div>
                 </div>
                 <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -343,6 +362,29 @@ export const TradeAnalytics: React.FC = () => {
                         );
                     })}
                 </div>
+
+                {/* Strategy Combo Analysis */}
+                <div className="p-4 border-t border-[var(--color-border)]">
+                    <h3 className="text-xs font-bold text-[var(--color-golden)] mb-3 uppercase tracking-wider">Phân Tích 5 Combo Chiến Lược</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                        {Object.entries(strategyStats).map(([strategy, counts]) => {
+                            const total = counts.wins + counts.losses;
+                            const rate = total > 0 ? (counts.wins / total * 100) : 0;
+                            return (
+                                <div key={strategy} className="bg-black/20 p-3 rounded-lg border border-white/5">
+                                    <p className="text-[9px] text-slate-400 font-bold mb-2 leading-tight">{strategy}</p>
+                                    <p className={`text-xl font-black mb-1 ${rate >= 50 ? 'text-green-400' : 'text-red-400'}`}>{rate.toFixed(0)}%</p>
+                                    <div className="flex justify-between text-[9px] mt-2">
+                                        <span className="text-green-500">W:{counts.wins}</span>
+                                        <span className="text-red-500">L:{counts.losses}</span>
+                                        <span className="text-slate-500">T:{total}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 <div className="px-4 pb-4">
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                         <p className="text-[10px] text-blue-300 italic">
