@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { PieChart, TrendingUp, Clock, BarChart2, Share2, Loader2 } from 'lucide-react';
+import { PieChart, TrendingUp, Clock, BarChart2, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { ShareCard } from './ShareCard';
-import html2canvas from 'html2canvas';
+import { CoinShareModal } from './CoinShareModal';
 
 interface AnalyticsData {
     symbol: string;
@@ -20,7 +19,7 @@ export const TradeAnalytics: React.FC = () => {
     const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number }>>({});
     const [lastScan, setLastScan] = useState<string | null>(null);
     const [botOnline, setBotOnline] = useState<boolean>(true);
-    const [sharingCoin, setSharingCoin] = useState<string | null>(null);
+    const [shareModalCoin, setShareModalCoin] = useState<AnalyticsData | null>(null);
 
     const fetchData = async () => {
         try {
@@ -357,16 +356,11 @@ export const TradeAnalytics: React.FC = () => {
                                         <td className="px-4 py-3">
                                             <div className="flex justify-center">
                                                 <button
-                                                    onClick={() => handleShareCoin(s)}
-                                                    disabled={sharingCoin === s.symbol}
-                                                    className="p-2 rounded-lg hover:bg-[var(--color-golden)]/10 text-[var(--color-golden)] hover:text-[var(--color-golden)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                                                    onClick={() => setShareModalCoin(s)}
+                                                    className="p-2 rounded-lg hover:bg-[var(--color-golden)]/10 text-[var(--color-golden)] hover:text-[var(--color-golden)] transition-colors group"
                                                     title="Chia sẻ"
                                                 >
-                                                    {sharingCoin === s.symbol ? (
-                                                        <Loader2 size={16} className="animate-spin" />
-                                                    ) : (
-                                                        <Share2 size={16} className="group-hover:scale-110 transition-transform" />
-                                                    )}
+                                                    <Share2 size={16} className="group-hover:scale-110 transition-transform" />
                                                 </button>
                                             </div>
                                         </td>
@@ -428,19 +422,19 @@ export const TradeAnalytics: React.FC = () => {
                 </div>
             </div>
 
-            {/* Hidden ShareCards for each coin */}
-            {stats.slice(1).map((s) => (
-                <ShareCard
-                    key={s.symbol}
-                    symbol={s.symbol}
-                    winRate={s.winRate}
-                    wins={s.wins}
-                    losses={s.losses}
-                    total={s.total}
-                    tfBreakdown={s.tfBreakdown}
+            {/* Share Modal */}
+            {shareModalCoin && (
+                <CoinShareModal
+                    symbol={shareModalCoin.symbol}
+                    winRate={shareModalCoin.winRate}
+                    wins={shareModalCoin.wins}
+                    losses={shareModalCoin.losses}
+                    total={shareModalCoin.total}
+                    tfBreakdown={shareModalCoin.tfBreakdown}
                     timeFilter={timeFilter}
+                    onClose={() => setShareModalCoin(null)}
                 />
-            ))}
+            )}
         </div>
     );
 };
