@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, BookOpen, Zap, BarChart3, Layers, TrendingUp, Target, Sparkles, Activity, ShieldCheck, ChevronRight } from 'lucide-react';
+import { X, BookOpen, Zap, BarChart3, Layers, TrendingUp, Target, Sparkles, Activity, ShieldCheck, ChevronRight, Swords } from 'lucide-react';
 
 export type GuideType =
+    | 'COMBO_STRATEGIES'
     | 'MA_CROSS'
     | 'VOLUME'
     | 'MULTI_TF_MA'
@@ -21,6 +22,175 @@ interface GuideModalProps {
 export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
     const renderContent = () => {
         switch (type) {
+            case 'COMBO_STRATEGIES':
+                return (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                            <h3 className="text-red-400 font-bold mb-2 flex items-center gap-2">
+                                <Swords size={18} /> HỆ THỐNG 5 COMBO CHIẾN LƯỢC
+                            </h3>
+                            <p className="text-sm text-gray-300 leading-relaxed">
+                                Robot chỉ nổ lệnh khi đủ điều kiện vào 1 trong 5 Combo chiến lược. Mỗi combo là sự kết hợp của nhiều chỉ báo xác nhận lẫn nhau, giúp tăng độ chính xác và giảm nhiễu.
+                            </p>
+                        </div>
+
+                        {/* Combo 1 */}
+                        <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl">
+                            <h4 className="text-purple-400 font-black mb-2 flex items-center gap-2">
+                                💎 COMBO 1: SÁT THỦ BẮT ĐỈNH ĐÁY
+                            </h4>
+                            <p className="text-xs text-gray-300 mb-3">
+                                <b>Mục đích:</b> Bắt điểm đảo chiều tại đỉnh/đáy với độ chính xác cao.
+                            </p>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-purple-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">RSI Divergence:</b> Phân kỳ giữa giá và RSI (Bullish/Bearish)</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-purple-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Price Action:</b> PinBar hoặc Engulfing tại vùng Support/Resistance</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-purple-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Volume Spike:</b> Khối lượng tăng đột biến (>1.8x)</span>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-purple-500/10 rounded-lg border-l-2 border-purple-500">
+                                <p className="text-[10px] text-gray-400 italic">
+                                    💡 <b>Chiến thuật:</b> Vào lệnh khi thấy phân kỳ + nến đảo chiều tại vùng cản quan trọng.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Combo 2 */}
+                        <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl">
+                            <h4 className="text-green-400 font-black mb-2 flex items-center gap-2">
+                                ⚔️ COMBO 2: CHIẾN THẦN ĐU TREND
+                            </h4>
+                            <p className="text-xs text-gray-300 mb-3">
+                                <b>Mục đích:</b> Đi theo xu hướng mạnh với xác nhận đa chỉ báo.
+                            </p>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-green-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Trend Align:</b> 4H và 1H cùng chiều (Bullish hoặc Bearish)</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-green-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Ichimoku Cloud:</b> Giá trên/dưới mây (Cloud Align)</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-green-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">EMA Cross:</b> Đường nhanh cắt đường chậm</span>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-green-500/10 rounded-lg border-l-2 border-green-500">
+                                <p className="text-[10px] text-gray-400 italic">
+                                    💡 <b>Chiến thuật:</b> Chỉ vào lệnh khi cả 3 yếu tố đồng thuận cùng chiều.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Combo 3 */}
+                        <div className="p-4 bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border border-orange-500/20 rounded-xl">
+                            <h4 className="text-orange-400 font-black mb-2 flex items-center gap-2">
+                                🪤 COMBO 3: BẪY GIÁ - SĂN THANH KHOẢN
+                            </h4>
+                            <p className="text-xs text-gray-300 mb-3">
+                                <b>Mục đích:</b> Bắt các đợt fake breakout và liquidity hunt.
+                            </p>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-orange-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Level Break:</b> Giá phá vùng cản quan trọng</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-orange-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">PinBar Rejection:</b> Nến PinBar bị từ chối</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-orange-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng cực cao (>2.0x)</span>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-orange-500/10 rounded-lg border-l-2 border-orange-500">
+                                <p className="text-[10px] text-gray-400 italic">
+                                    💡 <b>Chiến thuật:</b> Vào lệnh ngược chiều khi thấy PinBar rejection + volume cao.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Combo 4 */}
+                        <div className="p-4 bg-gradient-to-br from-red-500/10 to-pink-500/10 border border-red-500/20 rounded-xl">
+                            <h4 className="text-red-400 font-black mb-2 flex items-center gap-2">
+                                💣 COMBO 4: QUẢ BOM ĐỘNG LƯỢNG
+                            </h4>
+                            <p className="text-xs text-gray-300 mb-3">
+                                <b>Mục đích:</b> Bắt breakout mạnh với động lượng cao.
+                            </p>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-red-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">EMA Squeeze:</b> Các đường EMA hội tụ sát nhau</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-red-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Marubozu Candle:</b> Nến thân dài, không râu</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-red-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng nổ (>3.0x)</span>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-red-500/10 rounded-lg border-l-2 border-red-500">
+                                <p className="text-[10px] text-gray-400 italic">
+                                    💡 <b>Chiến thuật:</b> Vào lệnh ngay khi nến Marubozu xuất hiện với volume cực cao.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Combo 5 */}
+                        <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl">
+                            <h4 className="text-blue-400 font-black mb-2 flex items-center gap-2">
+                                ⚖️ COMBO 5: ĐỒNG THUẬN ĐA KHUNG
+                            </h4>
+                            <p className="text-xs text-gray-300 mb-3">
+                                <b>Mục đích:</b> Tín hiệu mạnh nhất khi cả 3 khung đồng thuận.
+                            </p>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-blue-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">4H Trend:</b> Xu hướng khung 4 giờ</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-blue-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">1H Trend:</b> Xu hướng khung 1 giờ</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-blue-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">15m Trend + RSI:</b> Xu hướng 15m và RSI extreme (<35 hoặc >65)</span>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-blue-500/10 rounded-lg border-l-2 border-blue-500">
+                                <p className="text-[10px] text-gray-400 italic">
+                                    💡 <b>Chiến thuật:</b> Chỉ vào lệnh khi cả 3 khung cùng chiều + RSI extreme.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl">
+                            <p className="text-xs font-bold text-yellow-400 mb-2 uppercase">⚠️ LƯU Ý QUAN TRỌNG</p>
+                            <ul className="space-y-1 text-[10px] text-gray-400">
+                                <li>• Robot chỉ nổ lệnh khi đủ điều kiện vào 1 trong 5 Combo</li>
+                                <li>• Mỗi Combo có nhiều chỉ báo xác nhận lẫn nhau</li>
+                                <li>• Số lượng tín hiệu giảm nhưng chất lượng tăng</li>
+                                <li>• Kiểm tra phân tích 5 Combo ở bảng "PHÂN TÍCH GIờ VÀNG VÀ CHIẾN LƯỢC"</li>
+                            </ul>
+                        </div>
+                    </div>
+                );
             case 'MA_CROSS':
                 return (
                     <div className="space-y-4">

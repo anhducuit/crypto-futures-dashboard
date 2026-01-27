@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, Zap, BarChart3, Layers, TrendingUp, Sparkles, Activity, Target, PieChart } from 'lucide-react';
+import { HelpCircle, Zap, BarChart3, Layers, TrendingUp, Sparkles, Activity, Target, PieChart, Swords } from 'lucide-react';
 import { GuideModal } from './GuideModal';
 import type { GuideType } from './GuideModal';
 
@@ -7,6 +7,7 @@ export const GuideBar: React.FC = () => {
     const [activeGuide, setActiveGuide] = useState<GuideType | null>(null);
 
     const guides: { id: GuideType; label: string; icon: React.ReactNode; color: string }[] = [
+        { id: 'COMBO_STRATEGIES', label: '5 Combo Chiến Lược', icon: <Swords size={14} />, color: 'text-red-500' },
         { id: 'MA_CROSS', label: 'Chiến lược MA Cross', icon: <Zap size={14} />, color: 'text-blue-400' },
         { id: 'VOLUME', label: 'Volume Analysis', icon: <BarChart3 size={14} />, color: 'text-orange-400' },
         { id: 'MULTI_TF_MA', label: 'Phân tích Đa khung', icon: <Layers size={14} />, color: 'text-purple-400' },
