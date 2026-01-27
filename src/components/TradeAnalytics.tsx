@@ -128,9 +128,15 @@ export const TradeAnalytics: React.FC = () => {
 
                 data.forEach(t => {
                     const strategyName = t.strategy_name;
-                    if (strategyName && strategyMap[strategyName]) {
-                        if (t.status === 'SUCCESS') strategyMap[strategyName].wins++;
-                        else if (t.status === 'FAILED') strategyMap[strategyName].losses++;
+                    if (strategyName) {
+                        // Match strategy name (may include timeframe like "(15m)")
+                        for (const [key, value] of Object.entries(strategyMap)) {
+                            if (strategyName.includes(key)) {
+                                if (t.status === 'SUCCESS') value.wins++;
+                                else if (t.status === 'FAILED') value.losses++;
+                                break;
+                            }
+                        }
                     }
                 });
                 setStrategyStats(strategyMap);
