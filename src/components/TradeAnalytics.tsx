@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { PieChart, TrendingUp, Clock, BarChart2 } from 'lucide-react';
+import { PieChart, TrendingUp, Clock, BarChart2, Share2, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ShareCard } from './ShareCard';
+import html2canvas from 'html2canvas';
 
 interface AnalyticsData {
     symbol: string;
@@ -18,6 +20,7 @@ export const TradeAnalytics: React.FC = () => {
     const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number }>>({});
     const [lastScan, setLastScan] = useState<string | null>(null);
     const [botOnline, setBotOnline] = useState<boolean>(true);
+    const [sharingCoin, setSharingCoin] = useState<string | null>(null);
 
     const fetchData = async () => {
         try {
@@ -136,6 +139,76 @@ export const TradeAnalytics: React.FC = () => {
         } catch (e) {
             console.error('Error fetching analytics:', e);
         }
+    };
+
+    const handleShareCoin = async (coin: AnalyticsData) => {
+        setSharingCoin(coin.symbol);
+        try {
+            // Wait for ShareCard to render
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const cardElement = document.getElementById(`share-card-${coin.symbol}`);
+            if (!cardElement) {
+                console.error('Share card element not found');
+                return;
+            }
+
+            // Temporarily show the card
+            cardElement.style.left = '0';
+            cardElement.style.opacity = '1';
+
+            const canvas = await html2canvas(cardElement, {
+                backgroundColor: null,
+                scale: 2,
+                width: 600,
+                height: 800,
+                logging: false
+            });
+
+            // Hide the card again
+            cardElement.style.left = '-9999px';
+            cardElement.style.opacity = '0';
+
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+
+                const filename = `${coin.symbol.replace('USDT', '')}-performance-${Date.now()}.png`;
+
+                // Try native share API (mobile)
+                if (navigator.share && navigator.canShare) {
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    if (navigator.canShare({ files: [file] })) {
+                        navigator.share({
+                            files: [file],
+                            title: `${coin.symbol} Performance`,
+                            text: `Win Rate: ${coin.winRate.toFixed(1)}%`
+                        }).catch(err => {
+                            console.log('Share cancelled or failed:', err);
+                            // Fallback to download
+                            downloadImage(blob, filename);
+                        });
+                    } else {
+                        downloadImage(blob, filename);
+                    }
+                } else {
+                    // Desktop: Download
+                    downloadImage(blob, filename);
+                }
+            });
+        } catch (error) {
+            console.error('Error sharing coin:', error);
+        } finally {
+            setSharingCoin(null);
+        }
+    };
+
+    const downloadImage = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
     };
 
     useEffect(() => {
@@ -259,6 +332,7 @@ export const TradeAnalytics: React.FC = () => {
                                 <th className="px-4 py-3">Thắng</th>
                                 <th className="px-4 py-3">Thua</th>
                                 <th className="px-4 py-3">Tỷ lệ Thắng</th>
+                                <th className="px-4 py-3 text-center">Chia sẻ</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--color-border)]">
@@ -280,11 +354,27 @@ export const TradeAnalytics: React.FC = () => {
                                                 <span className="font-mono text-xs">{s.winRate.toFixed(0)}%</span>
                                             </div>
                                         </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex justify-center">
+                                                <button
+                                                    onClick={() => handleShareCoin(s)}
+                                                    disabled={sharingCoin === s.symbol}
+                                                    className="p-2 rounded-lg hover:bg-[var(--color-golden)]/10 text-[var(--color-golden)] hover:text-[var(--color-golden)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                                                    title="Chia sẻ"
+                                                >
+                                                    {sharingCoin === s.symbol ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <Share2 size={16} className="group-hover:scale-110 transition-transform" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                     {/* Timeframe breakdown row */}
                                     {s.tfBreakdown && (
                                         <tr className="bg-black/10">
-                                            <td colSpan={5} className="px-4 py-2">
+                                            <td colSpan={6} className="px-4 py-2">
                                                 <div className="flex flex-wrap gap-4 text-[10px]">
                                                     {Object.entries(s.tfBreakdown).map(([tf, counts]) => (
                                                         <div key={tf} className="flex gap-2 bg-white/5 px-2 py-1 rounded border border-white/5">
@@ -337,6 +427,20 @@ export const TradeAnalytics: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Hidden ShareCards for each coin */}
+            {stats.slice(1).map((s) => (
+                <ShareCard
+                    key={s.symbol}
+                    symbol={s.symbol}
+                    winRate={s.winRate}
+                    wins={s.wins}
+                    losses={s.losses}
+                    total={s.total}
+                    tfBreakdown={s.tfBreakdown}
+                    timeFilter={timeFilter}
+                />
+            ))}
         </div>
     );
 };
