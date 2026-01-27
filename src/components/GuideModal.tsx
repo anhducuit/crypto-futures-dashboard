@@ -53,7 +53,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-purple-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Volume Spike:</b> Khối lượng tăng đột biến (>1.8x)</span>
+                                    <span className="text-gray-400"><b className="text-white">Volume Spike:</b> Khối lượng tăng đột biến (&gt;1.8x)</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-purple-500/10 rounded-lg border-l-2 border-purple-500">
@@ -111,7 +111,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-orange-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng cực cao (>2.0x)</span>
+                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng cực cao (&gt;2.0x)</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-orange-500/10 rounded-lg border-l-2 border-orange-500">
@@ -140,7 +140,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-red-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng nổ (>3.0x)</span>
+                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng nổ (&gt;3.0x)</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-red-500/10 rounded-lg border-l-2 border-red-500">
@@ -169,7 +169,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">15m Trend + RSI:</b> Xu hướng 15m và RSI extreme (<35 hoặc >65)</span>
+                                    <span className="text-gray-400"><b className="text-white">15m Trend + RSI:</b> Xu hướng 15m và RSI extreme (&lt;35 hoặc &gt;65)</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-blue-500/10 rounded-lg border-l-2 border-blue-500">
