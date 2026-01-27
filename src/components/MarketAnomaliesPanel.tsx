@@ -224,14 +224,9 @@ export const MarketAnomaliesPanel: React.FC = () => {
                         <option value="BNBUSDT">BNB</option>
                         <option value="ADAUSDT">ADA</option>
                         <option value="DOGEUSDT">DOGE</option>
-                        <option value="LINKUSDT">LINK</option>
                         <option value="AVAXUSDT">AVAX</option>
                         <option value="NEARUSDT">NEAR</option>
-                        <option value="FTMUSDT">FTM</option>
-                        <option value="OPUSDT">OP</option>
-                        <option value="ARBUSDT">ARB</option>
                         <option value="TIAUSDT">TIA</option>
-                        <option value="INJUSDT">INJ</option>
                     </select>
 
                     <select

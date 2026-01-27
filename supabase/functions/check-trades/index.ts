@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /* --- CONSTANTS & CONFIG --- */
-const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'FTMUSDT', 'OPUSDT', 'ARBUSDT', 'TIAUSDT', 'INJUSDT'];
+const DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
 const BACKFILL_START_TIME = new Date('2026-01-18T17:00:00Z').getTime(); // 00:00 Jan 19 VN
 const TF_CONFIG = [
     { interval: '1m', limit: 300 },
@@ -182,6 +182,26 @@ function detectPriceAction(opens: number[], highs: number[], lows: number[], clo
     }
 
     return { pinBar, engulfing };
+}
+
+function detectMarubozu(open: number, high: number, low: number, close: number) {
+    const bodySize = Math.abs(close - open);
+    const candleRange = high - low;
+    if (candleRange === 0) return false;
+    // Body is > 90% of the whole range
+    return (bodySize / candleRange) > 0.9;
+}
+
+function checkEMASqueeze(closes: number[]) {
+    const ema20 = calculateEMA(closes, 20);
+    const ema50 = calculateEMA(closes, 50);
+    const ema200 = calculateEMA(closes.slice(-200), 200);
+    if (!ema20 || !ema50 || !ema200) return false;
+
+    const max = Math.max(ema20, ema50, ema200);
+    const min = Math.min(ema20, ema50, ema200);
+    const spread = (max - min) / min;
+    return spread < 0.005; // 0.5% squeeze
 }
 
 
@@ -411,15 +431,30 @@ Deno.serve(async (req) => {
             const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
             const supabase = createClient(supabaseUrl, supabaseKey)
 
-            const { error } = await supabase.from('trading_history').delete().neq('id', 0); // Delete all
-            if (error) {
-                return new Response(JSON.stringify({ success: false, error: error.message }), {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                    status: 500
-                });
-            }
+            // Get counts before
+            const { count: hBefore } = await supabase.from('trading_history').select('*', { count: 'exact', head: true });
+            const { count: aBefore } = await supabase.from('market_anomalies').select('*', { count: 'exact', head: true });
+            const { count: pBefore } = await supabase.from('price_action_signals').select('*', { count: 'exact', head: true });
 
-            return new Response(JSON.stringify({ success: true, message: "All trading history has been cleared." }), {
+            // Force delete all
+            await Promise.all([
+                supabase.from('trading_history').delete().gte('created_at', '2020-01-01'),
+                supabase.from('market_anomalies').delete().gte('created_at', '2020-01-01'),
+                supabase.from('price_action_signals').delete().gte('created_at', '2020-01-01')
+            ]);
+
+            // Get counts after
+            const { count: hAfter } = await supabase.from('trading_history').select('*', { count: 'exact', head: true });
+
+            return new Response(JSON.stringify({
+                success: true,
+                message: "All trading data has been cleared.",
+                details: {
+                    trading_history: { before: hBefore, after: hAfter },
+                    market_anomalies: { before: aBefore },
+                    price_action_signals: { before: pBefore }
+                }
+            }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
@@ -1134,169 +1169,111 @@ Deno.serve(async (req) => {
             const tf1h = analyses['1h'] as any;
             const tf15m = analyses['15m'] as any;
             const tf1m_scalp = analyses['1m_scalp'] as any;
-            const tf1m_safe = analyses['1m_safe'] as any;
 
-            let signals_to_process: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
+            const raw_signals: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
 
-
-
-            // Strategy 1: 4H Major Trend (EMA20/50 Cross)
+            // 1. Collect Base Strategy Signals (For combos and fallback)
             if (tf4h) {
-                const volConfirm = tf4h.volRatio > 1.0;
-                const notOverextended = tf4h.distFromEMA < 0.05;
-                if (tf4h.cross === 'BULLISH_CROSS' && volConfirm && tf4h.rsi > 40 && notOverextended) {
-                    signals_to_process.push({ type: 'LONG', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
-                } else if (tf4h.cross === 'BEARISH_CROSS' && volConfirm && tf4h.rsi < 60 && notOverextended) {
-                    signals_to_process.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: '4H EMA20/50 Trend' });
-                }
+                if (tf4h.cross === 'BULLISH_CROSS' && tf4h.volRatio > 1.0) raw_signals.push({ type: 'LONG', tf: '4h', ref: tf4h, name: '4H EMA Trend' });
+                else if (tf4h.cross === 'BEARISH_CROSS' && tf4h.volRatio > 1.0) raw_signals.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: '4H EMA Trend' });
             }
-
-            // Strategy 2: 1H Trend Optimization
             if (tf1h) {
-                const volConfirm = tf1h.volRatio > 1.0;
-                const notOverextended = tf1h.distFromEMA < 0.03;
-                if (tf1h.cross === 'BULLISH_CROSS' && volConfirm && tf1h.rsi > 40 && notOverextended) {
-                    signals_to_process.push({ type: 'LONG', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
-                } else if (tf1h.cross === 'BEARISH_CROSS' && volConfirm && tf1h.rsi < 60 && notOverextended) {
-                    signals_to_process.push({ type: 'SHORT', tf: '1h', ref: tf1h, name: '1H EMA20/50 Trend' });
-                }
+                if (tf1h.cross === 'BULLISH_CROSS' && tf1h.volRatio > 1.0) raw_signals.push({ type: 'LONG', tf: '1h', ref: tf1h, name: '1H EMA Trend' });
+                else if (tf1h.cross === 'BEARISH_CROSS' && tf1h.volRatio > 1.0) raw_signals.push({ type: 'SHORT', tf: '1h', ref: tf1h, name: '1H EMA Trend' });
             }
 
-            // Strategy 3: 1H Trend + 15M Cross
-            if (tf1h && tf15m) {
-                const volConfirm = tf15m.volRatio > 1.0; // Relaxed to 1.0
-                const notOverextended = tf15m.distFromEMA < 0.03; // Relaxed to 3%
-                const trendStrong = true; // Disabled for more sensitive entry
-
-                if (tf1h.trend === 'BULLISH' && tf15m.cross === 'BULLISH_CROSS' && volConfirm && tf15m.rsi > 40 && tf15m.rsi < 80 && notOverextended) {
-                    signals_to_process.push({ type: 'LONG', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
-                } else if (tf1h.trend === 'BEARISH' && tf15m.cross === 'BEARISH_CROSS' && volConfirm && tf15m.rsi < 60 && tf15m.rsi > 20 && notOverextended) {
-                    signals_to_process.push({ type: 'SHORT', tf: '15m', ref: tf15m, name: '1H Trend + 15M Cross' });
-                }
-            }
-
-            // Strategy 3: 1m Duo Schools (Must align with 15m trend + 1h trend)
-            console.log(`[CHECK TRADES] ${symbol} Indicators: 1H Trend: ${tf1h?.trend}, 15M Trend: ${tf15m?.close > tf15m?.sma20 ? 'BULLISH' : 'BEARISH'}, 1M Scalp Cross: ${tf1m_scalp?.cross}, RSI(1m): ${tf1m_scalp?.rsi?.toFixed(1)}, VolRatio(1m): ${tf1m_scalp?.volRatio?.toFixed(2)}`);
-            if (tf1h && tf15m && tf1m_scalp && tf1m_safe) {
-                const tf15mTrend = tf15m.close > tf15m.sma20 ? 'BULLISH' : 'BEARISH';
-
-                // School 1: Scalping (EMA5/13) - VERY RELAXED FILTERS
-                const scalpVol = tf1m_scalp.volRatio > 1.5; // Tightened from 1.0
-                const scalpDist = tf1m_scalp.distFromEMA < 0.02;
-
-                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_scalp.cross === 'BULLISH_CROSS' && scalpVol && tf1m_scalp.rsi > 45 && tf1m_scalp.rsi < 75 && scalpDist) {
-                    signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_scalp.cross === 'BEARISH_CROSS' && scalpVol && tf1m_scalp.rsi < 55 && tf1m_scalp.rsi > 25 && scalpDist) {
-                    signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m SCALPING (MA5/13)' });
-                }
-
-                // School 2: Safe Mode (EMA12/26)
-                const safeVol = tf1m_safe.volRatio > 1.0;
-                const safeDist = tf1m_safe.distFromEMA < 0.01;
-                if (tf1h.trend === 'BULLISH' && tf15mTrend === 'BULLISH' && tf1m_safe.cross === 'BULLISH_CROSS' && safeVol && tf1m_safe.rsi > 40 && tf1m_safe.rsi < 85 && safeDist) {
-                    signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
-                } else if (tf1h.trend === 'BEARISH' && tf15mTrend === 'BEARISH' && tf1m_safe.cross === 'BEARISH_CROSS' && safeVol && tf1m_safe.rsi < 60 && tf1m_safe.rsi > 15 && safeDist) {
-                    signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_safe, name: '1m AN TOÀN (MA12/26)' });
-                }
-            }
-
-            // --- STRATEGY 8: MOMENTUM & VOLATILITY BREAKOUT (1M/15M) ---
-            [tf1m_scalp, tf15m].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '1m' : '15m';
-                const volThreshold = tfName === '1m' ? 2.5 : 1.5; // Tightened 1m to 2.5
-
-                if (tf.volRatio > volThreshold) {
-                    // Trend following breakout
-                    if (tf.rsi > 70 && (!tf1h || tf1h.trend === 'BULLISH')) {
-                        signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
-                    } else if (tf.rsi < 30 && (!tf1h || tf1h.trend === 'BEARISH')) {
-                        signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
-                    }
-
-                    // COUNTER-TREND REVERSAL (High Vol Extreme RSI)
-                    if (tf.rsi > 85) {
-                        signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `REVERSAL OVERBOUGHT (${tfName})` });
-                    } else if (tf.rsi < 15) {
-                        signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `REVERSAL OVERSOLD (${tfName})` });
-                    }
-                }
-            });
-
-            // --- STRATEGY 9: TREND PULLBACK (1M / 15M) ---
-            if (tf1h && tf15m && tf1m_scalp) {
-                const h1Trend = tf1h.trend;
-                const m15Trend = tf15m.close > tf15m.ema20 ? 'BULLISH' : 'BEARISH';
-
-                if (h1Trend === 'BULLISH' && m15Trend === 'BULLISH') {
-                    // Pullback in 1m: RSI drops but price stays above EMA20
-                    if (tf1m_scalp.rsi < 45 && tf1m_scalp.close > tf1m_scalp.ema20 * 0.998) {
-                        signals_to_process.push({ type: 'LONG', tf: '1m', ref: tf1m_scalp, name: '1m PULLBACK (BULLISH)' });
-                    }
-                } else if (h1Trend === 'BEARISH' && m15Trend === 'BEARISH') {
-                    // Pullback in 1m: RSI rises but price stays below EMA20
-                    if (tf1m_scalp.rsi > 55 && tf1m_scalp.close < tf1m_scalp.ema20 * 1.002) {
-                        signals_to_process.push({ type: 'SHORT', tf: '1m', ref: tf1m_scalp, name: '1m PULLBACK (BEARISH)' });
-                    }
-                }
-            }
-
-            // --- STRATEGY 4: RSI DIVERGENCE (15M/1H) ---
+            // Divergence & Vol collection
             [tf15m, tf1h].forEach((tf, idx) => {
                 if (!tf) return;
                 const tfName = idx === 0 ? '15m' : '1h';
-                if (tf.divergence === 'BULLISH' && tf.rsi < 45) { // Relaxed from 40
-                    signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BULLISH (${tfName})` });
-                } else if (tf.divergence === 'BEARISH' && tf.rsi > 55) { // Relaxed from 60
-                    signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BEARISH (${tfName})` });
-                }
+                if (tf.divergence === 'BULLISH') raw_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BULLISH (${tfName})` });
+                else if (tf.divergence === 'BEARISH') raw_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BEARISH (${tfName})` });
+
+                if (tf.volRatio > 2.0 && tf.rsi > 70) raw_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
+                else if (tf.volRatio > 2.0 && tf.rsi < 30) raw_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
             });
 
-            // --- STRATEGY 5: ICHIMOKU CLOUD BREAK (15M/1H/4H) ---
-            [tf15m, tf1h, tf4h].forEach((tf, idx) => {
-                if (!tf) return;
-                const names = ['15m', '1h', '4h'];
-                const tfName = names[idx];
-                const { tenkan, kijun, spanA, spanB } = tf.ichimoku;
-                const aboveCloud = tf.close > spanA && tf.close > spanB;
-                const belowCloud = tf.close < spanA && tf.close < spanB;
+            // --- COMBO DETECTION (CONFLUENCE SYSTEM) ---
+            const final_signals: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
 
-                if (aboveCloud && tenkan > kijun && tf.rsi > 45) { // Relaxed from 50
-                    signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `ICHIMOKU BULLISH (${tfName})` });
-                } else if (belowCloud && tenkan < kijun && tf.rsi < 55) { // Relaxed from 50
-                    signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `ICHIMOKU BEARISH (${tfName})` });
-                }
-            });
-
-            // --- STRATEGY 6: KEY LEVELS + PRICE ACTION (15M/1H) ---
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '15m' : '1h';
+            const isPAatLevel = (tf: any, type: 'LONG' | 'SHORT') => {
                 const { pivot, r1, r2, r3, s1, s2, s3 } = tf.pivots;
                 const { pinBar, engulfing } = tf.priceAction;
+                const threshold = 0.007;
+                const nearLevel = (p: number, l: number) => Math.abs(p - l) / l < threshold;
+                const levels = type === 'LONG' ? [s1, s2, s3, pivot] : [r1, r2, r3, pivot];
+                const atLevel = levels.some(lvl => nearLevel(tf.close, lvl));
+                return atLevel && (type === 'LONG' ? (pinBar === 'BULLISH' || engulfing === 'BULLISH') : (pinBar === 'BEARISH' || engulfing === 'BEARISH'));
+            };
 
-                const threshold = tfName === '15m' ? 0.006 : 0.008; // 0.6% for 15m, 0.8% for 1h
-                const nearLevel = (price: number, level: number) => Math.abs(price - level) / level < threshold;
-
-                // LONG at Support
-                if (pinBar === 'BULLISH' || engulfing === 'BULLISH') {
-                    if (nearLevel(tf.close, s1) || nearLevel(tf.close, s2) || nearLevel(tf.close, s3) || nearLevel(tf.close, pivot)) {
-                        signals_to_process.push({ type: 'LONG', tf: tfName, ref: tf, name: `PA AT SUPPORT (${tfName})` });
-                    }
-                }
-                // SHORT at Resistance
-                if (pinBar === 'BEARISH' || engulfing === 'BEARISH') {
-                    if (nearLevel(tf.close, r1) || nearLevel(tf.close, r2) || nearLevel(tf.close, r3) || nearLevel(tf.close, pivot)) {
-                        signals_to_process.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PA AT RESISTANCE (${tfName})` });
-                    }
+            // COMBO 1: 💎 SÁT THỦ BẮT ĐỈNH ĐÁY (Divergence + PA Support/Res + High Vol)
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                const hasDiv = tf.divergence !== 'NONE';
+                const dir = tf.divergence === 'BULLISH' ? 'LONG' : 'SHORT';
+                const hasPA = isPAatLevel(tf, dir);
+                const highVol = tf.volRatio > 1.8;
+                if (hasDiv && (hasPA || highVol)) {
+                    final_signals.push({ type: dir, tf: tfName, ref: tf, name: `💎 SÁT THỦ BẮT ĐỈNH ĐÁY (${tfName})` });
                 }
             });
 
-            if (signals_to_process.length > 0) {
-                console.log(`[CHECK TRADES] ${symbol}: Found ${signals_to_process.length} raw signals`);
+            // COMBO 2: ⚔️ CHIẾN THẦN ĐU TREND (Trend Align + Cloud Align + Cross)
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf || !tf1h) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                const currentDir: 'LONG' | 'SHORT' = tf.close > tf.ema20 ? 'LONG' : 'SHORT';
+                const trendAlign = tf1h.trend === (currentDir === 'LONG' ? 'BULLISH' : 'BEARISH');
+                const cloudAlign = currentDir === 'LONG' ? (tf.close > tf.ichimoku.spanA && tf.close > tf.ichimoku.spanB) : (tf.close < tf.ichimoku.spanA && tf.close < tf.ichimoku.spanB);
+                const cross = tf.cross !== 'NONE';
+                if (trendAlign && cloudAlign && cross) {
+                    final_signals.push({ type: currentDir, tf: tfName, ref: tf, name: `⚔️ CHIẾN THẦN ĐU TREND (${tfName})` });
+                }
+            });
+
+            // COMBO 3: 🪤 BẪY GIÁ - SĂN THANH KHOẢN (Level Break + PinBar Rejection + High Vol)
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                const { pinBar } = tf.priceAction;
+                const highVol = tf.volRatio > 2.0;
+                if (highVol && (pinBar === 'BULLISH' || pinBar === 'BEARISH')) {
+                    final_signals.push({ type: pinBar === 'BULLISH' ? 'LONG' : 'SHORT', tf: tfName, ref: tf, name: `🪤 BẪY GIÁ - SĂN THANH KHOẢN (${tfName})` });
+                }
+            });
+
+            // COMBO 4: 💣 QUẢ BOM ĐỘNG LƯỢNG (EMA Squeeze + Marubozu + Vol Explosion)
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                const resp = responses.find(r => r.cfg.interval === tfName);
+                if (!resp || !resp.data) return;
+                const last = resp.data[resp.data.length - 1];
+                const marubozu = detectMarubozu(parseFloat(last[1]), parseFloat(last[2]), parseFloat(last[3]), parseFloat(last[4]));
+                if (marubozu && tf.volRatio > 3.0) {
+                    final_signals.push({ type: parseFloat(last[4]) > parseFloat(last[1]) ? 'LONG' : 'SHORT', tf: tfName, ref: tf, name: `💣 QUẢ BOM ĐỘNG LƯỢNG (${tfName})` });
+                }
+            });
+
+            // COMBO 5: ⚖️ ĐỒNG THUẬN ĐA KHUNG (4H Trend + 1H Trend + 15m RSI)
+            if (tf4h && tf1h && tf15m) {
+                const t4 = tf4h.trend;
+                const t1 = tf1h.trend;
+                const t15 = tf15m.close > tf15m.ema20 ? 'BULLISH' : 'BEARISH';
+                if (t4 === t1 && t1 === t15 && (tf15m.rsi < 35 || tf15m.rsi > 65)) {
+                    final_signals.push({ type: t4 === 'BULLISH' ? 'LONG' : 'SHORT', tf: '15m', ref: tf15m, name: '⚖️ ĐỒNG THUẬN ĐA KHUNG (4H/1H/15M)' });
+                }
             }
 
-            for (const sig of signals_to_process) {
+            // Fallback: Individual RSI Divergence (only if not already in a combo)
+            raw_signals.forEach(sig => {
+                if (sig.name.includes('PHÂN KỲ') && !final_signals.some(f => f.tf === sig.tf && f.type === sig.type)) {
+                    final_signals.push(sig);
+                }
+            });
+
+            for (const sig of final_signals) {
                 if (!allowedTimeframes.includes(sig.tf)) {
                     console.log(`[CHECK TRADES] ${symbol}: Skipping signal ${sig.name} - Timeframe ${sig.tf} not allowed`);
                     continue;
@@ -1350,7 +1327,6 @@ Deno.serve(async (req) => {
 
                     if (insertError) {
                         console.error(`[CHECK TRADES] DB Insert Error for ${symbol}:`, insertError.message);
-                        // Fallback: If new columns are missing
                         if (insertError.message.includes('column') && insertError.message.includes('not exist')) {
                             delete signalData.strategy_name;
                             delete signalData.trade_id;
@@ -1358,7 +1334,6 @@ Deno.serve(async (req) => {
                         }
                     }
 
-                    // ONLY SEND TELEGRAM IF DB RECORD CREATED
                     if (!insertError || (inserted && inserted.id)) {
                         const teleRes = await sendTelegram(msg, undefined, subscriberIds);
                         if (teleRes && teleRes.ok) {
@@ -1368,10 +1343,9 @@ Deno.serve(async (req) => {
                     } else {
                         console.error(`[CHECK TRADES] Skipping Telegram for ${symbol} due to DB error.`);
                     }
-
-                    newSignals.push({ symbol, signal: sig.type });
                 }
             }
+
         }));
 
         return new Response(JSON.stringify({

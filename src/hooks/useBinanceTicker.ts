@@ -9,8 +9,7 @@ export interface TickerData {
 
 const BOT_SYMBOLS = [
     'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
-    'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'AVAXUSDT', 'NEARUSDT',
-    'FTMUSDT', 'OPUSDT', 'ARBUSDT', 'TIAUSDT', 'INJUSDT'
+    'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'
 ];
 
 export function useBinanceTicker() {

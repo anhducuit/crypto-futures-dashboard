@@ -167,14 +167,9 @@ export const BacktestDashboard: React.FC = () => {
                             <option value="BNBUSDT">BNB/USDT</option>
                             <option value="ADAUSDT">ADA/USDT</option>
                             <option value="DOGEUSDT">DOGE/USDT</option>
-                            <option value="LINKUSDT">LINK/USDT</option>
                             <option value="AVAXUSDT">AVAX/USDT</option>
                             <option value="NEARUSDT">NEAR/USDT</option>
-                            <option value="FTMUSDT">FTM/USDT</option>
-                            <option value="OPUSDT">OP/USDT</option>
-                            <option value="ARBUSDT">ARB/USDT</option>
                             <option value="TIAUSDT">TIA/USDT</option>
-                            <option value="INJUSDT">INJ/USDT</option>
                         </select>
                     </div>
 

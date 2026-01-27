@@ -65,7 +65,7 @@ export const TradeAnalytics: React.FC = () => {
                 const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {};
 
                 // Initialize with common symbols to ensure order, but allow dynamic growth
-                const baseSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'LINKUSDT', 'AVAXUSDT', 'NEARUSDT', 'FTMUSDT', 'OPUSDT', 'ARBUSDT', 'TIAUSDT', 'INJUSDT'];
+                const baseSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
                 baseSymbols.forEach(s => {
                     symbolMap[s] = { wins: 0, losses: 0, tfMap: {} };
                 });

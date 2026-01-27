@@ -22,19 +22,17 @@ async function debug() {
         console.log('Total rows in trading_history:', count)
     }
 
-    // 2. Try select with new columns
+    // 2. Search for the specific trade IDs
+    const ids = ['BTC-2WG0', 'BTC-04JG', 'BTC-641I'];
     const { data, error: selectErr } = await supabase
         .from('trading_history')
-        .select('id, symbol, pnl_reason, strategy_name')
-        .limit(1)
+        .select('*')
+        .in('trade_id', ids)
 
     if (selectErr) {
-        console.error('Select with new columns Error:', selectErr.message)
-        if (selectErr.message.includes('column') && selectErr.message.includes('does not exist')) {
-            console.log('CRITICAL: New columns are missing in the database!')
-        }
+        console.error('Search Error:', selectErr.message)
     } else {
-        console.log('Select successful. Sample data:', data)
+        console.log('Signals Details:', JSON.stringify(data, null, 2))
     }
 }
 
