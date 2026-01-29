@@ -20,6 +20,7 @@ interface HistoryItem {
     stop_loss?: number;
     trade_id?: string;
     pnl_reason?: string;
+    strategy_name?: string;
 }
 
 interface HistoryDashboardProps {
@@ -240,6 +241,11 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                                 #{item.trade_id}
                                             </span>
                                         )}
+                                        {item.strategy_name && (
+                                            <span className="text-[9px] font-extrabold text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded-md border border-blue-400/20 uppercase tracking-tighter">
+                                                {item.strategy_name.split('(')[0].trim()}
+                                            </span>
+                                        )}
                                         <span className="text-[10px] text-slate-500">{item.timeframe}</span>
                                         {item.pnl_reason?.includes('🛡️') && (
                                             <span className="flex items-center gap-1 text-[8px] font-bold text-green-400 bg-green-400/10 px-1 rounded-full border border-green-400/20">
@@ -364,8 +370,9 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                         target_price: sharingItem.target_price,
                         stop_loss: sharingItem.stop_loss,
                         timeframe: sharingItem.timeframe,
-                        pnl_reason: sharingItem.pnl_reason
-                    }}
+                        pnl_reason: sharingItem.pnl_reason,
+                        strategy_name: sharingItem.strategy_name
+                    } as any}
                     onClose={() => setSharingItem(null)}
                 />
             )}

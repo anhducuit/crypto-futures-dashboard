@@ -14,6 +14,7 @@ interface PnLShareModalProps {
         stop_loss?: number;
         timeframe: string;
         pnl_reason?: string;
+        strategy_name?: string;
     };
     onClose: () => void;
 }
@@ -157,7 +158,9 @@ export const PnLShareModal: React.FC<PnLShareModalProps> = ({ trade, onClose }) 
                                 <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between items-center">
                                     <div className="flex items-center gap-1.5">
                                         <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-golden)] animate-pulse"></div>
-                                        <span className="text-[9px] font-black text-white/60 tracking-wider uppercase">CHIẾN THUẬT {trade.timeframe}</span>
+                                        <span className="text-[9px] font-black text-white/60 tracking-wider uppercase">
+                                            {trade.strategy_name ? trade.strategy_name.split('(')[0].trim() : `CHIẾN THUẬT ${trade.timeframe}`}
+                                        </span>
                                     </div>
                                     <span className="text-[10px] font-black italic bg-[var(--color-golden)] text-black px-2 py-0.5 rounded shadow-sm">ĐÒN BẨY {leverage}X</span>
                                 </div>
