@@ -46,7 +46,7 @@ export const TradeAnalytics: React.FC = () => {
                 query = query.gte('created_at', dateLimit.toISOString());
             }
 
-            let { data, error } = await query.limit(2000);
+            let { data, error } = await query.limit(5000);
 
             // FALLBACK if columns are missing
             if (error && error.message.includes('column') && error.message.includes('not exist')) {

@@ -1,0 +1,6 @@
+--- SOLUSDT INVESTIGATION ---
+SOL Wins: 50
+SOL Losses: 22
+Latest SOL: 2026-01-29T08:19:14.896956+00:00
+Oldest SOL: 2026-01-23T14:25:03.598597+00:00
+Total rows in database: 1209
