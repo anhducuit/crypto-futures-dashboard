@@ -809,6 +809,8 @@ Deno.serve(async (req) => {
 
                 for (const trade of grouped[sym]) {
                     let newStatus = 'PENDING';
+                    let hitMilestone = false;
+
                     if (trade.signal === 'NEUTRAL') {
                         await supabase.from('trading_history').update({ status: 'JobDone' }).eq('id', trade.id);
                         continue;
@@ -825,15 +827,53 @@ Deno.serve(async (req) => {
                     if (newStatus === 'PENDING') {
                         const tradeTime = new Date(trade.created_at).getTime();
                         const relevant = candles.filter((c: any) => c.t >= tradeTime);
+
+                        // Milestones for Break-Even Protection
+                        const tpDistance = Math.abs(trade.target_price - trade.price_at_signal);
+                        const milestone50 = trade.signal === 'LONG'
+                            ? trade.price_at_signal + (tpDistance * 0.5)
+                            : trade.price_at_signal - (tpDistance * 0.5);
+
                         for (const c of relevant) {
+                            // Check for Milestones
                             if (trade.signal === 'LONG') {
-                                if (c.h >= trade.target_price) newStatus = 'SUCCESS';
-                                else if (c.l <= trade.stop_loss) newStatus = 'FAILED';
+                                if (c.h >= milestone50) hitMilestone = true;
+
+                                if (c.h >= trade.target_price) {
+                                    newStatus = 'SUCCESS';
+                                    break;
+                                } else if (c.l <= trade.stop_loss) {
+                                    newStatus = 'FAILED';
+                                    break;
+                                } else if (hitMilestone && c.l <= trade.price_at_signal) {
+                                    newStatus = 'SUCCESS'; // Break-even hit after 50% TP
+                                    break;
+                                }
                             } else {
-                                if (c.l <= trade.target_price) newStatus = 'SUCCESS';
-                                else if (c.h >= trade.stop_loss) newStatus = 'FAILED';
+                                if (c.l <= milestone50) hitMilestone = true;
+
+                                if (c.l <= trade.target_price) {
+                                    newStatus = 'SUCCESS';
+                                    break;
+                                } else if (c.h >= trade.stop_loss) {
+                                    newStatus = 'FAILED';
+                                    break;
+                                } else if (hitMilestone && c.h >= trade.price_at_signal) {
+                                    newStatus = 'SUCCESS';
+                                    break;
+                                }
                             }
-                            if (newStatus !== 'PENDING') break;
+                        }
+
+                        // Final check with current price for the "hitMilestone" logic
+                        if (newStatus === 'PENDING') {
+                            if (trade.signal === 'LONG') {
+                                if (currentPrice >= milestone50) hitMilestone = true;
+                                if (hitMilestone && currentPrice <= trade.price_at_signal) newStatus = 'SUCCESS';
+                            } else {
+                                if (currentPrice <= milestone50) hitMilestone = true;
+                                if (hitMilestone && currentPrice >= trade.price_at_signal) newStatus = 'SUCCESS';
+                            }
                         }
                     }
 
@@ -841,7 +881,16 @@ Deno.serve(async (req) => {
                         // Generate dynamic reason
                         let autoReason = '';
                         if (newStatus === 'SUCCESS') {
-                            autoReason = `✅ Thắng lệnh do: ${trade.strategy_name}. RSI: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x. Thị trường thuận xu hướng.`;
+                            const isBreakEven = hitMilestone && (
+                                (trade.signal === 'LONG' && currentPrice < trade.target_price) ||
+                                (trade.signal === 'SHORT' && currentPrice > trade.target_price)
+                            );
+
+                            if (isBreakEven) {
+                                autoReason = `🛡️ Thắng bảo vệ: Đã chốt lời 50% và đóng hòa vốn phần còn lại. Chiến lược: ${trade.strategy_name}.`;
+                            } else {
+                                autoReason = `✅ Thắng lệnh (Full Target) do: ${trade.strategy_name}. RSI: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x.`;
+                            }
                         } else {
                             autoReason = `❌ Thua lệnh: Giá đi ngược dự đoán (Stoploss). RSI vào lệnh: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x. Thị trường đảo chiều mạnh.`;
                         }

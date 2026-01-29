@@ -19,6 +19,7 @@ interface HistoryItem {
     target_price?: number;
     stop_loss?: number;
     trade_id?: string;
+    pnl_reason?: string;
 }
 
 interface HistoryDashboardProps {
@@ -240,6 +241,11 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                                             </span>
                                         )}
                                         <span className="text-[10px] text-slate-500">{item.timeframe}</span>
+                                        {item.pnl_reason?.includes('🛡️') && (
+                                            <span className="flex items-center gap-1 text-[8px] font-bold text-green-400 bg-green-400/10 px-1 rounded-full border border-green-400/20">
+                                                🛡️ [BE]
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {item.status === 'SUCCESS' ? (
@@ -357,7 +363,8 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                         status: sharingItem.status as 'SUCCESS' | 'FAILED',
                         target_price: sharingItem.target_price,
                         stop_loss: sharingItem.stop_loss,
-                        timeframe: sharingItem.timeframe
+                        timeframe: sharingItem.timeframe,
+                        pnl_reason: sharingItem.pnl_reason
                     }}
                     onClose={() => setSharingItem(null)}
                 />

@@ -13,6 +13,7 @@ interface PnLShareModalProps {
         target_price?: number;
         stop_loss?: number;
         timeframe: string;
+        pnl_reason?: string;
     };
     onClose: () => void;
 }
@@ -130,8 +131,11 @@ export const PnLShareModal: React.FC<PnLShareModalProps> = ({ trade, onClose }) 
                             <div className="mt-2 flex items-center gap-1.5">
                                 <div className={`h-[1px] w-8 ${isWin ? 'bg-green-500/50' : 'bg-red-500/50'}`}></div>
                                 <span className={`text-[12px] font-black tracking-[0.3em] italic ${isWin ? 'text-green-400' : 'text-red-400'}`}>
-                                    {isWin ? 'WIN' : 'LOSS'}
+                                    {trade.pnl_reason?.includes('🛡️') ? 'PROTECTED' : (isWin ? 'WIN' : 'LOSS')}
                                 </span>
+                                {trade.pnl_reason?.includes('🛡️') && (
+                                    <div className="absolute -top-6 text-[18px]">🛡️</div>
+                                )}
                                 <div className={`h-[1px] w-8 ${isWin ? 'bg-green-500/50' : 'bg-red-500/50'}`}></div>
                             </div>
                         </div>
