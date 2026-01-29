@@ -36,10 +36,10 @@ export const TradeAnalytics: React.FC = () => {
 
             let allData: any[] = [];
             let page = 0;
-            const pageSize = 1000;
+            const pageSize = 10000;
             let hasMore = true;
 
-            while (hasMore && allData.length < 10000) {
+            while (hasMore && allData.length < 100000) {
                 let query = supabase
                     .from('trading_history')
                     .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name, timeframe')
