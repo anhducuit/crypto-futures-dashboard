@@ -55,7 +55,7 @@ export const TradeAnalytics: React.FC = () => {
                     .select('id, created_at, symbol, signal, status, timeframe')
                     .order('created_at', { ascending: false });
 
-                const { data: fbData, error: fbError } = await fallbackQuery.limit(2000);
+                const { data: fbData, error: fbError } = await fallbackQuery.limit(10000);
                 data = fbData as any;
                 error = fbError;
             }
@@ -177,6 +177,7 @@ export const TradeAnalytics: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <BarChart2 className="text-[var(--color-golden)]" size={24} />
                     <h2 className="text-xl font-black tracking-tighter text-white">TRADING ANALYTICS</h2>
+                    <span className="text-[8px] text-slate-800 select-none">v1.1.10k</span>
                 </div>
                 <div className="flex bg-[var(--color-bg-secondary)] p-1 rounded-xl border border-[var(--color-border)] shadow-inner">
                     {(['all', '24h', '7d', '30d'] as const).map(f => (
