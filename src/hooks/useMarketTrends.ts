@@ -8,8 +8,8 @@ export interface MarketCoin {
 }
 
 export function useMarketTrends() {
-    const [gainers, setGainers] = useState<MarketCoin[]>([]);
-    const [losers, setLosers] = useState<MarketCoin[]>([]);
+    const [gold, setGold] = useState<MarketCoin | null>(null);
+    const [silver, setSilver] = useState<MarketCoin | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
@@ -18,23 +18,28 @@ export function useMarketTrends() {
             const data = await response.json();
 
             if (Array.isArray(data)) {
-                // Filter for USDT pairs and sort
-                const filtered = data
-                    .filter((coin: any) => coin.symbol.endsWith('USDT'))
-                    .map((coin: any) => ({
-                        symbol: coin.symbol,
-                        lastPrice: coin.lastPrice,
-                        priceChangePercent: coin.priceChangePercent,
-                        quoteVolume: coin.quoteVolume
-                    }));
+                const goldData = data.find((coin: any) => coin.symbol === 'XAUUSDT');
+                const silverData = data.find((coin: any) => coin.symbol === 'XAGUSDT');
 
-                const sorted = [...filtered].sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent));
-
-                setGainers(sorted.slice(0, 5));
-                setLosers(sorted.slice(-5).reverse());
+                if (goldData) {
+                    setGold({
+                        symbol: goldData.symbol,
+                        lastPrice: goldData.lastPrice,
+                        priceChangePercent: goldData.priceChangePercent,
+                        quoteVolume: goldData.quoteVolume
+                    });
+                }
+                if (silverData) {
+                    setSilver({
+                        symbol: silverData.symbol,
+                        lastPrice: silverData.lastPrice,
+                        priceChangePercent: silverData.priceChangePercent,
+                        quoteVolume: silverData.quoteVolume
+                    });
+                }
             }
         } catch (error) {
-            console.error('Error fetching market trends:', error);
+            console.error('Error fetching gold/silver trends:', error);
         } finally {
             setLoading(false);
         }
@@ -42,9 +47,9 @@ export function useMarketTrends() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 30000); // Update every 30s
+        const interval = setInterval(fetchData, 30000);
         return () => clearInterval(interval);
     }, []);
 
-    return { gainers, losers, loading, refetch: fetchData };
+    return { gold, silver, loading, refetch: fetchData };
 }
