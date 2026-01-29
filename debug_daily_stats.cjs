@@ -31,7 +31,7 @@ async function checkBotActivity() {
 
     await getStatsForTable('trading_history');
     await getStatsForTable('market_anomalies');
-    await getStatsForTable('price_action_signals');
+
 }
 
 checkBotActivity();

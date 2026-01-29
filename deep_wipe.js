@@ -16,11 +16,9 @@ async function forceReset() {
     // 2. Delete with multiple filters to ensure bypass
     const { error: err1 } = await supabase.from('trading_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     const { error: err2 } = await supabase.from('market_anomalies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    const { error: err3 } = await supabase.from('price_action_signals').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (err1) console.error('Error trading_history:', err1);
     if (err2) console.error('Error market_anomalies:', err2);
-    if (err3) console.error('Error price_action_signals:', err3);
 
     // 3. Final count
     const { count: after } = await supabase

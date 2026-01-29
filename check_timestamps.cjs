@@ -7,7 +7,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function checkRecentSignals() {
     console.log('--- LATEST SIGNALS (Today) ---');
 
-    for (const table of ['trading_history', 'market_anomalies', 'price_action_signals']) {
+    for (const table of ['trading_history', 'market_anomalies']) {
         console.log(`\nTable: ${table}`);
         const { data, error } = await supabase
             .from(table)

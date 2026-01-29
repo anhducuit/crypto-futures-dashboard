@@ -434,13 +434,11 @@ Deno.serve(async (req) => {
             // Get counts before
             const { count: hBefore } = await supabase.from('trading_history').select('*', { count: 'exact', head: true });
             const { count: aBefore } = await supabase.from('market_anomalies').select('*', { count: 'exact', head: true });
-            const { count: pBefore } = await supabase.from('price_action_signals').select('*', { count: 'exact', head: true });
 
             // Force delete all
             await Promise.all([
                 supabase.from('trading_history').delete().gte('created_at', '2020-01-01'),
-                supabase.from('market_anomalies').delete().gte('created_at', '2020-01-01'),
-                supabase.from('price_action_signals').delete().gte('created_at', '2020-01-01')
+                supabase.from('market_anomalies').delete().gte('created_at', '2020-01-01')
             ]);
 
             // Get counts after
@@ -451,8 +449,7 @@ Deno.serve(async (req) => {
                 message: "All trading data has been cleared.",
                 details: {
                     trading_history: { before: hBefore, after: hAfter },
-                    market_anomalies: { before: aBefore },
-                    price_action_signals: { before: pBefore }
+                    market_anomalies: { before: aBefore }
                 }
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
