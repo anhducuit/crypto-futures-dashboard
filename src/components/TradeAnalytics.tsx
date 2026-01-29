@@ -25,10 +25,6 @@ export const TradeAnalytics: React.FC = () => {
     const fetchData = async () => {
         try {
             const now = new Date();
-            let query = supabase
-                .from('trading_history')
-                .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name, timeframe')
-                .order('created_at', { ascending: false });
 
             // Fetch Heartbeat
             const { data: heartbeat } = await supabase.from('bot_settings').select('value').eq('key', 'last_scan_at').single();
@@ -38,29 +34,39 @@ export const TradeAnalytics: React.FC = () => {
                 setBotOnline(diff < 300); // Online if scanned in last 5 mins
             }
 
-            if (timeFilter !== 'all') {
-                let dateLimit = new Date();
-                if (timeFilter === '24h') dateLimit = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-                if (timeFilter === '7d') dateLimit = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                if (timeFilter === '30d') dateLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                query = query.gte('created_at', dateLimit.toISOString());
-            }
+            let allData: any[] = [];
+            let page = 0;
+            const pageSize = 1000;
+            let hasMore = true;
 
-            let { data, error } = await query.limit(10000);
-
-            // FALLBACK if columns are missing
-            if (error && error.message.includes('column') && error.message.includes('not exist')) {
-                const fallbackQuery = supabase
+            while (hasMore && allData.length < 10000) {
+                let query = supabase
                     .from('trading_history')
-                    .select('id, created_at, symbol, signal, status, timeframe')
-                    .order('created_at', { ascending: false });
+                    .select('id, created_at, symbol, signal, status, pnl_reason, strategy_name, timeframe')
+                    .order('created_at', { ascending: false })
+                    .range(page * pageSize, (page + 1) * pageSize - 1);
 
-                const { data: fbData, error: fbError } = await fallbackQuery.limit(10000);
-                data = fbData as any;
-                error = fbError;
+                if (timeFilter !== 'all') {
+                    let dateLimit = new Date();
+                    if (timeFilter === '24h') dateLimit = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                    if (timeFilter === '7d') dateLimit = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    if (timeFilter === '30d') dateLimit = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    query = query.gte('created_at', dateLimit.toISOString());
+                }
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    if (data.length < pageSize) hasMore = false;
+                    else page++;
+                } else {
+                    hasMore = false;
+                }
             }
 
-            if (error) throw error;
+            const data = allData;
 
             if (data) {
 
@@ -177,7 +183,6 @@ export const TradeAnalytics: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <BarChart2 className="text-[var(--color-golden)]" size={24} />
                     <h2 className="text-xl font-black tracking-tighter text-white">TRADING ANALYTICS</h2>
-                    <span className="text-[8px] text-slate-800 select-none">v1.1.10k</span>
                 </div>
                 <div className="flex bg-[var(--color-bg-secondary)] p-1 rounded-xl border border-[var(--color-border)] shadow-inner">
                     {(['all', '24h', '7d', '30d'] as const).map(f => (
