@@ -129,7 +129,7 @@ export const TradeAnalytics: React.FC = () => {
                     '⚔️ CHIẾN THẦN ĐU TREND': { wins: 0, losses: 0 },
                     '🪤 BẪY GIÁ - SĂN THANH KHOẢN': { wins: 0, losses: 0 },
                     '💣 QUẢ BOM ĐỘNG LƯỢNG': { wins: 0, losses: 0 },
-                    '⚖️ ĐỒNG THUẬN ĐA KHUNG': { wins: 0, losses: 0 }
+                    '🔔 CHỈ BÁO THOÁT CHANDELIER': { wins: 0, losses: 0 }
                 };
 
                 data.forEach(t => {

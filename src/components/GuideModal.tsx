@@ -153,28 +153,28 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         {/* Combo 5 */}
                         <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl">
                             <h4 className="text-blue-400 font-black mb-2 flex items-center gap-2">
-                                ⚖️ COMBO 5: ĐỒNG THUẬN ĐA KHUNG
+                                🔔 COMBO 5: CHỈ BÁO THOÁT CHANDELIER
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Tín hiệu mạnh nhất khi cả 3 khung đồng thuận.
+                                <b>Mục đích:</b> Phát hiện đảo chiều xu hướng dựa trên Chandelier Exit (ATR trailing stop).
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">4H Trend:</b> Xu hướng khung 4 giờ</span>
+                                    <span className="text-gray-400"><b className="text-white">Exit Long:</b> Đỉnh cao (22 kỳ) − ATR × 3.0 → Giá tụt dưới = tín hiệu SHORT</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">1H Trend:</b> Xu hướng khung 1 giờ</span>
+                                    <span className="text-gray-400"><b className="text-white">Exit Short:</b> Đáy thấp (22 kỳ) + ATR × 3.0 → Giá vượt trên = tín hiệu LONG</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">15m Trend + RSI:</b> Xu hướng 15m và RSI extreme (&lt;35 hoặc &gt;65)</span>
+                                    <span className="text-gray-400"><b className="text-white">Bộ lọc RSI:</b> RSI &lt; 75 (mua) hoặc RSI &gt; 25 (bán) để tránh vùng quá mua/bán</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-blue-500/10 rounded-lg border-l-2 border-blue-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Chỉ vào lệnh khi cả 3 khung cùng chiều + RSI extreme.
+                                    💡 <b>Chiến thuật:</b> Chandelier Exit bám theo xu hướng như trailing stop, chỉ nổ tín hiệu khi giá cross qua mức exit — xác nhận đảo chiều đáng tin cậy.
                                 </p>
                             </div>
                         </div>
