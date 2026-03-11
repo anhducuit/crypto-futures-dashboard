@@ -1,0 +1,10 @@
+﻿[dotenv@17.2.3] injecting env (3) from .env -- tip: ≡ƒöÉ prevent committing .env to code: https://dotenvx.com/precommit
+=== RESETTING ALL TRADING DATA ===
+
+Before: trading_history = 6528 rows, market_anomalies = 10823 rows
+Γ£à Deleted all trading_history
+Γ£à Deleted all market_anomalies
+
+After: trading_history = 6528 rows, market_anomalies = 10823 rows
+
+≡ƒÄë DONE! All data has been cleared.

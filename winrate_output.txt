@@ -1,0 +1,33 @@
+﻿[dotenv@17.2.3] injecting env (3) from .env -- tip: ≡ƒöÉ prevent committing .env to code: https://dotenvx.com/precommit
+=== CHECKING BOT SETTINGS (target_symbols) ===
+No target_symbols setting found, using DEFAULT_SYMBOLS
+
+=== WIN RATE PER COIN (ALL TIME) ===
+Total completed trades: 6395
+
+--- ALL COINS (sorted by win rate, lowest first) ---
+Symbol        Win  Loss  Total  WinRate
+---------------------------------------
+INJUSDT         4    72     76     5.3% ΓÜá∩╕Å D╞»ß╗ÜI 30%
+ARBUSDT         7    60     67    10.4% ΓÜá∩╕Å D╞»ß╗ÜI 30%
+LINKUSDT       10    52     62    16.1% ΓÜá∩╕Å D╞»ß╗ÜI 30%
+OPUSDT         19    47     66    28.8% ΓÜá∩╕Å D╞»ß╗ÜI 30%
+DOGEUSDT      166   406    572    29.0% ΓÜá∩╕Å D╞»ß╗ÜI 30%
+ETHUSDT       172   387    559    30.8%
+ADAUSDT       157   345    502    31.3%
+XRPUSDT       181   341    522    34.7%
+TIAUSDT       179   335    514    34.8%
+BTCUSDT       210   375    585    35.9%
+SOLUSDT       203   359    562    36.1%
+AVAXUSDT      233   313    546    42.7%
+BNBUSDT       224   299    523    42.8%
+NEARUSDT      203   243    446    45.5%
+XAGUSDT       170   202    372    45.7%
+XAUUSDT       205   216    421    48.7%
+
+ΓÜá∩╕Å Coins d╞░ß╗¢i 30% win rate: 5
+  - INJUSDT: 5.3% (4W / 72L / 76 total)
+  - ARBUSDT: 10.4% (7W / 60L / 67 total)
+  - LINKUSDT: 16.1% (10W / 52L / 62 total)
+  - OPUSDT: 28.8% (19W / 47L / 66 total)
+  - DOGEUSDT: 29.0% (166W / 406L / 572 total)

@@ -1,0 +1,15 @@
+﻿[dotenv@17.2.3] injecting env (3) from .env -- tip: ΓÜÖ∩╕Å  suppress all logs with { quiet: true }
+Calling check-trades?action=reset ...
+Response: {
+  "success": true,
+  "message": "All trading data has been cleared.",
+  "details": {
+    "trading_history": {
+      "before": 0,
+      "after": 0
+    },
+    "market_anomalies": {
+      "before": 0
+    }
+  }
+}
