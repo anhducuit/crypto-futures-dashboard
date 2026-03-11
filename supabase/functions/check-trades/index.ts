@@ -204,6 +204,71 @@ function checkEMASqueeze(closes: number[]) {
     return spread < 0.005; // 0.5% squeeze
 }
 
+function calculateChandelierExit(highs: number[], lows: number[], closes: number[], period: number = 22, multiplier: number = 3.0) {
+    if (closes.length < period + 1) return null;
+
+    // Calculate ATR array
+    const atrPeriod = period;
+    const trs: number[] = [];
+    for (let i = 1; i < closes.length; i++) {
+        const tr = Math.max(
+            highs[i] - lows[i],
+            Math.abs(highs[i] - closes[i - 1]),
+            Math.abs(lows[i] - closes[i - 1])
+        );
+        trs.push(tr);
+    }
+
+    // Current ATR (SMA of last N true ranges)
+    const atrSlice = trs.slice(-atrPeriod);
+    const atr = atrSlice.reduce((a, b) => a + b, 0) / atrSlice.length;
+
+    // Highest High & Lowest Low over lookback period
+    const recentHighs = highs.slice(-period);
+    const recentLows = lows.slice(-period);
+    const highestHigh = Math.max(...recentHighs);
+    const lowestLow = Math.min(...recentLows);
+
+    // Chandelier Exit Long = Highest High - ATR * Multiplier
+    const exitLong = highestHigh - atr * multiplier;
+    // Chandelier Exit Short = Lowest Low + ATR * Multiplier
+    const exitShort = lowestLow + atr * multiplier;
+
+    // Previous bar values for crossover detection
+    const prevHighs = highs.slice(-(period + 1), -1);
+    const prevLows = lows.slice(-(period + 1), -1);
+    const prevTrs = trs.slice(-(atrPeriod + 1), -1);
+    const prevAtr = prevTrs.reduce((a, b) => a + b, 0) / prevTrs.length;
+    const prevHighestHigh = Math.max(...prevHighs);
+    const prevLowestLow = Math.min(...prevLows);
+    const prevExitLong = prevHighestHigh - prevAtr * multiplier;
+    const prevExitShort = prevLowestLow + prevAtr * multiplier;
+
+    const currentClose = closes[closes.length - 1];
+    const prevClose = closes[closes.length - 2];
+
+    // Signal detection
+    // BUY signal: price crosses ABOVE exitShort (trend reversal to bullish)
+    const buySignal = prevClose <= prevExitShort && currentClose > exitShort;
+    // SELL signal: price crosses BELOW exitLong (trend reversal to bearish)
+    const sellSignal = prevClose >= prevExitLong && currentClose < exitLong;
+
+    // Current trend direction
+    const trend = currentClose > exitLong ? 'BULLISH' : currentClose < exitShort ? 'BEARISH' : 'NEUTRAL';
+
+    return {
+        exitLong,
+        exitShort,
+        atr,
+        highestHigh,
+        lowestLow,
+        trend,
+        buySignal,
+        sellSignal,
+        currentClose
+    };
+}
+
 
 function calculateDynamicTPSL(
     entryPrice: number,
@@ -1302,15 +1367,29 @@ Deno.serve(async (req) => {
                 }
             });
 
-            // COMBO 5: ⚖️ ĐỒNG THUẬN ĐA KHUNG (4H Trend + 1H Trend + 15m RSI)
-            if (tf4h && tf1h && tf15m) {
-                const t4 = tf4h.trend;
-                const t1 = tf1h.trend;
-                const t15 = tf15m.close > tf15m.ema20 ? 'BULLISH' : 'BEARISH';
-                if (t4 === t1 && t1 === t15 && (tf15m.rsi < 35 || tf15m.rsi > 65)) {
-                    final_signals.push({ type: t4 === 'BULLISH' ? 'LONG' : 'SHORT', tf: '15m', ref: tf15m, name: '⚖️ ĐỒNG THUẬN ĐA KHUNG (4H/1H/15M)' });
+            // COMBO 5: 🔔 CHỈ BÁO THOÁT CHANDELIER (Chandelier Exit Crossover)
+            [tf15m, tf1h].forEach((tf, idx) => {
+                if (!tf) return;
+                const tfName = idx === 0 ? '15m' : '1h';
+                const resp = responses.find(r => r.cfg.interval === tfName);
+                if (!resp || !resp.data || !Array.isArray(resp.data)) return;
+
+                const ceHighs = resp.data.map((x: any) => parseFloat(x[2]));
+                const ceLows = resp.data.map((x: any) => parseFloat(x[3]));
+                const ceCloses = resp.data.map((x: any) => parseFloat(x[4]));
+
+                const ce = calculateChandelierExit(ceHighs, ceLows, ceCloses, 22, 3.0);
+                if (!ce) return;
+
+                // BUY: Price crosses above Chandelier Exit Short line + RSI not overbought
+                if (ce.buySignal && tf.rsi < 75) {
+                    final_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
                 }
-            }
+                // SELL: Price crosses below Chandelier Exit Long line + RSI not oversold
+                if (ce.sellSignal && tf.rsi > 25) {
+                    final_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
+                }
+            });
 
 
             for (const sig of final_signals) {

@@ -10,15 +10,26 @@ interface KlineData {
     closeTime: number;
 }
 
+export interface ChandelierExitData {
+    exitLong: number;
+    exitShort: number;
+    atr: number;
+    highestHigh: number;
+    lowestLow: number;
+    trend: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    buySignal: boolean;
+    sellSignal: boolean;
+}
+
 export interface MAAnalysis {
     timeframes: {
         timeframe: string;
         label: string;
         ma20: number;
-        ma50?: number; // For 1H, 4H
-        ma200?: number; // For 4H
-        ma12?: number; // For 15m
-        ma26?: number; // For 15m
+        ma50?: number;
+        ma200?: number;
+        ma12?: number;
+        ma26?: number;
         cross?: 'bullish_cross' | 'bearish_cross' | 'golden_cross' | 'death_cross' | 'none';
         currentPrice: number;
         trend: 'bullish' | 'bearish' | 'neutral';
@@ -32,6 +43,7 @@ export interface MAAnalysis {
         ichimoku?: any;
         pivots?: any;
         divergence?: string;
+        chandelierExit?: ChandelierExitData;
     }[];
     overallBias: 'long' | 'short' | 'neutral';
     confidence: number;
@@ -109,6 +121,31 @@ function calculatePivots(high: number, low: number, close: number) {
     return {
         p, r1: 2 * p - low, r2: p + (high - low), r3: high + 2 * (p - low),
         s1: 2 * p - high, s2: p - (high - low), s3: low - 2 * (high - p)
+    };
+}
+
+function calculateChandelierExit(highs: number[], lows: number[], closes: number[], period = 22, multiplier = 3.0): ChandelierExitData | null {
+    if (closes.length < period + 1) return null;
+    const trs: number[] = [];
+    for (let i = 1; i < closes.length; i++) {
+        trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i-1]), Math.abs(lows[i] - closes[i-1])));
+    }
+    const atr = trs.slice(-period).reduce((a,b) => a+b, 0) / period;
+    const hh = Math.max(...highs.slice(-period));
+    const ll = Math.min(...lows.slice(-period));
+    const exitLong = hh - atr * multiplier;
+    const exitShort = ll + atr * multiplier;
+    const prevHH = Math.max(...highs.slice(-(period+1), -1));
+    const prevLL = Math.min(...lows.slice(-(period+1), -1));
+    const prevAtr = trs.slice(-(period+1), -1).reduce((a,b) => a+b, 0) / period;
+    const prevExitLong = prevHH - prevAtr * multiplier;
+    const prevExitShort = prevLL + prevAtr * multiplier;
+    const cc = closes[closes.length-1], pc = closes[closes.length-2];
+    return {
+        exitLong, exitShort, atr, highestHigh: hh, lowestLow: ll,
+        trend: cc > exitLong ? 'BULLISH' : cc < exitShort ? 'BEARISH' : 'NEUTRAL',
+        buySignal: pc <= prevExitShort && cc > exitShort,
+        sellSignal: pc >= prevExitLong && cc < exitLong
     };
 }
 
@@ -241,6 +278,8 @@ export function useBinanceKlines(symbol: string) {
                         divergence = detectDivergence(closes.slice(-50), subRsi.slice(-50));
                     }
 
+                    const chandelierExit = calculateChandelierExit(highs, lows, closes, 22, 3.0);
+
                     return {
                         timeframe: tf.tvKey,
                         label: tf.label,
@@ -256,7 +295,8 @@ export function useBinanceKlines(symbol: string) {
                         priceGap,
                         ichimoku,
                         pivots,
-                        divergence
+                        divergence,
+                        chandelierExit: chandelierExit || undefined
                     };
                 } catch (e: any) {
                     if (e.name !== 'AbortError') console.error(`Error fetching ${tf.interval}:`, e);

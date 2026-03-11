@@ -31,6 +31,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
 import { DivergencePanel } from './components/DivergencePanel';
 import { KeyLevelsPanel } from './components/KeyLevelsPanel';
+import { ChandelierExitPanel } from './components/ChandelierExitPanel';
 // import { BacktestDashboard } from './components/BacktestDashboard'; // Disabled temporarily
 import IntroPage from './pages/IntroPage';
 import './index.css';
@@ -225,6 +226,7 @@ function App() {
               <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
               <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
               <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
             </div>
           </div>
 
