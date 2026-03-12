@@ -25,7 +25,7 @@ import { TradingViewWidget } from './components/TradingViewWidget';
 import { TradingRecommendation } from './components/TradingRecommendation';
 import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
-import { MarketAnomaliesPanel } from './components/MarketAnomaliesPanel';
+import { ICTKillzonesPanel } from './components/ICTKillzonesPanel';
 import { TradeMonitor } from './components/TradeMonitor';
 import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
@@ -239,9 +239,7 @@ function App() {
               <HistoryDashboard symbol={symbol} />
             </div>
             <div className="flex flex-col space-y-4">
-              <div className="h-[800px]">
-                <MarketAnomaliesPanel />
-              </div>
+              <ICTKillzonesPanel />
             </div>
           </div>
 

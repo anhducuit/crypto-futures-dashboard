@@ -179,14 +179,43 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                             </div>
                         </div>
 
+                        {/* Combo 6 */}
+                        <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl">
+                            <h4 className="text-emerald-400 font-black mb-2 flex items-center gap-2">
+                                🏦 COMBO 6: ICT KILLZONES + PIVOTS
+                            </h4>
+                            <p className="text-xs text-gray-300 mb-3">
+                                <b>Mục đích:</b> Phát hiện Smart Money sweep pivot của phiên Asia rồi đảo chiều.
+                            </p>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-emerald-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Sweep Asia Low:</b> Giá phá xuống dưới Asia Low → đóng lại trên = LONG</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-emerald-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Sweep Asia High:</b> Giá phá lên trên Asia High → đóng lại dưới = SHORT</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <ChevronRight size={14} className="text-emerald-400 mt-0.5" />
+                                    <span className="text-gray-400"><b className="text-white">Trade Zone:</b> Chỉ nổ trong phiên London (14:00-17:00 VN) hoặc NY AM (21:30-23:00 VN)</span>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-emerald-500/10 rounded-lg border-l-2 border-emerald-500">
+                                <p className="text-[10px] text-gray-400 italic">
+                                    💡 <b>Chiến thuật:</b> Smart Money (ngân hàng, quỹ) thường quét thanh khoản tại Asia pivot rồi đảo chiều. Bot phát hiện sweep + rejection để vào lệnh.
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Summary */}
                         <div className="p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl">
                             <p className="text-xs font-bold text-yellow-400 mb-2 uppercase">⚠️ LƯU Ý QUAN TRỌNG</p>
                             <ul className="space-y-1 text-[10px] text-gray-400">
-                                <li>• Robot chỉ nổ lệnh khi đủ điều kiện vào 1 trong 5 Combo</li>
+                                <li>• Robot chỉ nổ lệnh khi đủ điều kiện vào 1 trong 6 Combo</li>
                                 <li>• Mỗi Combo có nhiều chỉ báo xác nhận lẫn nhau</li>
                                 <li>• Số lượng tín hiệu giảm nhưng chất lượng tăng</li>
-                                <li>• Kiểm tra phân tích 5 Combo ở bảng "PHÂN TÍCH GIờ VÀNG VÀ CHIẾN LƯỢC"</li>
+                                <li>• Kiểm tra phân tích 6 Combo ở bảng "PHÂN TÍCH GIờ VÀNG VÀ CHIẾ̂N LƯỢC"</li>
                             </ul>
                         </div>
                     </div>

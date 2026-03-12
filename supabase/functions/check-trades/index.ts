@@ -269,6 +269,119 @@ function calculateChandelierExit(highs: number[], lows: number[], closes: number
     };
 }
 
+// --- ICT KILLZONES + PIVOTS ---
+interface ICTKillzoneInfo {
+    name: string;
+    emoji: string;
+    isActive: boolean;
+    canTrade: boolean; // Only London & NY AM are trade zones
+}
+
+function getICTKillzone(utcHour: number, utcMinute: number): ICTKillzoneInfo {
+    // All times in New York (ET = UTC-5, EDT = UTC-4)
+    // We use UTC and convert: NY = UTC - 5 (standard) or UTC - 4 (DST)
+    // For simplicity, we use UTC directly and define killzones in UTC:
+    // Asia:     01:00-05:00 UTC  (20:00-00:00 NY EST)
+    // London:   07:00-10:00 UTC  (02:00-05:00 NY EST)
+    // NY AM:    14:30-16:00 UTC  (09:30-11:00 NY EST)
+    // NY Lunch: 17:00-18:00 UTC  (12:00-13:00 NY EST)
+    // NY PM:    18:30-21:00 UTC  (13:30-16:00 NY EST)
+    const t = utcHour * 60 + utcMinute;
+
+    if (t >= 60 && t < 300) return { name: 'Asia', emoji: '🔵', isActive: true, canTrade: false };
+    if (t >= 420 && t < 600) return { name: 'London', emoji: '🔴', isActive: true, canTrade: true };
+    if (t >= 870 && t < 960) return { name: 'NY AM', emoji: '🟢', isActive: true, canTrade: true };
+    if (t >= 1020 && t < 1080) return { name: 'NY Lunch', emoji: '🟡', isActive: true, canTrade: false };
+    if (t >= 1110 && t < 1260) return { name: 'NY PM', emoji: '🟣', isActive: true, canTrade: false };
+    return { name: 'Off-Session', emoji: '⚪', isActive: false, canTrade: false };
+}
+
+interface AsiaSessionPivots {
+    asiaHigh: number;
+    asiaLow: number;
+    asiaRange: number;
+    found: boolean;
+}
+
+function getAsiaSessionPivots(klines15m: any[]): AsiaSessionPivots {
+    // Find Asia session (01:00-05:00 UTC) candles from the last 24h of 15m data
+    // Binance kline format: [openTime, open, high, low, close, volume, closeTime, ...]
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+    let asiaHigh = -Infinity;
+    let asiaLow = Infinity;
+    let found = false;
+
+    for (const k of klines15m) {
+        const openTime = typeof k[0] === 'number' ? k[0] : parseInt(k[0]);
+        if (openTime < oneDayAgo) continue;
+
+        const d = new Date(openTime);
+        const utcH = d.getUTCHours();
+
+        // Asia session: 01:00-05:00 UTC
+        if (utcH >= 1 && utcH < 5) {
+            const h = parseFloat(k[2]);
+            const l = parseFloat(k[3]);
+            if (h > asiaHigh) asiaHigh = h;
+            if (l < asiaLow) asiaLow = l;
+            found = true;
+        }
+    }
+
+    return {
+        asiaHigh: found ? asiaHigh : 0,
+        asiaLow: found ? asiaLow : 0,
+        asiaRange: found ? asiaHigh - asiaLow : 0,
+        found
+    };
+}
+
+interface ICTSignal {
+    type: 'LONG' | 'SHORT';
+    reason: string;
+}
+
+function detectICTSignal(
+    pivots: AsiaSessionPivots,
+    klines15m: any[],
+    rsi: number,
+    volRatio: number
+): ICTSignal | null {
+    if (!pivots.found || pivots.asiaRange <= 0) return null;
+
+    // Need at least 3 candles to detect sweep + rejection
+    if (klines15m.length < 3) return null;
+
+    const curr = klines15m[klines15m.length - 1];
+    const prev = klines15m[klines15m.length - 2];
+
+    const currHigh = parseFloat(curr[2]);
+    const currLow = parseFloat(curr[3]);
+    const currClose = parseFloat(curr[4]);
+    const prevHigh = parseFloat(prev[2]);
+    const prevLow = parseFloat(prev[3]);
+
+    // Sweep Asia Low + Rejection = LONG
+    // Pattern: prev candle swept below Asia Low, current candle closed back above
+    const sweptAsiaLow = prevLow < pivots.asiaLow || currLow < pivots.asiaLow;
+    const rejectedAbove = currClose > pivots.asiaLow;
+    if (sweptAsiaLow && rejectedAbove && rsi < 45 && volRatio > 1.2) {
+        return { type: 'LONG', reason: 'Sweep Asia Low + Rejection' };
+    }
+
+    // Sweep Asia High + Rejection = SHORT
+    // Pattern: prev candle swept above Asia High, current candle closed back below
+    const sweptAsiaHigh = prevHigh > pivots.asiaHigh || currHigh > pivots.asiaHigh;
+    const rejectedBelow = currClose < pivots.asiaHigh;
+    if (sweptAsiaHigh && rejectedBelow && rsi > 55 && volRatio > 1.2) {
+        return { type: 'SHORT', reason: 'Sweep Asia High + Rejection' };
+    }
+
+    return null;
+}
+
 
 function calculateDynamicTPSL(
     entryPrice: number,
@@ -1390,6 +1503,33 @@ Deno.serve(async (req) => {
                     final_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
                 }
             });
+
+            // COMBO 6: 🏦 ICT KILLZONES + PIVOTS (Sweep Asia High/Low + Rejection)
+            (() => {
+                const now = new Date();
+                const killzone = getICTKillzone(now.getUTCHours(), now.getUTCMinutes());
+
+                // Only generate signals during London or NY AM killzones
+                if (!killzone.canTrade) return;
+
+                // Use 15m data to find Asia session pivots and detect sweep
+                const resp15m = responses.find(r => r.cfg.interval === '15m');
+                if (!resp15m || !resp15m.data || !Array.isArray(resp15m.data)) return;
+                if (!tf15m) return;
+
+                const pivots = getAsiaSessionPivots(resp15m.data);
+                if (!pivots.found) return;
+
+                const signal = detectICTSignal(pivots, resp15m.data, tf15m.rsi, tf15m.volRatio);
+                if (signal) {
+                    final_signals.push({
+                        type: signal.type,
+                        tf: '15m',
+                        ref: tf15m,
+                        name: `🏦 ICT KILLZONES - ${signal.reason} [${killzone.emoji} ${killzone.name}]`
+                    });
+                }
+            })();
 
 
             for (const sig of final_signals) {
