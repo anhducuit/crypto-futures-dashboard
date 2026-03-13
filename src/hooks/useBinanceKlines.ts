@@ -19,6 +19,7 @@ export interface ChandelierExitData {
     trend: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
     buySignal: boolean;
     sellSignal: boolean;
+    dir: number;
 }
 
 export interface MAAnalysis {
@@ -124,28 +125,123 @@ function calculatePivots(high: number, low: number, close: number) {
     };
 }
 
-function calculateChandelierExit(highs: number[], lows: number[], closes: number[], period = 22, multiplier = 3.0): ChandelierExitData | null {
+function calculateChandelierExitHeikinAshi(
+    opens: number[], highs: number[], lows: number[], closes: number[], 
+    period: number = 1, multiplier: number = 1.85
+): ChandelierExitData | null {
     if (closes.length < period + 1) return null;
-    const trs: number[] = [];
-    for (let i = 1; i < closes.length; i++) {
-        trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i-1]), Math.abs(lows[i] - closes[i-1])));
+
+    // 1. Calculate Heikin Ashi
+    const haOpens: number[] = [];
+    const haHighs: number[] = [];
+    const haLows: number[] = [];
+    const haCloses: number[] = [];
+
+    // First HA candle
+    haOpens.push(opens[0]);
+    haCloses.push((opens[0] + highs[0] + lows[0] + closes[0]) / 4);
+    haHighs.push(highs[0]);
+    haLows.push(lows[0]);
+
+    for (let i = 1; i < opens.length; i++) {
+        const haO = (haOpens[i - 1] + haCloses[i - 1]) / 2;
+        const haC = (opens[i] + highs[i] + lows[i] + closes[i]) / 4;
+        const haH = Math.max(highs[i], haO, haC);
+        const haL = Math.min(lows[i], haO, haC);
+        
+        haOpens.push(haO);
+        haCloses.push(haC);
+        haHighs.push(haH);
+        haLows.push(haL);
     }
-    const atr = trs.slice(-period).reduce((a,b) => a+b, 0) / period;
-    const hh = Math.max(...highs.slice(-period));
-    const ll = Math.min(...lows.slice(-period));
-    const exitLong = hh - atr * multiplier;
-    const exitShort = ll + atr * multiplier;
-    const prevHH = Math.max(...highs.slice(-(period+1), -1));
-    const prevLL = Math.min(...lows.slice(-(period+1), -1));
-    const prevAtr = trs.slice(-(period+1), -1).reduce((a,b) => a+b, 0) / period;
-    const prevExitLong = prevHH - prevAtr * multiplier;
-    const prevExitShort = prevLL + prevAtr * multiplier;
-    const cc = closes[closes.length-1], pc = closes[closes.length-2];
+
+    // 2. Calculate RMA-based ATR over HA candles
+    const trs: number[] = [haHighs[0] - haLows[0]]; 
+    for (let i = 1; i < haCloses.length; i++) {
+        const tr = Math.max(
+            haHighs[i] - haLows[i],
+            Math.abs(haHighs[i] - haCloses[i - 1]),
+            Math.abs(haLows[i] - haCloses[i - 1])
+        );
+        trs.push(tr);
+    }
+
+    const alpha = 1 / period;
+    const rmas: number[] = [trs[0]];
+    for (let i = 1; i < trs.length; i++) {
+        const rma = (alpha * trs[i]) + ((1 - alpha) * rmas[i - 1]);
+        rmas.push(rma);
+    }
+
+    // 3. Calculate Chandelier Exit
+    const longStops: number[] = [];
+    const shortStops: number[] = [];
+    const dirs: number[] = [];
+
+    for (let i = 0; i < haCloses.length; i++) {
+        const atrValue = rmas[i] * multiplier;
+        
+        const lookbackStart = Math.max(0, i - period + 1);
+        let highest = -Infinity;
+        let lowest = Infinity;
+        for (let j = lookbackStart; j <= i; j++) {
+            if (haHighs[j] > highest) highest = haHighs[j];
+            if (haLows[j] < lowest) lowest = haLows[j];
+        }
+
+        let longStop = highest - atrValue;
+        let shortStop = lowest + atrValue;
+
+        if (i > 0) {
+            const prevLongStop = longStops[i - 1];
+            const prevShortStop = shortStops[i - 1];
+            const prevClose = haCloses[i - 1];
+
+            // Trailing Ratchet: longStop only moves up, shortStop only moves down
+            if (prevClose > prevLongStop) {
+                longStop = Math.max(longStop, prevLongStop);
+            }
+            if (prevClose < prevShortStop) {
+                shortStop = Math.min(shortStop, prevShortStop);
+            }
+        }
+        
+        longStops.push(longStop);
+        shortStops.push(shortStop);
+
+        // Calculate direction
+        if (i === 0) {
+            dirs.push(1);
+        } else {
+            const prevShortStop = shortStops[i - 1];
+            const prevLongStop = longStops[i - 1];
+            const currClose = haCloses[i];
+            
+            let dir = dirs[i - 1];
+            if (currClose > prevShortStop) dir = 1;
+            else if (currClose < prevLongStop) dir = -1;
+            
+            dirs.push(dir);
+        }
+    }
+
+    const currentIdx = haCloses.length - 1;
+    const currentDir = dirs[currentIdx];
+    const prevDir = dirs[currentIdx - 1];
+
+    const buySignal = currentDir === 1 && prevDir === -1;
+    const sellSignal = currentDir === -1 && prevDir === 1;
+
     return {
-        exitLong, exitShort, atr, highestHigh: hh, lowestLow: ll,
-        trend: cc > exitLong ? 'BULLISH' : cc < exitShort ? 'BEARISH' : 'NEUTRAL',
-        buySignal: pc <= prevExitShort && cc > exitShort,
-        sellSignal: pc >= prevExitLong && cc < exitLong
+        exitLong: longStops[currentIdx],
+        exitShort: shortStops[currentIdx],
+        dir: currentDir,
+        buySignal,
+        sellSignal,
+        atr: rmas[currentIdx],
+        highestHigh: haHighs[currentIdx],
+        lowestLow: haLows[currentIdx],
+        trend: currentDir === 1 ? 'BULLISH' : 'BEARISH'
     };
 }
 
@@ -278,7 +374,8 @@ export function useBinanceKlines(symbol: string) {
                         divergence = detectDivergence(closes.slice(-50), subRsi.slice(-50));
                     }
 
-                    const chandelierExit = calculateChandelierExit(highs, lows, closes, 22, 3.0);
+                    const opens = klines.map(k => k.open);
+                    const chandelierExit = calculateChandelierExitHeikinAshi(opens, highs, lows, closes, 1, 1.85);
 
                     return {
                         timeframe: tf.tvKey,

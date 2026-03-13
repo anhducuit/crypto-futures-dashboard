@@ -156,25 +156,25 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                                 🔔 COMBO 5: CHỈ BÁO THOÁT CHANDELIER
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Phát hiện đảo chiều xu hướng dựa trên Chandelier Exit (ATR trailing stop).
+                                <b>Mục đích:</b> Phát hiện đảo chiều xu hướng dựa trên độ bám sát của Chandelier Exit (Heikin Ashi + RMA).
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Exit Long:</b> Đỉnh cao (22 kỳ) − ATR × 3.0 → Giá tụt dưới = tín hiệu SHORT</span>
+                                    <span className="text-gray-400"><b className="text-white">Exit Long:</b> Đỉnh HA (1 kỳ) − ATR × 1.85 → Giá bám siết chặt, nếu thủng = SHORT</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Exit Short:</b> Đáy thấp (22 kỳ) + ATR × 3.0 → Giá vượt trên = tín hiệu LONG</span>
+                                    <span className="text-gray-400"><b className="text-white">Exit Short:</b> Đáy HA (1 kỳ) + ATR × 1.85 → Giá bám siết chặt, nếu vượt = LONG</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Bộ lọc RSI:</b> RSI &lt; 75 (mua) hoặc RSI &gt; 25 (bán) để tránh vùng quá mua/bán</span>
+                                    <span className="text-gray-400"><b className="text-white">Trailing Ratchet:</b> Exit Long chỉ dịch lên, Exit Short chỉ dịch xuống. Tín hiệu cực nhạy.</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-blue-500/10 rounded-lg border-l-2 border-blue-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Chandelier Exit bám theo xu hướng như trailing stop, chỉ nổ tín hiệu khi giá cross qua mức exit — xác nhận đảo chiều đáng tin cậy.
+                                    💡 <b>Chiến thuật:</b> Dùng nến Heikin Ashi khử nhiễu kết hợp Trailing bám siêu sát (m=1.85). Nổ khi trạng thái Market Direction đổi chiều thực sự thay vì cross ảo.
                                 </p>
                             </div>
                         </div>

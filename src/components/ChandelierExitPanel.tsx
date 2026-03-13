@@ -62,7 +62,7 @@ export const ChandelierExitPanel: React.FC<ChandelierExitPanelProps> = ({ data, 
                         <span className={`text-sm font-bold ${trendColor}`}>{trendLabel}</span>
                     </div>
                     <span className="text-xs text-[var(--color-text-secondary)]">
-                        Period: 22 | ATR × 3.0
+                        Period: 1 | ATR × 1.85 (HA RMA)
                     </span>
                 </div>
 
@@ -118,7 +118,7 @@ export const ChandelierExitPanel: React.FC<ChandelierExitPanelProps> = ({ data, 
                 {/* Key Data */}
                 <div className="grid grid-cols-3 gap-2">
                     <div className="text-center p-2 bg-[var(--color-bg-tertiary)] rounded-lg">
-                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">ATR (22)</div>
+                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">ATR (1)</div>
                         <div className="text-sm font-bold text-[var(--color-text-primary)]">${formatPrice(ce.atr)}</div>
                     </div>
                     <div className="text-center p-2 bg-[var(--color-bg-tertiary)] rounded-lg">
@@ -133,8 +133,8 @@ export const ChandelierExitPanel: React.FC<ChandelierExitPanelProps> = ({ data, 
 
                 {/* Explanation */}
                 <div className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed border-t border-[var(--color-border)] pt-2">
-                    <span className="text-green-400">■</span> Thoát Long = Đỉnh cao({22}) − ATR × 3.0 • 
-                    <span className="text-red-400"> ■</span> Thoát Short = Đáy thấp({22}) + ATR × 3.0
+                    <span className="text-green-400">■</span> Thoát Long = Đỉnh cao HA(1) − ATR × 1.85 • 
+                    <span className="text-red-400"> ■</span> Thoát Short = Đáy thấp HA(1) + ATR × 1.85
                 </div>
             </div>
         </div>

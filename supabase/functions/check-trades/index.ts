@@ -204,68 +204,123 @@ function checkEMASqueeze(closes: number[]) {
     return spread < 0.005; // 0.5% squeeze
 }
 
-function calculateChandelierExit(highs: number[], lows: number[], closes: number[], period: number = 22, multiplier: number = 3.0) {
+function calculateChandelierExitHeikinAshi(
+    opens: number[], highs: number[], lows: number[], closes: number[], 
+    period: number = 1, multiplier: number = 1.85
+) {
     if (closes.length < period + 1) return null;
 
-    // Calculate ATR array
-    const atrPeriod = period;
-    const trs: number[] = [];
-    for (let i = 1; i < closes.length; i++) {
+    // 1. Calculate Heikin Ashi
+    const haOpens: number[] = [];
+    const haHighs: number[] = [];
+    const haLows: number[] = [];
+    const haCloses: number[] = [];
+
+    // First HA candle
+    haOpens.push(opens[0]);
+    haCloses.push((opens[0] + highs[0] + lows[0] + closes[0]) / 4);
+    haHighs.push(highs[0]);
+    haLows.push(lows[0]);
+
+    for (let i = 1; i < opens.length; i++) {
+        const haO = (haOpens[i - 1] + haCloses[i - 1]) / 2;
+        const haC = (opens[i] + highs[i] + lows[i] + closes[i]) / 4;
+        const haH = Math.max(highs[i], haO, haC);
+        const haL = Math.min(lows[i], haO, haC);
+        
+        haOpens.push(haO);
+        haCloses.push(haC);
+        haHighs.push(haH);
+        haLows.push(haL);
+    }
+
+    // 2. Calculate RMA-based ATR over HA candles
+    const trs: number[] = [haHighs[0] - haLows[0]]; 
+    for (let i = 1; i < haCloses.length; i++) {
         const tr = Math.max(
-            highs[i] - lows[i],
-            Math.abs(highs[i] - closes[i - 1]),
-            Math.abs(lows[i] - closes[i - 1])
+            haHighs[i] - haLows[i],
+            Math.abs(haHighs[i] - haCloses[i - 1]),
+            Math.abs(haLows[i] - haCloses[i - 1])
         );
         trs.push(tr);
     }
 
-    // Current ATR (SMA of last N true ranges)
-    const atrSlice = trs.slice(-atrPeriod);
-    const atr = atrSlice.reduce((a, b) => a + b, 0) / atrSlice.length;
+    const alpha = 1 / period;
+    const rmas: number[] = [trs[0]];
+    for (let i = 1; i < trs.length; i++) {
+        const rma = (alpha * trs[i]) + ((1 - alpha) * rmas[i - 1]);
+        rmas.push(rma);
+    }
 
-    // Highest High & Lowest Low over lookback period
-    const recentHighs = highs.slice(-period);
-    const recentLows = lows.slice(-period);
-    const highestHigh = Math.max(...recentHighs);
-    const lowestLow = Math.min(...recentLows);
+    // 3. Calculate Chandelier Exit
+    const longStops: number[] = [];
+    const shortStops: number[] = [];
+    const dirs: number[] = [];
 
-    // Chandelier Exit Long = Highest High - ATR * Multiplier
-    const exitLong = highestHigh - atr * multiplier;
-    // Chandelier Exit Short = Lowest Low + ATR * Multiplier
-    const exitShort = lowestLow + atr * multiplier;
+    for (let i = 0; i < haCloses.length; i++) {
+        const atrValue = rmas[i] * multiplier;
+        
+        const lookbackStart = Math.max(0, i - period + 1);
+        let highest = -Infinity;
+        let lowest = Infinity;
+        for (let j = lookbackStart; j <= i; j++) {
+            if (haHighs[j] > highest) highest = haHighs[j];
+            if (haLows[j] < lowest) lowest = haLows[j];
+        }
 
-    // Previous bar values for crossover detection
-    const prevHighs = highs.slice(-(period + 1), -1);
-    const prevLows = lows.slice(-(period + 1), -1);
-    const prevTrs = trs.slice(-(atrPeriod + 1), -1);
-    const prevAtr = prevTrs.reduce((a, b) => a + b, 0) / prevTrs.length;
-    const prevHighestHigh = Math.max(...prevHighs);
-    const prevLowestLow = Math.min(...prevLows);
-    const prevExitLong = prevHighestHigh - prevAtr * multiplier;
-    const prevExitShort = prevLowestLow + prevAtr * multiplier;
+        let longStop = highest - atrValue;
+        let shortStop = lowest + atrValue;
 
-    const currentClose = closes[closes.length - 1];
-    const prevClose = closes[closes.length - 2];
+        if (i > 0) {
+            const prevLongStop = longStops[i - 1];
+            const prevShortStop = shortStops[i - 1];
+            const prevClose = haCloses[i - 1];
 
-    // Signal detection
-    // BUY signal: price crosses ABOVE exitShort (trend reversal to bullish)
-    const buySignal = prevClose <= prevExitShort && currentClose > exitShort;
-    // SELL signal: price crosses BELOW exitLong (trend reversal to bearish)
-    const sellSignal = prevClose >= prevExitLong && currentClose < exitLong;
+            // Trailing Ratchet: longStop only moves up, shortStop only moves down
+            if (prevClose > prevLongStop) {
+                longStop = Math.max(longStop, prevLongStop);
+            }
+            if (prevClose < prevShortStop) {
+                shortStop = Math.min(shortStop, prevShortStop);
+            }
+        }
+        
+        longStops.push(longStop);
+        shortStops.push(shortStop);
 
-    // Current trend direction
-    const trend = currentClose > exitLong ? 'BULLISH' : currentClose < exitShort ? 'BEARISH' : 'NEUTRAL';
+        // Calculate direction
+        if (i === 0) {
+            dirs.push(1);
+        } else {
+            const prevShortStop = shortStops[i - 1];
+            const prevLongStop = longStops[i - 1];
+            const currClose = haCloses[i];
+            
+            let dir = dirs[i - 1];
+            if (currClose > prevShortStop) dir = 1;
+            else if (currClose < prevLongStop) dir = -1;
+            
+            dirs.push(dir);
+        }
+    }
+
+    const currentIdx = haCloses.length - 1;
+    const currentDir = dirs[currentIdx];
+    const prevDir = dirs[currentIdx - 1];
+
+    const buySignal = currentDir === 1 && prevDir === -1;
+    const sellSignal = currentDir === -1 && prevDir === 1;
 
     return {
-        exitLong,
-        exitShort,
-        atr,
-        highestHigh,
-        lowestLow,
-        trend,
+        exitLong: longStops[currentIdx],
+        exitShort: shortStops[currentIdx],
+        dir: currentDir,
         buySignal,
         sellSignal,
-        currentClose
+        atr: rmas[currentIdx],
+        highestHigh: haHighs[currentIdx],
+        lowestLow: haLows[currentIdx],
+        trend: currentDir === 1 ? 'BULLISH' : 'BEARISH'
     };
 }
 
@@ -1480,25 +1535,27 @@ Deno.serve(async (req) => {
                 }
             });
 
-            // COMBO 5: 🔔 CHỈ BÁO THOÁT CHANDELIER (Chandelier Exit Crossover)
+            // COMBO 5: 🔔 CHỈ BÁO THOÁT CHANDELIER (Chandelier Exit Crossover - Heikin Ashi RMA)
             [tf15m, tf1h].forEach((tf, idx) => {
                 if (!tf) return;
                 const tfName = idx === 0 ? '15m' : '1h';
                 const resp = responses.find(r => r.cfg.interval === tfName);
                 if (!resp || !resp.data || !Array.isArray(resp.data)) return;
 
+                const ceOpens = resp.data.map((x: any) => parseFloat(x[1]));
                 const ceHighs = resp.data.map((x: any) => parseFloat(x[2]));
                 const ceLows = resp.data.map((x: any) => parseFloat(x[3]));
                 const ceCloses = resp.data.map((x: any) => parseFloat(x[4]));
 
-                const ce = calculateChandelierExit(ceHighs, ceLows, ceCloses, 22, 3.0);
+                // Using period=1, multiplier=1.85 as per updated Pine Script
+                const ce = calculateChandelierExitHeikinAshi(ceOpens, ceHighs, ceLows, ceCloses, 1, 1.85);
                 if (!ce) return;
 
-                // BUY: Price crosses above Chandelier Exit Short line + RSI not overbought
+                // BUY: Direction changed to Bullish + RSI not overbought
                 if (ce.buySignal && tf.rsi < 75) {
                     final_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
                 }
-                // SELL: Price crosses below Chandelier Exit Long line + RSI not oversold
+                // SELL: Direction changed to Bearish + RSI not oversold
                 if (ce.sellSignal && tf.rsi > 25) {
                     final_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
                 }
