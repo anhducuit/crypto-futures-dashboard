@@ -3,7 +3,7 @@
  * Unauthorized copying, distribution, or use of this file is strictly prohibited.
  */
 import { useState, useEffect } from 'react';
-import { Activity, BarChart2, Menu, X, LogOut } from 'lucide-react';
+import { Activity, BarChart2 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
@@ -31,13 +31,14 @@ import { IchimokuPanel } from './components/IchimokuPanel';
 import { DivergencePanel } from './components/DivergencePanel';
 import { KeyLevelsPanel } from './components/KeyLevelsPanel';
 import { ChandelierExitPanel } from './components/ChandelierExitPanel';
-// import { BacktestDashboard } from './components/BacktestDashboard'; // Disabled temporarily
+import { MobileHeader } from './components/MobileHeader';
+import { BottomNav, type TabType } from './components/BottomNav';
 import './index.css';
 
 function App() {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [direction, setDirection] = useState<'long' | 'short'>('long');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('trade');
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTimeframe, setActiveTimeframe] = useState('15'); // 15, 1, 60, 240
@@ -87,10 +88,6 @@ function App() {
   // Automated Signal Generator (Disabled - Logic moved to Server)
   useSignalGenerator();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
 
   if (authLoading) {
     return (
@@ -109,65 +106,25 @@ function App() {
   }
 
   return (
-    <div className="w-[450px] h-[600px] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans overflow-x-hidden overflow-y-auto relative">
+    <div className="w-[450px] h-[600px] flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans relative overflow-hidden">
       {/* Background Gradient */}
       <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[var(--color-golden)]/5 to-transparent pointer-events-none z-0"></div>
+      
       {tradeMonitor}
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
-        <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-[var(--color-golden)] to-yellow-600 rounded-lg">
-              <BarChart2 size={24} className="text-black" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">Pro Crypto Futures</h1>
-              <p className="text-[11px] text-yellow-500 font-black uppercase tracking-[0.2em] drop-shadow-sm">by Anh Duc Trader</p>
-            </div>
-          </div>
 
-          <PriceTicker />
+      <MobileHeader session={session} isConnected={isConnected} />
 
-          <div className="hidden md:flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-tertiary)] rounded-lg">
-              <Activity size={14} className={isConnected ? 'text-green-500' : 'text-red-500'} />
-              <span className="text-sm text-[var(--color-text-secondary)]">
-                {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
-              title="Đăng xuất"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
-
-          <button
-            className="md:hidden p-2 text-[var(--color-text-secondary)]"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </header>
-
-      <EventTicker />
-      {/* GuideBar is moved to Side Panel Area */}
-
-      {/* Main Content */}
-      <main className="max-w-[1920px]">
-        {/* Dashboard Grid - Single column for Extension */}
-        <div className="grid grid-cols-1 gap-4 lg:gap-6 relative z-10 w-full mb-8">
-          
-          {/* Main Chart Area */}
-          <div className="space-y-4 lg:space-y-6">
-            {/* Symbol Input */}
-            <div className="card">
-              <div className="card-header">
+      {/* Main Content Area - Scrollable */}
+      <main className="flex-1 overflow-y-auto relative z-10 w-full pt-2">
+        
+        {activeTab === 'trade' && (
+          <div className="space-y-4 px-3 pb-6">
+            <EventTicker />
+            
+            <div className="card !p-3">
+              <div className="card-header !mb-2">
                 <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                SYMBOL
+                MÃ GIAO DỊCH
               </div>
               <SymbolInput
                 symbol={symbol}
@@ -177,7 +134,6 @@ function App() {
               />
             </div>
 
-            {/* Live Price */}
             <LivePriceDisplay
               price={currentPrice}
               previousPrice={previousPrice}
@@ -187,25 +143,55 @@ function App() {
               onManualPrice={setManualPrice}
             />
 
-            {/* Direction Selector */}
-            <div className="card">
-              <div className="card-header">HƯỚNG GIAO DỊCH</div>
+            <div className="card !p-3">
+              <div className="card-header !mb-2">HƯỚNG LỆNH (DIRECTION)</div>
               <DirectionSelector
                 direction={direction}
                 onDirectionChange={setDirection}
               />
             </div>
 
-            {/* Trading Recommendation */}
+            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
+
+            <div className="h-[400px]">
+              <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
+            </div>
+
+            <PriceTicker />
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="space-y-4 px-3 pb-6">
+            <div className="card !p-3 mt-2">
+              <div className="card-header !mb-2 flex justify-between items-center">
+                <span className="flex items-center gap-2">
+                  <Activity size={16} className="text-[var(--color-golden)]" />
+                  ĐANG QUAN SÁT (MONITOR)
+                </span>
+              </div>
+              <TradeMonitor />
+            </div>
+
+            <div className="card overflow-x-auto !p-3">
+              <HistoryDashboard symbol={symbol} />
+            </div>
+
+            <TradeAnalytics />
+          </div>
+        )}
+
+        {activeTab === 'bots' && (
+          <div className="space-y-4 px-3 pb-6 mt-2">
             <TradingRecommendation
               maAnalysis={maAnalysis}
               onDirectionChange={setDirection}
             />
+            
+            <MarketTrends onSymbolSelect={setSymbol} />
+            
+            <ICTKillzonesPanel />
 
-            {/* Volume Analysis Section */}
-            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
-
-            {/* Moving Averages Analysis */}
             <MovingAveragesPanel
               symbol={symbol}
               data={maAnalysis}
@@ -215,46 +201,19 @@ function App() {
               onTimeframeChange={setActiveTimeframe}
             />
 
-            {/* EMA Trend Bias */}
+            <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+          </div>
+        )}
+
+        {activeTab === 'menu' && (
+          <div className="space-y-4 px-3 pb-6 mt-2">
+            <GuideBar />
+            
             <EMATrendBias trends={emaTrends} />
 
-            {/* Advanced Analysis Panels */}
-            <div className="grid grid-cols-1 gap-4">
-              <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-              <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-              <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-              <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-            </div>
-          </div>
-
-          {/* Center - TradingView Chart & History */}
-          <div className="space-y-4 lg:space-y-6">
-            <div className="flex-shrink-0">
-              <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
-            </div>
-            <div className="card overflow-x-auto">
-              <HistoryDashboard symbol={symbol} />
-            </div>
-            <div className="card">
-              <div className="card-header">
-                <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                TRADE MONITOR
-              </div>
-              <TradeMonitor />
-            </div>
-            <div className="flex flex-col space-y-4">
-              <ICTKillzonesPanel />
-            </div>
-          </div>
-
-          {/* Side Panel Area */}
-          <div className="space-y-4 lg:space-y-6 mt-4">
-            {/* Guide Bar */}
-            <GuideBar />
-            {/* Market Trends (Top Gainers/Losers) */}
-            <MarketTrends onSymbolSelect={setSymbol} />
-
-            {/* Fibonacci Calculator */}
             <FibonacciCalculator
               symbol={symbol}
               direction={direction}
@@ -263,20 +222,16 @@ function App() {
               onRefreshMA={refetchMA}
             />
 
-            {/* Win/Loss Analytics Report */}
-            <TradeAnalytics />
-
-            {/* Backtest Dashboard - DISABLED: Causing app crash, needs debugging */}
-            {/* <BacktestDashboard /> */}
+            <div className="text-center text-xs text-[var(--color-text-secondary)] opacity-50 mt-8 mb-4">
+              <p>Phiên bản Chrome Extension v1.0.0</p>
+              <p>© 2026 Anh Duc Trader</p>
+            </div>
           </div>
-        </div>
+        )}
+
       </main>
 
-      {/* Footer */}
-      <footer className="mt-8 py-4 border-t border-[var(--color-border)] text-center text-sm text-[var(--color-text-secondary)]">
-        <p>© 2026 Anh Duc Trader. All rights reserved.</p>
-        <p className="text-xs mt-1 opacity-70">⚠️ Đây là công cụ hỗ trợ phân tích độc quyền. Không phải lời khuyên đầu tư.</p>
-      </footer>
+      <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
     </div>
   );
 }
