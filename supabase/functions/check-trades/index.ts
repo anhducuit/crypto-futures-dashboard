@@ -518,7 +518,7 @@ function calculateDynamicTPSL(
  * SMART NOISE FILTER
  * Chống nhiễu, chống spam và xử lý xung đột hướng lệnh
  */
-async function applySmartNoiseFilter(supabase: any, symbol: string, currentSignal: any): Promise<{ allowed: boolean, reason?: string }> {
+async function applySmartNoiseFilter(supabase: any, symbol: string, currentSignal: any): Promise<{ allowed: boolean, reason?: string, action?: string, oppositeTrades?: any[] }> {
     const now = new Date();
     const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
     const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
@@ -526,7 +526,7 @@ async function applySmartNoiseFilter(supabase: any, symbol: string, currentSigna
     // 1. Fetch recent history for this symbol (last 4 hours)
     const { data: recentHistory } = await supabase
         .from('trading_history')
-        .select('signal, timeframe, strategy_name, created_at, status')
+        .select('id, signal, timeframe, strategy_name, created_at, status, price_at_signal, telegram_message_id')
         .eq('symbol', symbol)
         .gt('created_at', fourHoursAgo)
         .order('created_at', { ascending: false });
@@ -543,6 +543,8 @@ async function applySmartNoiseFilter(supabase: any, symbol: string, currentSigna
 
     const isHighPriority = highPriorityKeywords.some(keyword => currentSignal.name.includes(keyword));
 
+    const oppositePendingTrades = [];
+
     for (const trade of recentHistory) {
         const tradeTime = new Date(trade.created_at).getTime();
         const isWithin30Mins = (now.getTime() - tradeTime) < (30 * 60 * 1000);
@@ -550,8 +552,8 @@ async function applySmartNoiseFilter(supabase: any, symbol: string, currentSigna
         // A. CHỐNG SPAM (Cùng hướng trong 1 giờ cho cùng chiến lược)
         const isSameStrategy = trade.strategy_name === currentSignal.name;
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).getTime();
-        if (isSameStrategy && tradeTime > oneHourAgo) {
-            return { allowed: false, reason: `Spam: Chiến lược ${currentSignal.name} vừa nổ trong 60p qua` };
+        if (isSameStrategy && trade.signal === currentSignal.type && tradeTime > oneHourAgo) {
+            return { allowed: false, reason: `Spam: Chiến lược ${currentSignal.name} (cùng hướng) vừa nổ trong 60p qua` };
         }
 
         // B. CHỐNG LẶP LẠI (Cùng hướng bất kể chiến lược trong 30p)
@@ -559,14 +561,14 @@ async function applySmartNoiseFilter(supabase: any, symbol: string, currentSigna
             return { allowed: false, reason: `Spam: Hướng ${trade.signal} vừa nổ trong 30p qua` };
         }
 
-        // C. CHỐNG XUNG ĐỘT HƯỚNG (Ngược hướng trong 4h)
+        // C. PHÁT HIỆN XUNG ĐỘT / ĐẢO CHIỀU (Ngược hướng và đang PENDING)
         if (trade.signal !== currentSignal.type && trade.status === 'PENDING') {
-            if (!isHighPriority) {
-                return { allowed: false, reason: `Xung đột: Đang có lệnh ${trade.signal} (#${trade.strategy_name}) chờ khớp. Cần biến động cực mạnh để đảo chiều.` };
-            } else {
-                console.log(`[NOISE FILTER] ${symbol}: Tín hiệu mạnh ${currentSignal.name} được phép ghi đè lệnh ${trade.signal} cũ.`);
-            }
+            oppositePendingTrades.push(trade);
         }
+    }
+
+    if (oppositePendingTrades.length > 0) {
+        return { allowed: true, action: 'REVERSAL', oppositeTrades: oppositePendingTrades };
     }
 
     return { allowed: true };
@@ -1595,13 +1597,53 @@ Deno.serve(async (req) => {
                     continue;
                 }
 
-                const filterResult = await applySmartNoiseFilter(supabase, symbol, sig);
+                const filterResult: any = await applySmartNoiseFilter(supabase, symbol, sig);
                 if (!filterResult.allowed) {
                     console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} rejected by Noise Filter: ${filterResult.reason}`);
                     continue;
                 }
 
                 if (filterResult.allowed) {
+                    // XỬ LÝ ĐẢO CHIỀU CHO CÁC LỆNH ĐANG PENDING (SOLUTION 1: TRAILING STOP / CUT LOSS)
+                    if (filterResult.action === 'REVERSAL' && filterResult.oppositeTrades) {
+                        for (const oldTrade of filterResult.oppositeTrades) {
+                            let isProfit = false;
+                            if (oldTrade.signal === 'LONG' && sig.ref.close > oldTrade.price_at_signal) isProfit = true;
+                            if (oldTrade.signal === 'SHORT' && sig.ref.close < oldTrade.price_at_signal) isProfit = true;
+
+                            if (isProfit) {
+                                // 1. Lệnh đang LÃI -> Dời SL lên điểm Mở lệnh (Hòa vốn)
+                                const autoReason = `🛡️ Dời SL Hòa Vốn: Áp lực đảo chiều từ ${sig.name}`;
+                                await supabase.from('trading_history').update({
+                                    stop_loss: oldTrade.price_at_signal,
+                                    pnl_reason: autoReason
+                                }).eq('id', oldTrade.id);
+
+                                const msg = `🛡️ <b>DỜI SL HÒA VỐN: ${symbol}</b>\n` +
+                                            `Lệnh cũ: <b>${oldTrade.signal}</b> (#${oldTrade.strategy_name})\n` +
+                                            `Lý do: Phát hiện áp lực chiều ngược lại từ <b>${sig.name}</b>\n` +
+                                            `SL mới: $${oldTrade.price_at_signal} (Bảo toàn vốn)`;
+                                await sendTelegram(msg, oldTrade.telegram_message_id, subscriberIds);
+                                console.log(`[REVERSAL] ${symbol}: Moved SL to breakeven for trade ID ${oldTrade.id}`);
+                            } else {
+                                // 2. Lệnh đang LỖ -> Đóng lệnh luôn ở giá hiện tại (Cắt lỗ sớm)
+                                const autoReason = `❌ Đóng lệnh sớm (Cắt lỗ): Áp lực đảo chiều mạnh từ ${sig.name}`;
+                                await supabase.from('trading_history').update({
+                                    status: 'FAILED',
+                                    pnl_reason: autoReason
+                                }).eq('id', oldTrade.id);
+
+                                const msg = `❌ <b>CẮT LỖ SỚM: ${symbol}</b>\n` +
+                                            `Lệnh cũ: <b>${oldTrade.signal}</b> (#${oldTrade.strategy_name})\n` +
+                                            `Entry: $${oldTrade.price_at_signal}\n` +
+                                            `Close Price: $${sig.ref.close}\n` +
+                                            `Lý do: <i>${autoReason}</i> (Quyết định cắt sớm để tránh SL sâu)`;
+                                await sendTelegram(msg, oldTrade.telegram_message_id, subscriberIds);
+                                console.log(`[REVERSAL] ${symbol}: Force closed trade ID ${oldTrade.id} due to opposite signal in loss`);
+                            }
+                        }
+                    }
+
                     const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
                     const icon = sig.type === 'LONG' ? '🟢' : '🔴';
 
