@@ -27,13 +27,11 @@ import { VolumeAnalysis } from './components/VolumeAnalysis';
 import { HistoryDashboard } from './components/HistoryDashboard';
 import { ICTKillzonesPanel } from './components/ICTKillzonesPanel';
 import { TradeMonitor } from './components/TradeMonitor';
-import { RegisterPage } from './pages/RegisterPage';
 import { IchimokuPanel } from './components/IchimokuPanel';
 import { DivergencePanel } from './components/DivergencePanel';
 import { KeyLevelsPanel } from './components/KeyLevelsPanel';
 import { ChandelierExitPanel } from './components/ChandelierExitPanel';
 // import { BacktestDashboard } from './components/BacktestDashboard'; // Disabled temporarily
-import IntroPage from './pages/IntroPage';
 import './index.css';
 
 function App() {
@@ -103,19 +101,17 @@ function App() {
   }
 
   if (!session) {
-    // Basic routing logic for Login/Register without full React Router
-    const path = window.location.pathname;
-    if (path === '/intro') {
-      return <IntroPage />;
-    }
-    if (path === '/register') {
-      return <RegisterPage />;
-    }
-    return <Auth />;
+    return (
+      <div className="w-[450px] h-[600px] bg-[var(--color-bg-primary)] overflow-y-auto">
+        <Auth />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)]">
+    <div className="w-[450px] h-[600px] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans overflow-x-hidden overflow-y-auto relative">
+      {/* Background Gradient */}
+      <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[var(--color-golden)]/5 to-transparent pointer-events-none z-0"></div>
       {tradeMonitor}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
@@ -158,14 +154,15 @@ function App() {
       </header>
 
       <EventTicker />
-      <GuideBar />
+      {/* GuideBar is moved to Side Panel Area */}
 
       {/* Main Content */}
-      <main className="max-w-[1920px] mx-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-          {/* Left Sidebar - Symbol & Controls */}
-          <div className="lg:col-span-3 space-y-4">
+      <main className="max-w-[1920px]">
+        {/* Dashboard Grid - Single column for Extension */}
+        <div className="grid grid-cols-1 gap-4 lg:gap-6 relative z-10 w-full mb-8">
+          
+          {/* Main Chart Area */}
+          <div className="space-y-4 lg:space-y-6">
             {/* Symbol Input */}
             <div className="card">
               <div className="card-header">
@@ -231,20 +228,29 @@ function App() {
           </div>
 
           {/* Center - TradingView Chart & History */}
-          <div className="lg:col-span-5 space-y-4 flex flex-col min-h-0">
+          <div className="space-y-4 lg:space-y-6">
             <div className="flex-shrink-0">
               <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
-            <div className="h-[1000px] flex-shrink-0">
+            <div className="card overflow-x-auto">
               <HistoryDashboard symbol={symbol} />
+            </div>
+            <div className="card">
+              <div className="card-header">
+                <BarChart2 size={16} className="text-[var(--color-golden)]" />
+                TRADE MONITOR
+              </div>
+              <TradeMonitor />
             </div>
             <div className="flex flex-col space-y-4">
               <ICTKillzonesPanel />
             </div>
           </div>
 
-          {/* Right Sidebar - Calculators */}
-          <div className="lg:col-span-4 space-y-4">
+          {/* Side Panel Area */}
+          <div className="space-y-4 lg:space-y-6 mt-4">
+            {/* Guide Bar */}
+            <GuideBar />
             {/* Market Trends (Top Gainers/Losers) */}
             <MarketTrends onSymbolSelect={setSymbol} />
 

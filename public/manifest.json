@@ -1,17 +1,21 @@
 {
-    "name": "Anh Duc Pro Trading",
-    "short_name": "Anh Duc",
-    "description": "Pro Crypto Futures Analysis Dashboard by Anh Duc",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#0f0f14",
-    "theme_color": "#0f0f14",
-    "icons": [
-        {
-            "src": "/logo.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ]
+  "manifest_version": 3,
+  "name": "Anh Duc Trading Bot",
+  "version": "1.0.0",
+  "description": "Trading Dashboard & AI Signal Bot by Anh Duc",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open Dashboard"
+  },
+  "icons": {
+    "16": "vite.svg",
+    "48": "vite.svg",
+    "128": "vite.svg"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*/*"
+  ]
 }
