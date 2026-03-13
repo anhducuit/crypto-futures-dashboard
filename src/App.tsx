@@ -3,7 +3,7 @@
  * Unauthorized copying, distribution, or use of this file is strictly prohibited.
  */
 import { useState, useEffect } from 'react';
-import { Activity, BarChart2 } from 'lucide-react';
+import { Activity, BarChart2, Menu, X, LogOut } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
@@ -42,6 +42,14 @@ function App() {
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTimeframe, setActiveTimeframe] = useState('15'); // 15, 1, 60, 240
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 800);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth <= 800);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     // Check current session
@@ -88,31 +96,19 @@ function App() {
   // Automated Signal Generator (Disabled - Logic moved to Server)
   useSignalGenerator();
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
-  if (authLoading) {
+  const renderMobileView = () => {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[var(--color-golden)]/30 border-t-[var(--color-golden)] rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+      <div className="w-[450px] h-[600px] flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans relative overflow-hidden">
+        {/* Background Gradient */}
+        <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[var(--color-golden)]/5 to-transparent pointer-events-none z-0"></div>
+        
+        {tradeMonitor}
 
-  if (!session) {
-    return (
-      <div className="w-[450px] h-[600px] bg-[var(--color-bg-primary)] overflow-y-auto">
-        <Auth />
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-[450px] h-[600px] flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans relative overflow-hidden">
-      {/* Background Gradient */}
-      <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[var(--color-golden)]/5 to-transparent pointer-events-none z-0"></div>
-      
-      {tradeMonitor}
-
-      <MobileHeader session={session} isConnected={isConnected} />
+        <MobileHeader session={session} isConnected={isConnected} />
 
       {/* Main Content Area - Scrollable */}
       <main className="flex-1 overflow-y-auto relative z-10 w-full pt-2">
@@ -231,9 +227,136 @@ function App() {
 
       </main>
 
-      <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
-    </div>
-  );
+        <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
+      </div>
+    );
+  };
+
+  const renderDesktopView = () => {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+        {tradeMonitor}
+        {/* Header */}
+        <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
+          <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-[var(--color-golden)] to-yellow-600 rounded-lg">
+                <BarChart2 size={24} className="text-black" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight">Pro Crypto Futures</h1>
+                <p className="text-[11px] text-yellow-500 font-black uppercase tracking-[0.2em] drop-shadow-sm">by Anh Duc Trader</p>
+              </div>
+            </div>
+
+            <PriceTicker />
+
+            <div className="hidden md:flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-tertiary)] rounded-lg">
+                <Activity size={14} className={isConnected ? 'text-green-500' : 'text-red-500'} />
+                <span className="text-sm text-[var(--color-text-secondary)]">
+                  {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
+                title="Đăng xuất"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
+
+            <button
+              className="md:hidden p-2 text-[var(--color-text-secondary)]"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </header>
+
+        <EventTicker />
+        <GuideBar />
+
+        {/* Main Content */}
+        <main className="max-w-[1920px] mx-auto p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+            {/* Left Sidebar - Symbol & Controls */}
+            <div className="lg:col-span-3 space-y-4">
+              <div className="card">
+                <div className="card-header">
+                  <BarChart2 size={16} className="text-[var(--color-golden)]" />
+                  SYMBOL
+                </div>
+                <SymbolInput symbol={symbol} onSymbolChange={setSymbol} isConnected={isConnected} onReconnect={reconnect} />
+              </div>
+              <LivePriceDisplay price={currentPrice} previousPrice={previousPrice} priceDirection={priceDirection} symbol={symbol} error={error} onManualPrice={setManualPrice} />
+              <div className="card">
+                <div className="card-header">HƯỚNG GIAO DỊCH</div>
+                <DirectionSelector direction={direction} onDirectionChange={setDirection} />
+              </div>
+              <TradingRecommendation maAnalysis={maAnalysis} onDirectionChange={setDirection} />
+              <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
+              <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} onTimeframeChange={setActiveTimeframe} />
+              <EMATrendBias trends={emaTrends} />
+              <div className="grid grid-cols-1 gap-4">
+                <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              </div>
+            </div>
+
+            {/* Center - TradingView Chart & History */}
+            <div className="lg:col-span-5 space-y-4 flex flex-col min-h-0">
+              <div className="flex-shrink-0">
+                <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
+              </div>
+              <div className="h-[1000px] flex-shrink-0">
+                <HistoryDashboard symbol={symbol} />
+              </div>
+              <div className="flex flex-col space-y-4">
+                <ICTKillzonesPanel />
+              </div>
+            </div>
+
+            {/* Right Sidebar - Calculators */}
+            <div className="lg:col-span-4 space-y-4">
+              <MarketTrends onSymbolSelect={setSymbol} />
+              <FibonacciCalculator symbol={symbol} direction={direction} maAnalysis={maAnalysis} maLoading={maLoading} onRefreshMA={refetchMA} />
+              <TradeAnalytics />
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="mt-8 py-4 border-t border-[var(--color-border)] text-center text-sm text-[var(--color-text-secondary)]">
+          <p>© 2026 Anh Duc Trader. All rights reserved.</p>
+          <p className="text-xs mt-1 opacity-70">⚠️ Đây là công cụ hỗ trợ phân tích độc quyền. Không phải lời khuyên đầu tư.</p>
+        </footer>
+      </div>
+    );
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[var(--color-golden)]/30 border-t-[var(--color-golden)] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className={isMobileView ? "w-[450px] h-[600px] bg-[var(--color-bg-primary)] overflow-y-auto" : "min-h-screen bg-[var(--color-bg-primary)]"}>
+        <Auth />
+      </div>
+    );
+  }
+
+  return isMobileView ? renderMobileView() : renderDesktopView();
 }
 
 export default App;
