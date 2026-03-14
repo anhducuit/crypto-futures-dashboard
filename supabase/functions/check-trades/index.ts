@@ -1494,8 +1494,8 @@ Deno.serve(async (req) => {
                 const hasDiv = tf.divergence !== 'NONE';
                 const dir = tf.divergence === 'BULLISH' ? 'LONG' : 'SHORT';
                 const hasPA = isPAatLevel(tf, dir);
-                const highVol = tf.volRatio > 1.8;
-                if (hasDiv && (hasPA || highVol)) {
+                // Siết chặt: Ép buộc phải có đầy đủ Phân Kỳ + Cản/PA + Volume Đột Biến
+                if (hasDiv && hasPA && tf.volRatio > 2.0) {
                     final_signals.push({ type: dir, tf: tfName, ref: tf, name: `💎 SÁT THỦ BẮT ĐỈNH ĐÁY (${tfName})` });
                 }
             });
@@ -1549,16 +1549,16 @@ Deno.serve(async (req) => {
                 const ceLows = resp.data.map((x: any) => parseFloat(x[3]));
                 const ceCloses = resp.data.map((x: any) => parseFloat(x[4]));
 
-                // Using period=1, multiplier=1.85 as per updated Pine Script
-                const ce = calculateChandelierExitHeikinAshi(ceOpens, ceHighs, ceLows, ceCloses, 1, 1.85);
+                // Using period=22, multiplier=3.0 as standard Crypto Config instead of oversensitive 1/1.85
+                const ce = calculateChandelierExitHeikinAshi(ceOpens, ceHighs, ceLows, ceCloses, 22, 3.0);
                 if (!ce) return;
 
-                // BUY: Direction changed to Bullish + RSI not overbought
-                if (ce.buySignal && tf.rsi < 75) {
+                // BUY: Direction changed to Bullish + RSI not overbought + Confirm with Volume > 1.5x
+                if (ce.buySignal && tf.rsi < 75 && tf.volRatio > 1.5) {
                     final_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
                 }
-                // SELL: Direction changed to Bearish + RSI not oversold
-                if (ce.sellSignal && tf.rsi > 25) {
+                // SELL: Direction changed to Bearish + RSI not oversold + Confirm with Volume > 1.5x
+                if (ce.sellSignal && tf.rsi > 25 && tf.volRatio > 1.5) {
                     final_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
                 }
             });
@@ -1626,20 +1626,9 @@ Deno.serve(async (req) => {
                                 await sendTelegram(msg, oldTrade.telegram_message_id, subscriberIds);
                                 console.log(`[REVERSAL] ${symbol}: Moved SL to breakeven for trade ID ${oldTrade.id}`);
                             } else {
-                                // 2. Lệnh đang LỖ -> Đóng lệnh luôn ở giá hiện tại (Cắt lỗ sớm)
-                                const autoReason = `❌ Đóng lệnh sớm (Cắt lỗ): Áp lực đảo chiều mạnh từ ${sig.name}`;
-                                await supabase.from('trading_history').update({
-                                    status: 'FAILED',
-                                    pnl_reason: autoReason
-                                }).eq('id', oldTrade.id);
-
-                                const msg = `❌ <b>CẮT LỖ SỚM: ${symbol}</b>\n` +
-                                            `Lệnh cũ: <b>${oldTrade.signal}</b> (#${oldTrade.strategy_name})\n` +
-                                            `Entry: $${oldTrade.price_at_signal}\n` +
-                                            `Close Price: $${sig.ref.close}\n` +
-                                            `Lý do: <i>${autoReason}</i> (Quyết định cắt sớm để tránh SL sâu)`;
-                                await sendTelegram(msg, oldTrade.telegram_message_id, subscriberIds);
-                                console.log(`[REVERSAL] ${symbol}: Force closed trade ID ${oldTrade.id} due to opposite signal in loss`);
+                                // 2. Lệnh đang LỖ -> BỎ TÍNH NĂNG CẮT SỚM VÌ DỄ BỊ QUÉT RÂU 2 ĐẦU
+                                // Giữ lệnh cho đến khi chạm tới SL tĩnh.
+                                console.log(`[REVERSAL] ${symbol}: Trade ID ${oldTrade.id} is in loss. Ignoring reversal signal to prevent premature whipsaw losses.`);
                             }
                         }
                     }
