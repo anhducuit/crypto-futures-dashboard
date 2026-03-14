@@ -516,19 +516,19 @@ function calculateDynamicTPSL(
 
 /**
  * SMART NOISE FILTER
- * Chống nhiễu, chống spam và xử lý xung đột hướng lệnh
+ * Chống nhiễu, chống spam, xử lý xung đột hướng lệnh và AI Memory
  */
 async function applySmartNoiseFilter(supabase: any, symbol: string, currentSignal: any): Promise<{ allowed: boolean, reason?: string, action?: string, oppositeTrades?: any[] }> {
     const now = new Date();
     const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-    const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Fetch recent history for this symbol (last 4 hours)
+    // 1. Fetch recent history for this symbol (last 24 hours for deeper memory)
     const { data: recentHistory } = await supabase
         .from('trading_history')
         .select('id, signal, timeframe, strategy_name, created_at, status, price_at_signal, telegram_message_id')
         .eq('symbol', symbol)
-        .gt('created_at', fourHoursAgo)
+        .gt('created_at', twentyFourHoursAgo)
         .order('created_at', { ascending: false });
 
     if (!recentHistory || recentHistory.length === 0) return { allowed: true };
@@ -565,6 +565,18 @@ async function applySmartNoiseFilter(supabase: any, symbol: string, currentSigna
         if (trade.signal !== currentSignal.type && trade.status === 'PENDING') {
             oppositePendingTrades.push(trade);
         }
+
+        // D. KÝ ỨC AI 5 LỚP (Tránh tái phạm sai lầm quá khứ gần)
+        if (trade.status === 'FAILED' && isSameStrategy && trade.signal === currentSignal.type) {
+            const entryPrice = currentSignal.ref.close;
+            const priceDiff = Math.abs(trade.price_at_signal - entryPrice) / entryPrice;
+            if (priceDiff < 0.005) { // Dưới 0.5% chênh lệch giá so với lệnh thua cũ
+                return { 
+                    allowed: false, 
+                    reason: `AI 5-Layer Memory: Vừa bị Stop Loss lệnh ${trade.signal} (#${trade.strategy_name}) tại vùng giá $${trade.price_at_signal}. Chặn tín hiệu để tránh bẫy giá lặp lại!` 
+                };
+            }
+        }
     }
 
     if (oppositePendingTrades.length > 0) {
@@ -582,6 +594,7 @@ async function sendTelegram(message: string, replyToId?: number, chatIds?: (stri
     let targets = (chatIds && chatIds.length > 0) ? [...chatIds] : (ownerChatId ? [ownerChatId] : []);
     // Remove duplicates and ensure strings
     targets = Array.from(new Set(targets.map(id => String(id))));
+
 
     if (targets.length === 0) return { ok: false, error: 'No recipients' };
 

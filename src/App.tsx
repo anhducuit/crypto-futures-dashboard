@@ -293,24 +293,30 @@ function App() {
                 <SymbolInput symbol={symbol} onSymbolChange={setSymbol} isConnected={isConnected} onReconnect={reconnect} />
               </div>
               <LivePriceDisplay price={currentPrice} previousPrice={previousPrice} priceDirection={priceDirection} symbol={symbol} error={error} onManualPrice={setManualPrice} />
-              <div className="card">
-                <div className="card-header">HƯỚNG GIAO DỊCH</div>
-                <DirectionSelector direction={direction} onDirectionChange={setDirection} />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="card !p-3">
+                  <div className="card-header !mb-2 text-xs">HƯỚNG</div>
+                  <DirectionSelector direction={direction} onDirectionChange={setDirection} />
+                </div>
+                <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
               </div>
+
               <TradingRecommendation maAnalysis={maAnalysis} onDirectionChange={setDirection} />
-              <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
-              <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} onTimeframeChange={setActiveTimeframe} />
-              <EMATrendBias trends={emaTrends} />
-              <div className="grid grid-cols-1 gap-4">
-                <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+              
+              <div className="card !bg-[var(--color-bg-tertiary)] border-none">
+                <div className="card-header border-b border-[var(--color-border)] pb-2">Technical Indicators</div>
+                <div className="space-y-3 pt-2">
+                  <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                  <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                  <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                  <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                </div>
               </div>
             </div>
 
             {/* Center - TradingView Chart & History */}
-            <div className="lg:col-span-5 space-y-4 flex flex-col min-h-0">
+            <div className="lg:col-span-6 space-y-4 flex flex-col min-h-0">
               <div className="flex-shrink-0">
                 <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
               </div>
@@ -322,10 +328,12 @@ function App() {
               </div>
             </div>
 
-            {/* Right Sidebar - Calculators */}
-            <div className="lg:col-span-4 space-y-4">
+            {/* Right Sidebar - Calculators & Markets */}
+            <div className="lg:col-span-3 space-y-4">
               <MarketTrends onSymbolSelect={setSymbol} />
               <FibonacciCalculator symbol={symbol} direction={direction} maAnalysis={maAnalysis} maLoading={maLoading} onRefreshMA={refetchMA} />
+              <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} onTimeframeChange={setActiveTimeframe} />
+              <EMATrendBias trends={emaTrends} />
               <TradeAnalytics />
             </div>
           </div>

@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
-/* Custom CSS Variables */
+/* Custom CSS Variables - Clawtrade Style */
 :root {
-  --color-long: #22c55e;
-  --color-short: #ef4444;
-  --color-golden: #fbbf24;
-  --color-golden-light: #fde68a;
-  --color-bg-primary: #0f0f14;
-  --color-bg-secondary: #1a1a24;
-  --color-bg-tertiary: #252532;
-  --color-border: #2d2d3d;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #a0a0b0;
+  --color-long: #10b981; /* Emerald green */
+  --color-short: #ef4444; /* Rose red */
+  --color-golden: #f59e0b; /* Amber */
+  --color-golden-light: #fcd34d;
+  --color-bg-primary: #0F111A; /* Deep navy/black */
+  --color-bg-secondary: #161824; /* Slightly lighter navy */
+  --color-bg-tertiary: #1C1F2E; /* Elevated areas */
+  --color-border: rgba(255, 255, 255, 0.08); /* Very soft subtle border */
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #94A3B8;
 }
 
 /* Global Styles */
@@ -144,21 +144,23 @@ body {
   border-left: 3px solid var(--color-golden);
 }
 
-/* Card Styling */
+/* Card Styling - Clawtrade Style */
 .card {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 8px; /* Sharper corners */
   padding: 1.25rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
 }
 
 .card-header {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
-  margin-bottom: 1rem;
+  margin-bottom: 1.2rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
