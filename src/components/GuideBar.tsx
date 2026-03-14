@@ -23,7 +23,7 @@ export const GuideBar: React.FC = () => {
     return (
         <>
             <div className="bg-[var(--color-bg-secondary)]/50 border-b border-[var(--color-border)] py-2 overflow-x-auto no-scrollbar scroll-smooth">
-                <div className="max-w-[1920px] mx-auto px-4 flex items-center gap-3 min-w-max">
+                <div className="w-full flex items-center gap-3 min-w-max px-4">
                     <div className="flex items-center gap-2 pr-4 border-r border-[var(--color-border)]">
                         <HelpCircle size={16} className="text-[var(--color-golden)]" />
                         <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Hướng dẫn:</span>

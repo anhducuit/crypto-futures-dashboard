@@ -280,7 +280,7 @@ function App() {
           </div>
         </header>
 
-        <div className="flex-shrink-0 w-full bg-[var(--color-bg-primary)] px-4 py-2 space-y-2 border-b border-[var(--color-border)]">
+        <div className="flex-shrink-0 w-full bg-[var(--color-bg-primary)] border-b border-[var(--color-border)]">
           <EventTicker />
           <GuideBar />
         </div>
