@@ -50,7 +50,7 @@ export const MarketTrends: React.FC<MarketTrendsProps> = ({ onSymbolSelect }) =>
 
     return (
         <div className="card">
-            <div className="card-header justify-between bg-black/40">
+            <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-[var(--color-golden)]" />
                     <span className="font-black tracking-tight uppercase">BIẾN ĐỘNG THỊ TRƯỜNG VÀNG & BẠC</span>

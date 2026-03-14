@@ -32,10 +32,13 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [localSymbol, setLocalSymbol] = useState(symbol || 'All');
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [sharingItem, setSharingItem] = useState<HistoryItem | null>(null);
     const ITEMS_PER_PAGE = 15;
+
+    const symbols = ['All', 'BTCUSDT', 'ETHUSDT', 'XAUUSDT', 'XAGUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
 
     const fetchHistory = async () => {
         try {
@@ -45,13 +48,12 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
             let query = supabase
                 .from('trading_history')
                 .select('*', { count: 'exact' })
-                .neq('signal', 'NEUTRAL') // Hide SIDELINES
+                .neq('signal', 'NEUTRAL')
                 .order('created_at', { ascending: false })
                 .range(from, to);
 
-            // Filter by symbol if provided
-            if (symbol) {
-                query = query.eq('symbol', symbol);
+            if (localSymbol !== 'All') {
+                query = query.eq('symbol', localSymbol);
             }
 
             if (filter !== 'All') {
@@ -60,7 +62,6 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
 
             if (statusFilter !== 'All') {
                 query = query.eq('status', statusFilter);
-                // If filtering by WIN/LOSS, we only want actionable signals (LONG/SHORT)
                 if (statusFilter === 'SUCCESS' || statusFilter === 'FAILED') {
                     query = query.neq('signal', 'NEUTRAL');
                 }
@@ -78,6 +79,10 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     };
 
     useEffect(() => {
+        if (symbol) setLocalSymbol(symbol);
+    }, [symbol]);
+
+    useEffect(() => {
         fetchHistory();
         fetchStats();
         const interval = setInterval(() => {
@@ -85,15 +90,20 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
             fetchStats();
         }, 15000);
         return () => clearInterval(interval);
-    }, [filter, statusFilter, page, symbol]);
+    }, [filter, statusFilter, page, localSymbol]);
 
     const handleFilterChange = (newFilter: string) => {
         setFilter(newFilter);
-        setPage(1); // Reset to page 1 on filter change
+        setPage(1);
     };
 
     const handleStatusFilterChange = (newStatus: string) => {
         setStatusFilter(newStatus);
+        setPage(1);
+    };
+
+    const handleSymbolChange = (newSym: string) => {
+        setLocalSymbol(newSym);
         setPage(1);
     };
 
@@ -116,31 +126,28 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
 
     const fetchStats = async () => {
         try {
-            // Count total actionable trades (excluding NEUTRAL and PENDING)
             let totalQuery = supabase
                 .from('trading_history')
                 .select('*', { count: 'exact', head: true })
                 .neq('signal', 'NEUTRAL')
                 .neq('status', 'PENDING');
 
-            // Count total SUCCESS trades
             let successQuery = supabase
                 .from('trading_history')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'SUCCESS')
                 .neq('signal', 'NEUTRAL');
 
-            // Count total FAILED trades
             let failedQuery = supabase
                 .from('trading_history')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'FAILED')
                 .neq('signal', 'NEUTRAL');
 
-            if (symbol) {
-                totalQuery = totalQuery.eq('symbol', symbol);
-                successQuery = successQuery.eq('symbol', symbol);
-                failedQuery = failedQuery.eq('symbol', symbol);
+            if (localSymbol !== 'All') {
+                totalQuery = totalQuery.eq('symbol', localSymbol);
+                successQuery = successQuery.eq('symbol', localSymbol);
+                failedQuery = failedQuery.eq('symbol', localSymbol);
             }
 
             if (filter !== 'All') {
@@ -169,15 +176,25 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
             <div className="card-header justify-between">
                 <div className="flex items-center gap-2">
                     <History size={16} className="text-[var(--color-golden)]" />
-                    LỊCH SỬ ĐỀ XUẤT ({symbol || 'ALL'})
+                    LỊCH SỬ ĐỀ XUẤT ({localSymbol})
                 </div>
                 <div className="flex gap-2">
+                    <select
+                        value={localSymbol}
+                        onChange={(e) => handleSymbolChange(e.target.value)}
+                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none text-[var(--color-golden)] font-bold min-w-[70px]"
+                    >
+                        {symbols.map(s => (
+                            <option key={s} value={s}>{s === 'All' ? '🪙 ALL' : s.replace('USDT', '')}</option>
+                        ))}
+                    </select>
+
                     <select
                         value={filter}
                         onChange={(e) => handleFilterChange(e.target.value)}
                         className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
                     >
-                        <option value="All">All</option>
+                        <option value="All">⏱️ All</option>
                         <option value="1m">1m</option>
                         <option value="15m">15m</option>
                         <option value="1h">1h</option>

@@ -10,7 +10,6 @@ interface MovingAveragesPanelProps {
     loading: boolean;
     onRefresh: () => void;
     activeTimeframe?: string;
-    onTimeframeChange?: (tf: string) => void;
 }
 
 export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
@@ -18,8 +17,7 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
     data,
     loading,
     onRefresh,
-    activeTimeframe,
-    onTimeframeChange
+    activeTimeframe
 }) => {
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
@@ -95,14 +93,9 @@ export const MovingAveragesPanel: React.FC<MovingAveragesPanelProps> = ({
                     {data.timeframes.map((tf) => (
                         <div
                             key={tf.timeframe}
-                            onClick={() => {
-                                if (onTimeframeChange) {
-                                    onTimeframeChange(tf.timeframe);
-                                }
-                            }}
-                            className={`p-3 rounded-lg space-y-2 cursor-pointer transition-all ${activeTimeframe === tf.timeframe
-                                ? 'bg-[var(--color-golden)]/20 border border-[var(--color-golden)]/50'
-                                : 'bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-tertiary)]/80 border border-transparent'
+                            className={`p-3 rounded-lg space-y-2 transition-all ${activeTimeframe === tf.timeframe
+                                ? 'bg-[var(--color-golden)]/20 border border-[var(--color-golden)]/50 shadow-inner shadow-black/20'
+                                : 'bg-[var(--color-bg-tertiary)] border border-transparent opacity-60'
                                 }`}
                         >
                             <div className="flex items-center justify-between">

@@ -3,7 +3,7 @@
  * Unauthorized copying, distribution, or use of this file is strictly prohibited.
  */
 import { useState, useEffect } from 'react';
-import { Activity, BarChart2, Menu, X, LogOut } from 'lucide-react';
+import { Activity, BarChart2, Menu, X, LogOut, LayoutDashboard, Microscope, Bot } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { useBinanceWebSocket } from './hooks/useBinanceWebSocket';
@@ -33,6 +33,9 @@ import { KeyLevelsPanel } from './components/KeyLevelsPanel';
 import { ChandelierExitPanel } from './components/ChandelierExitPanel';
 import { MobileHeader } from './components/MobileHeader';
 import { BottomNav, type TabType } from './components/BottomNav';
+import { GoldenHourAnalysis } from './components/GoldenHourAnalysis';
+import { useTradeAnalytics } from './hooks/useTradeAnalytics';
+import { AnalysisGlobalControls } from './components/AnalysisGlobalControls';
 import './index.css';
 
 function App() {
@@ -43,7 +46,9 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTimeframe, setActiveTimeframe] = useState('15'); // 15, 1, 60, 240
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopActiveTab, setDesktopActiveTab] = useState<'overview' | 'analysis' | 'bot'>('overview');
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 800);
+  const { bestHours, strategyStats } = useTradeAnalytics('all');
 
   useEffect(() => {
     const handleResize = () => setIsMobileView(window.innerWidth <= 800);
@@ -194,7 +199,6 @@ function App() {
               loading={maLoading}
               onRefresh={refetchMA}
               activeTimeframe={activeTimeframe}
-              onTimeframeChange={setActiveTimeframe}
             />
 
             <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
@@ -234,11 +238,11 @@ function App() {
 
   const renderDesktopView = () => {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-primary)]">
+      <div className="h-screen flex flex-col bg-[var(--color-bg-primary)] overflow-hidden">
         {tradeMonitor}
         {/* Header */}
-        <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)]">
-          <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between">
+        <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)] flex-shrink-0">
+          <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-[var(--color-golden)] to-yellow-600 rounded-lg">
                 <BarChart2 size={24} className="text-black" />
@@ -276,65 +280,160 @@ function App() {
           </div>
         </header>
 
-        <EventTicker />
-        <GuideBar />
+        <div className="flex-shrink-0 w-full bg-[var(--color-bg-primary)] px-4 py-2 space-y-2 border-b border-[var(--color-border)]">
+          <EventTicker />
+          <GuideBar />
+        </div>
 
-        {/* Main Content */}
-        <main className="max-w-[1920px] mx-auto p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Vertical Sidebar */}
+          <aside className="w-64 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col p-4 space-y-2 flex-shrink-0">
+            <button
+              onClick={() => setDesktopActiveTab('overview')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                desktopActiveTab === 'overview' 
+                ? 'bg-[var(--color-golden)] text-black font-bold shadow-lg shadow-yellow-500/20' 
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+              }`}
+            >
+              <LayoutDashboard size={20} />
+              <span>OVERVIEW</span>
+            </button>
+            <button
+              onClick={() => setDesktopActiveTab('analysis')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                desktopActiveTab === 'analysis' 
+                ? 'bg-[var(--color-golden)] text-black font-bold shadow-lg shadow-yellow-500/20' 
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+              }`}
+            >
+              <Microscope size={20} />
+              <span>ANALYSIS</span>
+            </button>
+            <button
+              onClick={() => setDesktopActiveTab('bot')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                desktopActiveTab === 'bot' 
+                ? 'bg-[var(--color-golden)] text-black font-bold shadow-lg shadow-yellow-500/20' 
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+              }`}
+            >
+              <Bot size={20} />
+              <span>BOT TRADE</span>
+            </button>
 
-            {/* Left Sidebar - Symbol & Controls */}
-            <div className="lg:col-span-3 space-y-4">
-              <div className="card">
-                <div className="card-header">
-                  <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                  SYMBOL
+            <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
+               <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg text-xs text-[var(--color-text-secondary)]">
+                  <p className="mb-1 font-bold text-[var(--color-golden)]">Hệ thống Trading Pro</p>
+                  <p>Phiên bản: 1.2.0</p>
+               </div>
+            </div>
+          </aside>
+
+          {/* Main Content Area */}
+          <main className="flex-1 overflow-y-auto p-6 bg-[var(--color-bg-primary)]">
+            <div className="max-w-[1600px] mx-auto space-y-6">
+              
+              {desktopActiveTab === 'overview' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div className="lg:col-span-3">
+                      <div className="h-[650px] w-full">
+                        <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
+                      </div>
+                    </div>
+                    <div className="space-y-6">
+                      <div className="card">
+                        <div className="card-header">
+                          <BarChart2 size={16} className="text-[var(--color-golden)]" />
+                          SYMBOL
+                        </div>
+                        <SymbolInput symbol={symbol} onSymbolChange={setSymbol} isConnected={isConnected} onReconnect={reconnect} />
+                      </div>
+                      <LivePriceDisplay price={currentPrice} previousPrice={previousPrice} priceDirection={priceDirection} symbol={symbol} error={error} onManualPrice={setManualPrice} />
+                      <MarketTrends onSymbolSelect={setSymbol} />
+                    </div>
+                  </div>
                 </div>
-                <SymbolInput symbol={symbol} onSymbolChange={setSymbol} isConnected={isConnected} onReconnect={reconnect} />
-              </div>
-              <LivePriceDisplay price={currentPrice} previousPrice={previousPrice} priceDirection={priceDirection} symbol={symbol} error={error} onManualPrice={setManualPrice} />
-              <div className="card">
-                <div className="card-header">HƯỚNG GIAO DỊCH</div>
-                <DirectionSelector direction={direction} onDirectionChange={setDirection} />
-              </div>
-              <TradingRecommendation maAnalysis={maAnalysis} onDirectionChange={setDirection} />
-              <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
-              <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} onTimeframeChange={setActiveTimeframe} />
-              <EMATrendBias trends={emaTrends} />
-              <div className="grid grid-cols-1 gap-4">
-                <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-              </div>
-            </div>
+              )}
 
-            {/* Center - TradingView Chart & History */}
-            <div className="lg:col-span-5 space-y-4 flex flex-col min-h-0">
-              <div className="flex-shrink-0">
-                <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
-              </div>
-              <div className="h-[1000px] flex-shrink-0">
-                <HistoryDashboard symbol={symbol} />
-              </div>
-              <div className="flex flex-col space-y-4">
-                <ICTKillzonesPanel />
-              </div>
-            </div>
+              {desktopActiveTab === 'analysis' && (
+                <div className="space-y-6">
+                  {/* Global Analysis Controls */}
+                  <AnalysisGlobalControls 
+                    symbol={symbol}
+                    onSymbolChange={setSymbol}
+                    activeTimeframe={activeTimeframe}
+                    onTimeframeChange={setActiveTimeframe}
+                    direction={direction}
+                    onDirectionChange={setDirection}
+                    maAnalysis={maAnalysis}
+                  />
 
-            {/* Right Sidebar - Calculators */}
-            <div className="lg:col-span-4 space-y-4">
-              <MarketTrends onSymbolSelect={setSymbol} />
-              <FibonacciCalculator symbol={symbol} direction={direction} maAnalysis={maAnalysis} maLoading={maLoading} onRefreshMA={refetchMA} />
-              <TradeAnalytics />
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Column 1: TREND & MOMENTUM (XU HƯỚNG) */}
+                    <div className="lg:col-span-4 space-y-6">
+                      <EMATrendBias trends={emaTrends} />
+                      <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} />
+                      <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                      <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                    </div>
+
+                    {/* Column 2: ZONES & LEVELS (VÙNG GIÁ & CẢN) */}
+                    <div className="lg:col-span-4 space-y-6">
+                      <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                      <ICTKillzonesPanel />
+                      <FibonacciCalculator symbol={symbol} direction={direction} maAnalysis={maAnalysis} maLoading={maLoading} onRefreshMA={refetchMA} />
+                    </div>
+
+                    {/* Column 3: SIGNALS & DECISION (TÍN HIỆU & VÀO LỆNH) */}
+                    <div className="lg:col-span-4 space-y-6">
+                      <TradingRecommendation maAnalysis={maAnalysis} onDirectionChange={setDirection} />
+                      <div className="card">
+                        <div className="card-header bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
+                           <span className="font-bold tracking-tight uppercase">XÁC NHẬN KHỐI LƯỢNG (VOLUME)</span>
+                        </div>
+                        <div className="p-4">
+                           <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
+                        </div>
+                      </div>
+                      <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {desktopActiveTab === 'bot' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-8 space-y-6">
+                      <div className="h-[750px]">
+                        <HistoryDashboard symbol={symbol} />
+                      </div>
+                      <GoldenHourAnalysis bestHours={bestHours} strategyStats={strategyStats} />
+                    </div>
+                    <div className="lg:col-span-4 space-y-6">
+                      <TradeAnalytics />
+                      <div className="card p-4 bg-blue-500/5 border border-blue-500/10">
+                         <h4 className="text-xs font-bold text-blue-400 mb-2 uppercase">Lưu ý vận hành</h4>
+                         <p className="text-[11px] text-slate-400 leading-relaxed italic">
+                            Các chỉ số thống kê giúp anh nhận diện xu hướng hành vi của thị trường. Hãy kết hợp cùng bảng Phân tích để có cái nhìn đa chiều nhất.
+                         </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
 
         {/* Footer */}
-        <footer className="mt-8 py-4 border-t border-[var(--color-border)] text-center text-sm text-[var(--color-text-secondary)]">
-          <p>© 2026 Anh Duc Trader. All rights reserved.</p>
-          <p className="text-xs mt-1 opacity-70">⚠️ Đây là công cụ hỗ trợ phân tích độc quyền. Không phải lời khuyên đầu tư.</p>
+        <footer className="py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex-shrink-0">
+          <div className="text-center text-xs text-[var(--color-text-secondary)] opacity-70">
+            <p>© 2026 Anh Duc Trader. Đây là công cụ hỗ trợ phân tích độc quyền. Không phải lời khuyên đầu tư.</p>
+          </div>
         </footer>
       </div>
     );

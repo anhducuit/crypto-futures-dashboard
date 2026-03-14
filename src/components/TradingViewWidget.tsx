@@ -88,11 +88,11 @@ export const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ symbol, ti
     }, [symbol, timeframe]);
 
     return (
-        <div className="card h-full min-h-[500px]">
+        <div className="w-full h-full min-h-[650px] overflow-hidden bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg">
             <div
                 ref={containerRef}
-                className="tradingview-widget-container h-full"
-                style={{ height: 'calc(100% - 0px)', minHeight: '450px' }}
+                className="tradingview-widget-container w-full h-full"
+                style={{ height: '100%', minHeight: '650px' }}
             >
                 <div className="flex items-center justify-center h-full text-[var(--color-text-secondary)]">
                     <div className="text-center">
