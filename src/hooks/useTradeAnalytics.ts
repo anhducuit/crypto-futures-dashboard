@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface AnalyticsData {
+export interface AnalyticsData {
     symbol: string;
     total: number;
     wins: number;
@@ -96,19 +96,19 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                 });
 
                 const hourMap: Record<string, { wins: number, losses: number }> = {
-                    'SÁNG (06-12h)': { wins: 0, losses: 0 },
-                    'CHIỀU (12-18h)': { wins: 0, losses: 0 },
-                    'TỐI (18-24h)': { wins: 0, losses: 0 },
-                    'ĐÊM (00-06h)': { wins: 0, losses: 0 }
+                    'morning': { wins: 0, losses: 0 },
+                    'afternoon': { wins: 0, losses: 0 },
+                    'evening': { wins: 0, losses: 0 },
+                    'night': { wins: 0, losses: 0 }
                 };
 
                 data.forEach(t => {
                     const hour = new Date(t.created_at).getHours();
                     let session = '';
-                    if (hour >= 6 && hour < 12) session = 'SÁNG (06-12h)';
-                    else if (hour >= 12 && hour < 18) session = 'CHIỀU (12-18h)';
-                    else if (hour >= 18 && hour < 24) session = 'TỐI (18-24h)';
-                    else session = 'ĐÊM (00-06h)';
+                    if (hour >= 6 && hour < 12) session = 'morning';
+                    else if (hour >= 12 && hour < 18) session = 'afternoon';
+                    else if (hour >= 18 && hour < 24) session = 'evening';
+                    else session = 'night';
 
                     if (t.status === 'SUCCESS') hourMap[session].wins++;
                     else if (t.status === 'FAILED') hourMap[session].losses++;

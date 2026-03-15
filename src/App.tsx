@@ -36,6 +36,7 @@ import { BottomNav, type TabType } from './components/BottomNav';
 import { GoldenHourAnalysis } from './components/GoldenHourAnalysis';
 import { useTradeAnalytics } from './hooks/useTradeAnalytics';
 import { AnalysisGlobalControls } from './components/AnalysisGlobalControls';
+import { useTranslation, type Language } from './utils/translations';
 import './index.css';
 
 function App() {
@@ -48,6 +49,8 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [desktopActiveTab, setDesktopActiveTab] = useState<'overview' | 'analysis' | 'bot'>('overview');
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 800);
+  const [language, setLanguage] = useState<Language>('vi');
+  const t = useTranslation(language);
   const { bestHours, strategyStats } = useTradeAnalytics('all');
 
   useEffect(() => {
@@ -120,12 +123,12 @@ function App() {
         
         {activeTab === 'trade' && (
           <div className="space-y-4 px-3 pb-6">
-            <EventTicker />
+            <EventTicker language={language} />
             
             <div className="card !p-3">
               <div className="card-header !mb-2">
                 <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                MÃ GIAO DỊCH
+                {t('trading_symbol')}
               </div>
               <SymbolInput
                 symbol={symbol}
@@ -142,17 +145,18 @@ function App() {
               symbol={symbol}
               error={error}
               onManualPrice={setManualPrice}
+              language={language}
             />
 
             <div className="card !p-3">
-              <div className="card-header !mb-2">HƯỚNG LỆNH (DIRECTION)</div>
+              <div className="card-header !mb-2">{t('direction_order')}</div>
               <DirectionSelector
                 direction={direction}
                 onDirectionChange={setDirection}
               />
             </div>
 
-            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
+            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} language={language} />
 
             <div className="h-[400px]">
               <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
@@ -168,17 +172,17 @@ function App() {
               <div className="card-header !mb-2 flex justify-between items-center">
                 <span className="flex items-center gap-2">
                   <Activity size={16} className="text-[var(--color-golden)]" />
-                  ĐANG QUAN SÁT (MONITOR)
+                  {t('observing_monitor')}
                 </span>
               </div>
               <TradeMonitor />
             </div>
 
             <div className="card overflow-x-auto !p-3">
-              <HistoryDashboard symbol={symbol} />
+              <HistoryDashboard symbol={symbol} language={language} />
             </div>
 
-            <TradeAnalytics />
+            <TradeAnalytics language={language} />
           </div>
         )}
 
@@ -187,11 +191,12 @@ function App() {
             <TradingRecommendation
               maAnalysis={maAnalysis}
               onDirectionChange={setDirection}
+              language={language}
             />
             
-            <MarketTrends onSymbolSelect={setSymbol} />
+            <MarketTrends onSymbolSelect={setSymbol} language={language} />
             
-            <ICTKillzonesPanel />
+            <ICTKillzonesPanel language={language} />
 
             <MovingAveragesPanel
               symbol={symbol}
@@ -199,18 +204,19 @@ function App() {
               loading={maLoading}
               onRefresh={refetchMA}
               activeTimeframe={activeTimeframe}
+              language={language}
             />
 
             <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
             <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
             <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-            <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} language={language} />
           </div>
         )}
 
         {activeTab === 'menu' && (
           <div className="space-y-4 px-3 pb-6 mt-2">
-            <GuideBar />
+            <GuideBar language={language} />
             
             <EMATrendBias trends={emaTrends} />
 
@@ -223,7 +229,7 @@ function App() {
             />
 
             <div className="text-center text-xs text-[var(--color-text-secondary)] opacity-50 mt-8 mb-4">
-              <p>Phiên bản Chrome Extension v1.0.0</p>
+              <p>{t('app_version')}</p>
               <p>© 2026 Anh Duc Trader</p>
             </div>
           </div>
@@ -238,41 +244,60 @@ function App() {
 
   const renderDesktopView = () => {
     return (
-      <div className="h-screen flex flex-col bg-[var(--color-bg-primary)] overflow-hidden">
+      <div className="h-screen flex flex-col bg-[var(--color-bg-primary)] overflow-hidden relative">
         {tradeMonitor}
-        {/* Header */}
-        <header className="sticky top-0 z-50 bg-[var(--color-bg-secondary)]/95 backdrop-blur-md border-b border-[var(--color-border)] flex-shrink-0">
-          <div className="max-w-[1920px] mx-auto px-4 py-3 flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-[var(--color-golden)] to-yellow-600 rounded-lg">
-                <BarChart2 size={24} className="text-black" />
+        
+        {/* Header - Cinematic Luxury */}
+        <header className="sticky top-0 z-50 glass-luxury border-b border-[var(--color-border)] flex-shrink-0">
+          <div className="max-w-[1920px] mx-auto px-8 py-4 flex items-center justify-between w-full">
+            <div className="flex items-center gap-4">
+              <div className="p-2.5 bg-[var(--color-flare)] rounded-[2px] flare-glow">
+                <BarChart2 size={22} className="text-black" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight">Pro Crypto Futures</h1>
-                <p className="text-[11px] text-yellow-500 font-black uppercase tracking-[0.2em] drop-shadow-sm">by Anh Duc Trader</p>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-black tracking-tighter leading-none italic">PRO FUTURES</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="h-[1px] w-4 bg-[var(--color-flare)]"></span>
+                  <p className="text-[9px] text-[var(--color-silver)] font-bold uppercase tracking-[0.4em]">by Anh Duc Trader</p>
+                </div>
               </div>
             </div>
 
-            <PriceTicker />
+            <div className="flex-1 hidden md:flex justify-center items-center px-12 overflow-hidden">
+              <PriceTicker />
+            </div>
 
-            <div className="hidden md:flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-tertiary)] rounded-lg">
-                <Activity size={14} className={isConnected ? 'text-green-500' : 'text-red-500'} />
-                <span className="text-sm text-[var(--color-text-secondary)]">
-                  {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
+            <div className="hidden md:flex items-center gap-6">
+              {/* Language Switcher */}
+              <button
+                onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-[2px] text-[10px] font-black hover:bg-[var(--color-flare)] hover:text-black transition-all group"
+              >
+                <span className={language === 'vi' ? 'text-white group-hover:text-black' : 'text-[var(--color-silver)]'}>VN</span>
+                <span className="text-white/20">/</span>
+                <span className={language === 'en' ? 'text-white group-hover:text-black' : 'text-[var(--color-silver)]'}>EN</span>
+              </button>
+
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-[2px]">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[var(--color-long)] animate-signal' : 'bg-[var(--color-short)]'}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-silver)]">
+                  {isConnected ? t('node_connected') : t('system_offline')}
                 </span>
               </div>
+              
+              <div className="w-[1px] h-8 bg-[var(--color-border)] mx-2"></div>
+
               <button
                 onClick={handleLogout}
-                className="p-2 text-[var(--color-text-secondary)] hover:text-red-400 transition-colors"
-                title="Đăng xuất"
+                className="group p-2 text-[var(--color-silver)] hover:text-[var(--color-short)] transition-all duration-300"
+                title={t('logout')}
               >
-                <LogOut size={20} />
+                <LogOut size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
 
             <button
-              className="md:hidden p-2 text-[var(--color-text-secondary)]"
+              className="md:hidden p-2 text-[var(--color-white)]"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -280,86 +305,104 @@ function App() {
           </div>
         </header>
 
-        <div className="flex-shrink-0 w-full bg-[var(--color-bg-primary)] border-b border-[var(--color-border)]">
-          <EventTicker />
-          <GuideBar />
+        <div className="flex-shrink-0 w-full bg-[var(--color-bg-primary)]">
+          <EventTicker language={language} />
+          <GuideBar language={language} />
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Vertical Sidebar */}
-          <aside className="w-64 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col p-4 space-y-2 flex-shrink-0">
+          {/* Vertical Sidebar - Minimalist Precision */}
+          <aside className="w-20 lg:w-64 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col p-4 space-y-3 flex-shrink-0 transition-all duration-500">
+            <div className="mb-8 px-2 hidden lg:block">
+              <p className="text-[10px] font-black text-[var(--color-silver)] tracking-[0.3em] uppercase opacity-40">{t('command_center')}</p>
+            </div>
+
             <button
               onClick={() => setDesktopActiveTab('overview')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`flex items-center gap-4 px-4 py-4 rounded-[2px] transition-all duration-300 group ${
                 desktopActiveTab === 'overview' 
-                ? 'bg-[var(--color-golden)] text-black font-bold shadow-lg shadow-yellow-500/20' 
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+                ? 'bg-[var(--color-flare)] text-black font-black' 
+                : 'text-[var(--color-silver)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
               }`}
             >
-              <LayoutDashboard size={20} />
-              <span>OVERVIEW</span>
-            </button>
-            <button
-              onClick={() => setDesktopActiveTab('analysis')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                desktopActiveTab === 'analysis' 
-                ? 'bg-[var(--color-golden)] text-black font-bold shadow-lg shadow-yellow-500/20' 
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
-              }`}
-            >
-              <Microscope size={20} />
-              <span>ANALYSIS</span>
-            </button>
-            <button
-              onClick={() => setDesktopActiveTab('bot')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                desktopActiveTab === 'bot' 
-                ? 'bg-[var(--color-golden)] text-black font-bold shadow-lg shadow-yellow-500/20' 
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
-              }`}
-            >
-              <Bot size={20} />
-              <span>BOT TRADE</span>
+              <LayoutDashboard size={20} className={desktopActiveTab === 'overview' ? '' : 'group-hover:scale-110 transition-transform'} />
+              <span className="hidden lg:block text-xs font-black tracking-widest">{t('overview')}</span>
             </button>
 
-            <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
-               <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg text-xs text-[var(--color-text-secondary)]">
-                  <p className="mb-1 font-bold text-[var(--color-golden)]">Hệ thống Trading Pro</p>
-                  <p>Phiên bản: 1.2.0</p>
+            <button
+              onClick={() => setDesktopActiveTab('analysis')}
+              className={`flex items-center gap-4 px-4 py-4 rounded-[2px] transition-all duration-300 group ${
+                desktopActiveTab === 'analysis' 
+                ? 'bg-[var(--color-flare)] text-black font-black' 
+                : 'text-[var(--color-silver)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+              }`}
+            >
+              <Microscope size={20} className={desktopActiveTab === 'analysis' ? '' : 'group-hover:scale-110 transition-transform'} />
+              <span className="hidden lg:block text-xs font-black tracking-widest">{t('analysis')}</span>
+            </button>
+
+            <button
+              onClick={() => setDesktopActiveTab('bot')}
+              className={`flex items-center gap-4 px-4 py-4 rounded-[2px] transition-all duration-300 group ${
+                desktopActiveTab === 'bot' 
+                ? 'bg-[var(--color-flare)] text-black font-black' 
+                : 'text-[var(--color-silver)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+              }`}
+            >
+              <Bot size={20} className={desktopActiveTab === 'bot' ? '' : 'group-hover:scale-110 transition-transform'} />
+              <span className="hidden lg:block text-xs font-black tracking-widest">{t('bot_trade')}</span>
+            </button>
+
+            <div className="mt-auto pt-6 border-t border-[var(--color-border)] px-2">
+               <div className="flex flex-col gap-1 hidden lg:block">
+                  <p className="text-[9px] font-black text-[var(--color-flare)] tracking-tighter uppercase italic">{t('institutional_access')}</p>
+                  <p className="text-[8px] text-[var(--color-silver)] font-mono opacity-50 uppercase">v1.2.0-flare</p>
                </div>
             </div>
           </aside>
 
-          {/* Main Content Area */}
-          <main className="flex-1 overflow-y-auto p-6 bg-[var(--color-bg-primary)]">
-            <div className="max-w-[1600px] mx-auto space-y-6">
+          {/* Main Content Area - Asymmetric Spacing */}
+          <main className="flex-1 overflow-y-auto p-10 bg-[var(--color-bg-primary)] scroll-smooth">
+            <div className="max-w-[1700px] mx-auto reveal">
               
               {desktopActiveTab === 'overview' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3">
-                      <div className="h-[650px] w-full">
-                        <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
-                      </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                  <div className="lg:col-span-9 space-y-10">
+                    <div className="h-[700px] card !p-0 border-none shadow-2xl shadow-black/50 overflow-hidden">
+                      <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
                     </div>
-                    <div className="space-y-6">
-                      <div className="card">
-                        <div className="card-header">
-                          <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                          SYMBOL
-                        </div>
-                        <SymbolInput symbol={symbol} onSymbolChange={setSymbol} isConnected={isConnected} onReconnect={reconnect} />
+                  </div>
+                  
+                  <div className="lg:col-span-3 space-y-4">
+                    <div className="reveal">
+                      <LivePriceDisplay 
+                          price={currentPrice} 
+                          previousPrice={previousPrice} 
+                          priceDirection={priceDirection}
+                          symbol={symbol}
+                          error={error}
+                          onManualPrice={setManualPrice}
+                          language={language}
+                      />
+                    </div>
+
+                    <div className="card flare-border !p-4">
+                      <div className="card-header">
+                        <BarChart2 size={14} className="text-[var(--color-flare)]" />
+                        {t('active_instrument')}
                       </div>
-                      <LivePriceDisplay price={currentPrice} previousPrice={previousPrice} priceDirection={priceDirection} symbol={symbol} error={error} onManualPrice={setManualPrice} />
-                      <MarketTrends onSymbolSelect={setSymbol} />
+                      <SymbolInput symbol={symbol} onSymbolChange={setSymbol} isConnected={isConnected} onReconnect={reconnect} />
+                    </div>
+                    
+                    <div className="reveal" style={{ animationDelay: '0.1s' }}>
+                      <MarketTrends onSymbolSelect={setSymbol} language={language} />
                     </div>
                   </div>
                 </div>
               )}
 
               {desktopActiveTab === 'analysis' && (
-                <div className="space-y-6">
-                  {/* Global Analysis Controls */}
+                <div className="space-y-12">
                   <AnalysisGlobalControls 
                     symbol={symbol}
                     onSymbolChange={setSymbol}
@@ -368,59 +411,44 @@ function App() {
                     direction={direction}
                     onDirectionChange={setDirection}
                     maAnalysis={maAnalysis}
+                    language={language}
                   />
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Column 1: TREND & MOMENTUM (XU HƯỚNG) */}
-                    <div className="lg:col-span-4 space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                    <div className="lg:col-span-4 space-y-4">
                       <EMATrendBias trends={emaTrends} />
-                      <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} />
+                      <MovingAveragesPanel symbol={symbol} data={maAnalysis} loading={maLoading} onRefresh={refetchMA} activeTimeframe={activeTimeframe} language={language} />
                       <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
                       <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
                     </div>
 
-                    {/* Column 2: ZONES & LEVELS (VÙNG GIÁ & CẢN) */}
-                    <div className="lg:col-span-4 space-y-6">
+                    <div className="lg:col-span-4 space-y-4">
                       <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-                      <ICTKillzonesPanel />
+                      <ICTKillzonesPanel language={language} />
                       <FibonacciCalculator symbol={symbol} direction={direction} maAnalysis={maAnalysis} maLoading={maLoading} onRefreshMA={refetchMA} />
                     </div>
 
-                    {/* Column 3: SIGNALS & DECISION (TÍN HIỆU & VÀO LỆNH) */}
-                    <div className="lg:col-span-4 space-y-6">
-                      <TradingRecommendation maAnalysis={maAnalysis} onDirectionChange={setDirection} />
-                      <div className="card">
-                        <div className="card-header bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
-                           <span className="font-bold tracking-tight uppercase">XÁC NHẬN KHỐI LƯỢNG (VOLUME)</span>
-                        </div>
-                        <div className="p-4">
-                           <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} />
-                        </div>
+                    <div className="lg:col-span-4 space-y-4">
+                      <TradingRecommendation maAnalysis={maAnalysis} onDirectionChange={setDirection} language={language} />
+                      <div className="pt-2">
+                         <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} language={language} />
                       </div>
-                      <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+                      <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} language={language} />
                     </div>
                   </div>
                 </div>
               )}
 
               {desktopActiveTab === 'bot' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-8 space-y-6">
-                      <div className="h-[750px]">
-                        <HistoryDashboard symbol={symbol} />
-                      </div>
-                      <GoldenHourAnalysis bestHours={bestHours} strategyStats={strategyStats} />
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                  <div className="lg:col-span-8 space-y-10">
+                    <div className="h-[800px] card !p-0 overflow-hidden border-none shadow-2xl">
+                      <HistoryDashboard symbol={symbol} language={language} />
                     </div>
-                    <div className="lg:col-span-4 space-y-6">
-                      <TradeAnalytics />
-                      <div className="card p-4 bg-blue-500/5 border border-blue-500/10">
-                         <h4 className="text-xs font-bold text-blue-400 mb-2 uppercase">Lưu ý vận hành</h4>
-                         <p className="text-[11px] text-slate-400 leading-relaxed italic">
-                            Các chỉ số thống kê giúp anh nhận diện xu hướng hành vi của thị trường. Hãy kết hợp cùng bảng Phân tích để có cái nhìn đa chiều nhất.
-                         </p>
-                      </div>
-                    </div>
+                    <GoldenHourAnalysis bestHours={bestHours} strategyStats={strategyStats} language={language} />
+                  </div>
+                  <div className="lg:col-span-4 space-y-10">
+                    <TradeAnalytics language={language} />
                   </div>
                 </div>
               )}
@@ -429,10 +457,12 @@ function App() {
           </main>
         </div>
 
-        {/* Footer */}
-        <footer className="py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex-shrink-0">
-          <div className="text-center text-xs text-[var(--color-text-secondary)] opacity-70">
-            <p>© 2026 Anh Duc Trader. Đây là công cụ hỗ trợ phân tích độc quyền. Không phải lời khuyên đầu tư.</p>
+        {/* Footer - Minimal & Platinum */}
+        <footer className="py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex-shrink-0">
+          <div className="text-center">
+            <p className="text-[9px] font-black text-[var(--color-silver)] uppercase tracking-[0.3em] opacity-40">
+              © 2026 Anh Duc Trader  //  PRO-PROTOCOLS  //  {t('no_financial_advice')}
+            </p>
           </div>
         </footer>
       </div>

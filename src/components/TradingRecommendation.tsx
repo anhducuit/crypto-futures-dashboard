@@ -1,15 +1,20 @@
+import React from 'react';
 import { Lightbulb, TrendingUp, TrendingDown, Minus, AlertTriangle, Activity, BarChart3 } from 'lucide-react';
 import type { MAAnalysis } from '../hooks/useBinanceKlines';
+import { useTranslation, type Language } from '../utils/translations';
 
 interface TradingRecommendationProps {
     maAnalysis: MAAnalysis | null;
     onDirectionChange: (direction: 'long' | 'short') => void;
+    language: Language;
 }
 
 export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
     maAnalysis,
-    onDirectionChange
+    onDirectionChange,
+    language
 }) => {
+    const t = useTranslation(language);
     if (!maAnalysis) return null;
 
     // 2. Trend Analysis (1H: MA20 vs MA50) - Major Trend
@@ -34,9 +39,9 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
 
     // 5. Final Recommendation
     let recommendation: 'long' | 'short' | 'wait' = 'wait';
-    let statusText = 'CHỜ TÍN HIỆU';
+    let statusText = t('waiting_signal');
     let confidence = 0;
-    let reasons: string[] = [];
+    let reasons: any[] = [];
     let warning: string | null = null;
 
     const ma20_1h = tf1h?.ma20 || 0;
@@ -46,86 +51,86 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
         if (signalTrigger === 'bullish') {
             if (!isOverbought) {
                 recommendation = 'long';
-                statusText = 'LONG (MA CROSS)';
+                statusText = t('long_ma_cross');
                 confidence = 85;
                 reasons = [
-                    `Trend 1H TĂNG (MA20 ${ma20_1h.toFixed(1)} > MA50 ${ma50_1h.toFixed(1)})`,
-                    'Tín hiệu 15M: Bullish Cross (MA12 cắt LÊN MA26)',
-                    isStrongVolume ? 'Volume xác nhận mạnh' : 'Volume ổn định'
+                    { id: 'trend_1h_bullish', params: `(MA20 ${ma20_1h.toFixed(1)} > MA50 ${ma50_1h.toFixed(1)})` },
+                    { id: 'signal_15m_bullish' },
+                    { id: isStrongVolume ? 'vol_confirm_strong' : 'vol_stable' }
                 ];
             } else {
                 recommendation = 'wait';
-                statusText = 'QUÁ MUA - CHỜ HỒI';
-                warning = 'Tín hiệu đẹp nhưng RSI đang quá cao (>75).';
+                statusText = t('overbought_wait');
+                warning = t('rsi_too_high');
             }
         } else {
             recommendation = 'wait';
-            statusText = 'TREND TĂNG - CHỜ CROSS';
+            statusText = t('bullish_trend_wait_cross');
             reasons = [
-                'Xu hướng 1H là TĂNG',
-                'Chưa có tín hiệu Giao Cắt Lên ở 15M',
-                'Kiên nhẫn chờ MA12 cắt lên MA26'
+                { id: 'trend_1h_bullish_context' },
+                { id: 'waiting_15m_bullish_cross' },
+                { id: 'patience_wait_cross' }
             ];
         }
     } else if (majorTrend === 'short') {
         if (signalTrigger === 'bearish') {
             if (!isOversold) {
                 recommendation = 'short';
-                statusText = 'SHORT (MA CROSS)';
+                statusText = t('short_ma_cross');
                 confidence = 85;
                 reasons = [
-                    `Trend 1H GIẢM (MA20 ${ma20_1h.toFixed(1)} < MA50 ${ma50_1h.toFixed(1)})`,
-                    'Tín hiệu 15M: Bearish Cross (MA12 cắt XUỐNG MA26)',
-                    isStrongVolume ? 'Volume bán mạnh' : 'Volume ổn định'
+                    { id: 'trend_1h_bearish', params: `(MA20 ${ma20_1h.toFixed(1)} < MA50 ${ma50_1h.toFixed(1)})` },
+                    { id: 'signal_15m_bearish' },
+                    { id: isStrongVolume ? 'vol_sell_strong' : 'vol_stable' }
                 ];
             } else {
                 recommendation = 'wait';
-                statusText = 'QUÁ BÁN - CHỜ HỒI';
-                warning = 'Tín hiệu đẹp nhưng RSI đang quá thấp (<25).';
+                statusText = t('oversold_wait');
+                warning = t('rsi_too_low');
             }
         } else {
             recommendation = 'wait';
-            statusText = 'TREND GIẢM - CHỜ CROSS';
+            statusText = t('bearish_trend_wait_cross');
             reasons = [
-                'Xu hướng 1H là GIẢM',
-                'Chưa có tín hiệu Giao Cắt Xuống ở 15M',
-                'Kiên nhẫn chờ MA12 cắt xuống MA26'
+                { id: 'trend_1h_bearish_context' },
+                { id: 'waiting_15m_bearish_cross' },
+                { id: 'patience_wait_cross' }
             ];
         }
     } else {
         recommendation = 'wait';
-        statusText = 'KHÔNG RÕ XU HƯỚNG';
-        reasons = [`MA20 và MA50 khung 1H đang xoắn vào nhau`, 'Thị trường đi ngang', 'Nên đứng ngoài quan sát'];
+        statusText = t('neutral_trend');
+        reasons = [{ id: 'ma_entangled' }, { id: 'sideways_market' }, { id: 'wait_observe' }];
     }
 
     return (
         <div className="card">
             <div className="card-header">
                 <Lightbulb size={16} className="text-[var(--color-golden)]" />
-                CHIẾN LƯỢC MA CROSS (1H + 15M)
+                {t('ma_cross_strategy_title')}
             </div>
 
             <div className="space-y-4">
                 {/* Stats Layer */}
                 <div className="grid grid-cols-2 gap-2">
-                    <div className={`p-2 rounded-lg border ${majorTrend === 'long' ? 'bg-green-500/10 border-green-500/30' : majorTrend === 'short' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
-                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">Xu hướng 1H (MA20/50)</div>
+                    <div className={`p-2 rounded-[1px] border ${majorTrend === 'long' ? 'bg-green-500/10 border-green-500/30' : majorTrend === 'short' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
+                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">{t('tf_1h_trend_label')}</div>
                         <div className={`text-sm font-bold flex items-center gap-1 ${majorTrend === 'long' ? 'text-green-500' : majorTrend === 'short' ? 'text-red-500' : 'text-gray-400'}`}>
                             {majorTrend === 'long' ? <TrendingUp size={14} /> : majorTrend === 'short' ? <TrendingDown size={14} /> : <Minus size={14} />}
                             {majorTrend === 'long' ? 'BULLISH' : majorTrend === 'short' ? 'BEARISH' : 'NEUTRAL'}
                         </div>
                     </div>
-                    <div className={`p-2 rounded-lg border ${signalTrigger === 'bullish' ? 'bg-green-500/10 border-green-500/30' : signalTrigger === 'bearish' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
-                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">Tín hiệu 15M (MA12/26)</div>
+                    <div className={`p-2 rounded-[1px] border ${signalTrigger === 'bullish' ? 'bg-green-500/10 border-green-500/30' : signalTrigger === 'bearish' ? 'bg-red-500/10 border-red-500/30' : 'bg-gray-500/10 border-gray-500/30'}`}>
+                        <div className="text-[10px] text-[var(--color-text-secondary)] uppercase">{t('tf_15m_signal_label')}</div>
                         <div className={`text-xs font-bold flex items-center gap-1 ${signalTrigger === 'bullish' ? 'text-green-500' : signalTrigger === 'bearish' ? 'text-red-500' : 'text-gray-400'}`}>
                             {signalTrigger === 'bullish' ? <Activity size={14} /> : signalTrigger === 'bearish' ? <Activity size={14} /> : <Minus size={14} />}
-                            {signalTrigger === 'bullish' ? 'GOLDEN CROSS' : signalTrigger === 'bearish' ? 'DEATH CROSS' : 'KHÔNG CÓ'}
+                            {signalTrigger === 'bullish' ? t('golden_cross') : signalTrigger === 'bearish' ? t('death_cross') : t('no_signal')}
                         </div>
                     </div>
                 </div>
 
                 {/* Main Recommendation */}
-                <div className={`p-4 rounded-xl text-center border-2 shadow-inner transition-all ${recommendation === 'long' ? 'bg-green-500/20 border-green-500/50' :
+                <div className={`p-4 rounded-[1px] text-center border-2 shadow-inner transition-all ${recommendation === 'long' ? 'bg-green-500/20 border-green-500/50' :
                     recommendation === 'short' ? 'bg-red-500/20 border-red-500/50' :
                         'bg-yellow-500/10 border-yellow-500/40'
                     }`}>
@@ -137,8 +142,8 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
                     </div>
                     {confidence > 0 && (
                         <div className="flex items-center justify-center gap-2 text-xs text-white/70">
-                            <span>Độ tin cậy:</span>
-                            <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <span>{t('confidence_label')}:</span>
+                            <div className="w-20 h-1.5 bg-slate-800 rounded-[1px] overflow-hidden">
                                 <div
                                     className="h-full bg-[var(--color-golden)] transition-all duration-1000"
                                     style={{ width: `${confidence}%` }}
@@ -151,7 +156,7 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
 
                 {/* Warning Alert */}
                 {warning && (
-                    <div className="flex items-start gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg animate-pulse">
+                    <div className="flex items-start gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-[1px] animate-pulse">
                         <AlertTriangle className="text-rose-500 shrink-0" size={16} />
                         <p className="text-[11px] text-rose-200 font-medium leading-tight">{warning}</p>
                     </div>
@@ -159,7 +164,7 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
 
                 {/* Overbought/Volume Inline Info */}
                 <div className="flex gap-2">
-                    <div className="flex-1 p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 flex items-center justify-between">
+                    <div className="flex-1 p-2 bg-slate-800/50 rounded-[1px] border border-slate-700/50 flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                             <Activity size={12} /> RSI (15m)
                         </div>
@@ -167,7 +172,7 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
                             {rsi15m !== undefined ? rsi15m.toFixed(1) : '--'}
                         </span>
                     </div>
-                    <div className="flex-1 p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 flex items-center justify-between">
+                    <div className="flex-1 p-2 bg-slate-800/50 rounded-[1px] border border-slate-700/50 flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                             <BarChart3 size={12} /> Vol Ratio
                         </div>
@@ -181,22 +186,22 @@ export const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
                 {(recommendation === 'long' || recommendation === 'short') && (
                     <button
                         onClick={() => onDirectionChange(recommendation as 'long' | 'short')}
-                        className={`w-full py-2.5 rounded-lg font-bold text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] ${recommendation === 'long' ? 'bg-green-600 shadow-lg shadow-green-500/20' : 'bg-red-600 shadow-lg shadow-red-500/20'
+                        className={`w-full py-2.5 rounded-[1px] font-bold text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] ${recommendation === 'long' ? 'bg-green-600 shadow-lg shadow-green-500/20' : 'bg-red-600 shadow-lg shadow-red-500/20'
                             }`}
                     >
-                        ÁP DỤNG {recommendation.toUpperCase()}
+                        {t('apply_action')} {recommendation.toUpperCase()}
                     </button>
                 )}
 
                 {/* Reasons */}
-                <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg">
-                    <div className="text-[10px] text-[var(--color-text-secondary)] uppercase mb-2">Chi tiết phân tích</div>
+                <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-[1px]">
+                    <div className="text-[10px] text-[var(--color-text-secondary)] uppercase mb-2">{t('analysis_details')}</div>
                     <ul className="space-y-1.5">
                         {reasons.map((reason, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-xs">
-                                <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${recommendation === 'long' ? 'bg-green-500' : recommendation === 'short' ? 'bg-red-500' : 'bg-yellow-500'
+                                <span className={`mt-1.5 w-1.5 h-1.5 rounded-[1px] flex-shrink-0 ${recommendation === 'long' ? 'bg-green-500' : recommendation === 'short' ? 'bg-red-500' : 'bg-yellow-500'
                                     }`}></span>
-                                <span className="text-white/80 leading-relaxed">{reason}</span>
+                                <span className="text-white/80 leading-relaxed">{t(reason.id as any, reason.params)}</span>
                             </li>
                         ))}
                     </ul>

@@ -15,51 +15,64 @@ export function DivergencePanel({ data, activeTimeframe }: DivergencePanelProps)
     const isBearish = divergence === 'bearish';
 
     return (
-        <div className="card bg-gradient-to-br from-[var(--color-bg-secondary)] to-[#1a1a2e] border-[var(--color-border)] overflow-hidden">
-            <div className="card-header border-b border-[var(--color-border)] pb-3 mb-4">
-                <div className="flex items-center gap-2">
-                    <Target size={18} className="text-purple-400" />
-                    <span className="font-bold tracking-wider uppercase text-xs">Phân tích Phân Kỳ ({activeTimeframe === '60' ? '1H' : activeTimeframe === '240' ? '4H' : activeTimeframe + 'm'})</span>
+        <div className="card flare-border reveal shadow-2xl shadow-black/40">
+            <div className="card-header border-b border-[var(--color-border)] pb-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <Target size={14} className="text-[var(--color-flare)]" />
+                    <span className="font-black tracking-[0.2em] uppercase text-xs">Vector Divergence [{activeTimeframe === '60' ? '1H' : activeTimeframe === '240' ? '4H' : activeTimeframe + 'm'}]</span>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-                {/* RSI Status */}
-                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/5">
-                    <span className="text-[11px] text-[var(--color-text-secondary)] font-bold uppercase">Chỉ số RSI</span>
-                    <span className={`text-sm font-black ${rsi > 70 ? 'text-red-400' : rsi < 30 ? 'text-green-400' : 'text-[var(--color-golden)]'}`}>
+            <div className="space-y-6">
+                {/* RSI Status Meter */}
+                <div className="flex items-center justify-between p-4 rounded-[1px] bg-black/20 border border-[var(--color-border)] relative overflow-hidden group">
+                    <div className="absolute left-0 top-0 h-full w-[2px] bg-[var(--color-flare)] opacity-30 group-hover:opacity-100 transition-opacity"></div>
+                    <span className="text-[9px] font-black text-[var(--color-silver)] uppercase tracking-[0.2em] italic opacity-60">Engine_RSI_Metric</span>
+                    <span className={`text-sm font-black tracking-tighter font-mono ${rsi > 70 ? 'text-[var(--color-short)] shadowed-text' : rsi < 30 ? 'text-[var(--color-long)] shadowed-text' : 'text-white'}`}>
                         {rsi > 0 ? rsi.toFixed(2) : '--'}
                     </span>
                 </div>
 
-                {/* Divergence Status */}
-                <div className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed transition-all duration-500 ${isBullish ? 'bg-green-500/10 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.2)]' :
-                    isBearish ? 'bg-red-500/10 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' :
-                        'bg-white/5 border-white/10'
+                {/* Main Divergence Readout */}
+                <div className={`relative flex flex-col items-center justify-center p-8 rounded-[1px] border border-[var(--color-border)] transition-all duration-700 overflow-hidden ${isBullish ? 'bg-[var(--color-long)]/5 border-[var(--color-long)]/40 shadow-[inset_0_0_30px_rgba(34,197,94,0.1)]' :
+                    isBearish ? 'bg-[var(--color-short)]/5 border-[var(--color-short)]/40 shadow-[inset_0_0_30px_rgba(239,68,68,0.1)]' :
+                        'bg-black/20 border-white/5 opacity-40 grayscale'
                     }`}>
+                    
+                    {/* Background Grid Pattern for cinematic effect */}
+                    <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+
                     {isBullish ? (
                         <>
-                            <TrendingUp size={48} className="text-green-500 mb-3 animate-bounce" />
-                            <span className="text-lg font-black text-green-500 tracking-tighter">PHÂN KỲ HỘI TỤ (TĂNG)</span>
-                            <p className="text-[10px] text-green-400/70 mt-1 uppercase font-bold">Dấu hiệu đảo chiều TĂNG giá</p>
+                            <div className="relative mb-6">
+                                <TrendingUp size={48} className="text-[var(--color-long)] animate-pulse" />
+                                <div className="absolute -inset-4 bg-[var(--color-long)]/20 blur-xl rounded-full -z-10 animate-pulse"></div>
+                            </div>
+                            <span className="text-xl font-black text-[var(--color-long)] tracking-tighter shadowed-text italic uppercase">BULLISH_CONVERGENCE</span>
+                            <div className="h-[1px] w-12 bg-[var(--color-long)] my-3 opacity-40"></div>
+                            <p className="text-[9px] text-[var(--color-long)] font-black tracking-[0.3em] uppercase italic">Structural Reversal Imminent</p>
                         </>
                     ) : isBearish ? (
                         <>
-                            <TrendingDown size={48} className="text-red-500 mb-3 animate-bounce" />
-                            <span className="text-lg font-black text-red-500 tracking-tighter">PHÂN KỲ GIẢM (BEARISH)</span>
-                            <p className="text-[10px] text-red-400/70 mt-1 uppercase font-bold">Dấu hiệu đảo chiều GIẢM giá</p>
+                            <div className="relative mb-6">
+                                <TrendingDown size={48} className="text-[var(--color-short)] animate-pulse" />
+                                <div className="absolute -inset-4 bg-[var(--color-short)]/20 blur-xl rounded-full -z-10 animate-pulse"></div>
+                            </div>
+                            <span className="text-xl font-black text-[var(--color-short)] tracking-tighter shadowed-text italic uppercase">BEARISH_DIVERGENCE</span>
+                            <div className="h-[1px] w-12 bg-[var(--color-short)] my-3 opacity-40"></div>
+                            <p className="text-[9px] text-[var(--color-short)] font-black tracking-[0.3em] uppercase italic">Momentum Depletion Detected</p>
                         </>
                     ) : (
                         <>
-                            <AlertCircle size={40} className="text-[var(--color-text-secondary)] mb-3 opacity-30" />
-                            <span className="text-xs font-bold text-[var(--color-text-secondary)] opacity-50 uppercase tracking-widest">Không có phân kỳ</span>
+                            <AlertCircle size={40} className="text-[var(--color-silver)] mb-4 opacity-20" />
+                            <span className="text-[10px] font-black text-[var(--color-silver)] opacity-30 uppercase tracking-[0.4em] italic">Neutral_Vector_Phase</span>
                         </>
                     )}
                 </div>
 
-                {/* Quick Guide */}
-                <div className="p-3 rounded-lg bg-black/20 text-[10px] text-[var(--color-text-secondary)] leading-relaxed italic border border-white/5">
-                    * Được tính dựa trên 50 nến gần nhất, so sánh đỉnh/đáy giá với RSI.
+                {/* Lab Notes */}
+                <div className="p-4 rounded-[1px] bg-black/40 border-l border-l-[var(--color-flare)]/40 text-[9px] text-[var(--color-silver)] font-medium leading-[1.6] opacity-40 italic tracking-widest uppercase">
+                    * Derived from 50-period vector analysis. Correlating structural price pivots with Oscillator intensity.
                 </div>
             </div>
         </div>

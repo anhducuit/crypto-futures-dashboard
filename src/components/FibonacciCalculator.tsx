@@ -62,10 +62,10 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
         : '';
 
     const timeframeOptions = [
-        { value: '1', label: '1 Phút' },
-        { value: '15', label: '15 Phút' },
-        { value: '60', label: '1 Giờ' },
-        { value: '240', label: '4 Giờ' },
+        { value: '1', label: 'M1_INTRA' },
+        { value: '15', label: 'M15_TF' },
+        { value: '60', label: 'H1_EXEC' },
+        { value: '240', label: 'H4_ANCHOR' },
     ];
 
     const handleTimeframeChange = (tf: string) => {
@@ -74,92 +74,92 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
     };
 
     return (
-        <div className="card">
-            <div className="card-header justify-between">
-                <div className="flex items-center gap-2">
-                    <Layers size={16} className="text-[var(--color-golden)]" />
-                    BỘ TÍNH FIBONACCI
+        <div className="card flare-border reveal shadow-2xl shadow-black/40">
+            <div className="card-header border-b border-[var(--color-border)] pb-4 mb-8 justify-between">
+                <div className="flex items-center gap-3">
+                    <Layers size={14} className="text-[var(--color-flare)]" />
+                    <span className="font-black tracking-[0.2em] uppercase">Fibonacci sequence [EXT]</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                     <button
                         onClick={() => setIsShareModalOpen(true)}
                         disabled={levels.length === 0}
-                        className="p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-golden)] disabled:opacity-30"
-                        title="Chia sẻ phân tích"
+                        className="p-2 text-[var(--color-silver)] hover:text-[var(--color-flare)] transition-all duration-300 disabled:opacity-10"
+                        title="Broadcast Projections"
                     >
-                        <Share2 size={14} />
+                        <Share2 size={16} />
                     </button>
                     <button
                         onClick={onRefreshMA}
                         disabled={maLoading}
-                        className={`p-1.5 rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors ${maLoading ? 'animate-spin' : ''}`}
-                        title="Làm mới dữ liệu"
+                        className={`p-2 text-[var(--color-silver)] hover:text-white transition-all duration-300 ${maLoading ? 'animate-spin' : ''}`}
+                        title="Force Recalc"
                     >
-                        <RefreshCw size={14} className="text-[var(--color-text-secondary)]" />
+                        <RefreshCw size={16} />
                     </button>
                 </div>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="space-y-6">
                 {/* Timeframe Selector */}
                 <div>
-                    <label className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] mb-2">
-                        <Clock size={14} />
-                        Chọn Khung Thời Gian Phân Tích
+                    <label className="flex items-center gap-2 text-[9px] font-black text-[var(--color-silver)] uppercase tracking-[0.2em] mb-4 opacity-40 italic">
+                        <Clock size={12} />
+                        Active Vector Source
                     </label>
                     <div className="relative">
                         <button
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full flex items-center justify-between px-4 py-3 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-golden)] transition-colors"
+                            className="w-full flex items-center justify-between px-4 py-4 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-[1px] hover:border-[var(--color-flare)]/40 transition-all duration-300 group"
                         >
-                            <div className="flex items-center gap-3">
-                                <Clock size={18} className="text-[var(--color-golden)]" />
-                                <span className="font-medium text-white">
+                            <div className="flex items-center gap-4">
+                                <Clock size={16} className="text-[var(--color-flare)] opacity-50 group-hover:opacity-100 transition-opacity" />
+                                <span className="font-black tracking-widest text-white text-xs">
                                     {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}
                                 </span>
                                 {selectedData && (
-                                    <span className={`text-xs px-2 py-0.5 rounded ${selectedData.trend === 'bullish'
-                                        ? 'bg-green-500/20 text-green-400'
+                                    <span className={`text-[8px] font-black italic tracking-widest px-2 py-0.5 border border-current bg-white/5 ${selectedData.trend === 'bullish'
+                                        ? 'text-[var(--color-long)]'
                                         : selectedData.trend === 'bearish'
-                                            ? 'bg-red-500/20 text-red-400'
-                                            : 'bg-gray-500/20 text-gray-400'
+                                            ? 'text-[var(--color-short)]'
+                                            : 'text-[var(--color-silver)]'
                                         }`}>
-                                        {selectedData.trend === 'bullish' ? 'Tăng' : selectedData.trend === 'bearish' ? 'Giảm' : 'Trung lập'}
+                                        {selectedData.trend === 'bullish' ? 'BULL' : selectedData.trend === 'bearish' ? 'BEAR' : 'SIDE'}
                                     </span>
                                 )}
                             </div>
-                            <ChevronDown size={18} className={`text-[var(--color-text-secondary)] transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={14} className={`text-[var(--color-silver)] transition-transform duration-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
 
                         {isDropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-xl z-20 overflow-hidden">
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-flare)]/20 rounded-[1px] shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 overflow-hidden reveal">
                                 {timeframeOptions.map((tf) => {
                                     const tfData = maAnalysis?.timeframes.find(t => t.timeframe === tf.value);
                                     return (
                                         <button
                                             key={tf.value}
                                             onClick={() => handleTimeframeChange(tf.value)}
-                                            className={`w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--color-bg-tertiary)] transition-colors ${selectedTimeframe === tf.value ? 'bg-[var(--color-golden)]/10' : ''
+                                            className={`w-full flex items-center justify-between px-5 py-4 hover:bg-[var(--color-flare)]/5 transition-colors border-b border-[var(--color-border)] last:border-0 ${selectedTimeframe === tf.value ? 'bg-[var(--color-flare)]/10' : ''
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <span className={`font-medium ${selectedTimeframe === tf.value ? 'text-[var(--color-golden)]' : 'text-white'}`}>
+                                            <div className="flex items-center gap-4">
+                                                <span className={`text-[10px] font-black tracking-widest ${selectedTimeframe === tf.value ? 'text-[var(--color-flare)]' : 'text-white'}`}>
                                                     {tf.label}
                                                 </span>
                                                 {tfData && (
-                                                    <span className={`text-xs px-2 py-0.5 rounded ${tfData.trend === 'bullish'
-                                                        ? 'bg-green-500/20 text-green-400'
+                                                    <span className={`text-[8px] font-black italic px-2 py-0.5 border border-current ${tfData.trend === 'bullish'
+                                                        ? 'text-[var(--color-long)] border-[var(--color-long)]/30'
                                                         : tfData.trend === 'bearish'
-                                                            ? 'bg-red-500/20 text-red-400'
-                                                            : 'bg-gray-500/20 text-gray-400'
+                                                            ? 'text-[var(--color-short)] border-[var(--color-short)]/30'
+                                                            : 'text-[var(--color-silver)] border-[var(--color-silver)]/30'
                                                         }`}>
-                                                        {tfData.trend === 'bullish' ? 'Tăng' : tfData.trend === 'bearish' ? 'Giảm' : 'Trung lập'}
+                                                        {tfData.trend === 'bullish' ? 'BULL' : tfData.trend === 'bearish' ? 'BEAR' : 'SIDE'}
                                                     </span>
                                                 )}
                                             </div>
                                             {tfData && (
-                                                <div className="text-xs text-[var(--color-text-secondary)]">
-                                                    H: ${formatNumber(tfData.swingHigh, 0)} | L: ${formatNumber(tfData.swingLow, 0)}
+                                                <div className="text-[9px] font-mono text-[var(--color-silver)] opacity-40">
+                                                    H:${formatNumber(tfData.swingHigh, 0)} | L:${formatNumber(tfData.swingLow, 0)}
                                                 </div>
                                             )}
                                         </button>
@@ -170,128 +170,133 @@ export const FibonacciCalculator: React.FC<FibonacciCalculatorProps> = ({
                     </div>
                 </div>
 
-                {/* Manual Override - ALWAYS VISIBLE TO PREVENT SHIFT */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                            Đỉnh (High) ($)
+                {/* Manual Override Inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="relative group">
+                        <label className="block text-[8px] font-black text-[var(--color-silver)] uppercase tracking-[0.3em] mb-2 opacity-40 group-focus-within:opacity-100 transition-opacity italic">
+                            Reference High [H]
                         </label>
-                        <input
-                            type="number"
-                            value={swingHigh}
-                            onChange={(e) => setSwingHigh(e.target.value)}
-                            placeholder="Giá cao nhất"
-                            step="any"
-                            className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
-                        />
+                        <div className="relative">
+                            <input
+                                type="number"
+                                value={swingHigh}
+                                onChange={(e) => setSwingHigh(e.target.value)}
+                                placeholder="0.00"
+                                step="any"
+                                className="w-full bg-black/40 border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-long)] rounded-[1px] px-4 py-3 text-xs text-white font-mono focus:border-[var(--color-flare)] focus:bg-black/60 transition-all outline-none"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-[var(--color-silver)] opacity-20">$</div>
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm text-[var(--color-text-secondary)] mb-1.5">
-                            Đáy (Low) ($)
+                    <div className="relative group">
+                        <label className="block text-[8px] font-black text-[var(--color-silver)] uppercase tracking-[0.3em] mb-2 opacity-40 group-focus-within:opacity-100 transition-opacity italic">
+                            Reference Low [L]
                         </label>
-                        <input
-                            type="number"
-                            value={swingLow}
-                            onChange={(e) => setSwingLow(e.target.value)}
-                            placeholder="Giá thấp nhất"
-                            step="any"
-                            className="w-full bg-black/40 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white focus:border-[var(--color-golden)]"
-                        />
+                        <div className="relative">
+                            <input
+                                type="number"
+                                value={swingLow}
+                                onChange={(e) => setSwingLow(e.target.value)}
+                                placeholder="0.00"
+                                step="any"
+                                className="w-full bg-black/40 border border-[var(--color-border)] border-l-[3px] border-l-[var(--color-short)] rounded-[1px] px-4 py-3 text-xs text-white font-mono focus:border-[var(--color-flare)] focus:bg-black/60 transition-all outline-none"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-[var(--color-silver)] opacity-20">$</div>
+                        </div>
                     </div>
                 </div>
 
-                {/* LAYOUT STABLE CONTAINER */}
-                <div className="grid grid-cols-1">
-                    {/* Skeleton Layer */}
-                    <div
-                        className={`col-start-1 row-start-1 space-y-4 transition-opacity duration-300 ${maLoading ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-                        aria-hidden={!maLoading}
-                    >
-                        <div className="h-[104px] bg-white/5 rounded-lg border border-white/5"></div>
-                        <div className="h-[76px] bg-white/5 rounded-lg border border-white/5"></div>
-                        <div className="space-y-1">
-                            {[...Array(10)].map((_, i) => (
-                                <div key={i} className="h-[34px] bg-white/5 rounded flex justify-between px-3 items-center">
-                                    <div className="w-8 h-3 bg-white/10 rounded"></div>
-                                    <div className="w-24 h-3 bg-white/10 rounded"></div>
-                                </div>
+                {/* Main Analysis Architecture */}
+                <div className="grid grid-cols-1 pt-4">
+                    <div className={`col-start-1 row-start-1 space-y-6 transition-all duration-700 ${maLoading ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-4'}`}>
+                        <div className="h-[120px] bg-white/5 flare-border animate-pulse"></div>
+                        <div className="h-[90px] bg-white/5 flare-border animate-pulse"></div>
+                        <div className="space-y-2">
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="h-[40px] bg-white/5 rounded-[1px] opacity-10"></div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Content Layer */}
-                    <div className={`col-start-1 row-start-1 space-y-4 transition-opacity duration-300 ${!maLoading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                        {/* Swing High/Low from Selected Timeframe */}
-                        {selectedData ? (
-                            <div className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2 h-[104px] border border-white/5">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-[var(--color-text-secondary)] text-xs">Dữ liệu từ {timeframeOptions.find(t => t.value === selectedTimeframe)?.label}</span>
-                                    <span className={`font-medium ${selectedData.trend === 'bullish' ? 'text-green-400' : selectedData.trend === 'bearish' ? 'text-red-400' : 'text-gray-400'
-                                        }`}>
-                                        MA20: ${formatNumber(selectedData.ma20, getDecimals(selectedData.ma20))}
+                    <div className={`col-start-1 row-start-1 space-y-6 transition-all duration-700 ${!maLoading ? 'opacity-100 translate-y-0' : 'opacity-0 scale-95'}`}>
+                        {selectedData && (
+                            <div className="p-5 bg-[var(--color-bg-tertiary)] rounded-[1px] border-l-[4px] border-l-[var(--color-flare)] relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-30 transition-opacity">
+                                    <Sparkles size={40} className="text-[var(--color-flare)]" />
+                                </div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-[8px] font-black text-[var(--color-silver)] tracking-[0.3em] uppercase opacity-40 italic">Vector Intelligence Input</span>
+                                    <span className={`text-[9px] font-black px-3 py-1 bg-white/5 italic tracking-tighter ${selectedData.trend === 'bullish' ? 'text-[var(--color-long)] border border-[var(--color-long)]/20' : 'text-[var(--color-short)] border border-[var(--color-short)]/20'}`}>
+                                        BASIS_MA20: ${formatNumber(selectedData.ma20, getDecimals(selectedData.ma20))}
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-2 bg-[var(--color-bg-primary)] rounded">
-                                        <div className="text-xs text-green-400 mb-1">Giá Đỉnh</div>
-                                        <div className="font-mono font-bold text-white text-xs">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
+                                <div className="grid grid-cols-2 gap-6 relative">
+                                    <div className="bg-black/20 p-3 border border-[var(--color-border)] border-r-0">
+                                        <div className="text-[8px] text-[var(--color-long)] font-black mb-2 tracking-[0.2em] uppercase">Structural High</div>
+                                        <div className="font-mono font-black text-white text-base tracking-tighter">${formatNumber(selectedData.swingHigh, getDecimals(selectedData.swingHigh))}</div>
                                     </div>
-                                    <div className="p-2 bg-[var(--color-bg-primary)] rounded">
-                                        <div className="text-xs text-red-400 mb-1">Giá Đáy</div>
-                                        <div className="font-mono font-bold text-white text-xs">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
+                                    <div className="bg-black/20 p-3 border border-[var(--color-border)] ">
+                                        <div className="text-[8px] text-[var(--color-short)] font-black mb-2 tracking-[0.2em] uppercase">Structural Low</div>
+                                        <div className="font-mono font-black text-white text-base tracking-tighter">${formatNumber(selectedData.swingLow, getDecimals(selectedData.swingLow))}</div>
                                     </div>
                                 </div>
                             </div>
-                        ) : <div className="h-[104px]"></div>}
+                        )}
 
-                        {/* Golden Zone */}
-                        {goldenZoneRange ? (
-                            <div className="golden-zone p-3 rounded-lg flex items-center gap-3 h-[76px] border border-[var(--color-golden)]/20">
-                                <Sparkles size={20} className="text-[var(--color-golden)] flex-shrink-0" />
+                        {goldenZoneRange && (
+                            <div className="p-6 bg-[var(--color-bg-tertiary)] border-[1px] border-[var(--color-flare)]/30 rounded-[1px] flex items-center gap-6 relative overflow-hidden group shadow-[0_0_30px_rgba(255,77,0,0.1)]">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-[var(--color-flare)]"></div>
+                                <div className="p-4 bg-[var(--color-flare)] shadow-[0_0_20px_var(--color-flare)] shrink-0">
+                                    <Sparkles size={24} className="text-black" />
+                                </div>
                                 <div>
-                                    <div className="text-[10px] font-semibold text-[var(--color-golden)] uppercase tracking-wider">Golden Zone</div>
-                                    <div className="text-base font-bold text-white">{goldenZoneRange}</div>
-                                    <div className="text-[10px] text-[var(--color-text-secondary)]">Vùng Entry tối ưu nhất</div>
+                                    <div className="text-[10px] font-black text-[var(--color-flare)] uppercase tracking-[0.4em] mb-2 italic anim-flare">The Golden Zone [0.618 - 0.5]</div>
+                                    <div className="text-2xl font-black text-white tracking-tighter font-mono">{goldenZoneRange}</div>
+                                    <div className="text-[9px] text-[var(--color-silver)] font-black tracking-[0.2em] uppercase opacity-40 mt-2">Optimal Execution Territory</div>
                                 </div>
                             </div>
-                        ) : <div className="h-[76px]"></div>}
+                        )}
 
-                        {/* Fibonacci Levels */}
-                        <div className="space-y-1 mt-4 min-h-[350px]">
+                        <div className="space-y-2 mt-4">
                             {levels.length > 0 ? (
                                 <>
-                                    <div className="flex justify-between text-[10px] text-[var(--color-text-secondary)] px-3 pb-2 border-b border-[var(--color-border)] mb-2">
-                                        <span>TỶ LỆ (RATIO)</span>
-                                        <span>MỨC GIÁ ($)</span>
+                                    <div className="flex justify-between text-[8px] font-black text-[var(--color-silver)] tracking-[0.4em] px-4 pb-4 border-b border-[var(--color-border)] opacity-30 italic">
+                                        <span>VECTOR_RATIO</span>
+                                        <span>PROJECTION_VALUE</span>
                                     </div>
-                                    {levels.map((level) => (
-                                        <div
-                                            key={level.ratio}
-                                            className={`fib-level h-[34px] ${level.isGoldenZone ? 'golden-zone' : ''}`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                {level.isGoldenZone && (
-                                                    <Target size={14} className="text-[var(--color-golden)]" />
-                                                )}
-                                                <span className={level.isGoldenZone ? 'text-[var(--color-golden)] font-bold' : 'text-[var(--color-text-secondary)]'}>
-                                                    {level.ratio}
+                                    <div className="space-y-[2px]">
+                                        {levels.map((level, idx) => (
+                                            <div
+                                                key={level.ratio}
+                                                className={`flex items-center justify-between px-5 py-3 rounded-[1px] transition-all duration-500 reveal ${level.isGoldenZone 
+                                                    ? 'bg-[var(--color-flare)]/10 border-x border-x-[var(--color-flare)]/40 shadow-[inset_0_0_20px_rgba(255,77,0,0.05)]' 
+                                                    : 'bg-[var(--color-bg-tertiary)]/30 hover:bg-white/5 border border-transparent'}`}
+                                                style={{ animationDelay: `${idx * 0.05}s` }}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    {level.isGoldenZone && (
+                                                        <Target size={14} className="text-[var(--color-flare)] animate-pulse" />
+                                                    )}
+                                                    <span className={`text-[11px] font-black tracking-widest ${level.isGoldenZone ? 'text-[var(--color-flare)]' : 'text-[var(--color-silver)] opacity-60'}`}>
+                                                        {level.ratio.toFixed(3)}
+                                                    </span>
+                                                </div>
+                                                <span className={`font-mono font-black text-sm tracking-tighter ${level.isGoldenZone
+                                                    ? 'text-[var(--color-flare)] text-base'
+                                                    : direction === 'long'
+                                                        ? 'text-[var(--color-long)]'
+                                                        : 'text-[var(--color-short)]'
+                                                    }`}>
+                                                    ${formatNumber(level.price, getDecimals(level.price))}
                                                 </span>
                                             </div>
-                                            <span className={`font-mono font-bold ${level.isGoldenZone
-                                                ? 'text-[var(--color-golden)]'
-                                                : direction === 'long'
-                                                    ? 'text-green-400'
-                                                    : 'text-red-400'
-                                                }`}>
-                                                ${formatNumber(level.price, getDecimals(level.price))}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full opacity-30 py-12">
-                                    <Layers size={48} className="mb-2" />
-                                    <p className="text-xs">Chưa có dữ liệu tính toán</p>
+                                <div className="flex flex-col items-center justify-center py-20 opacity-10 grayscale">
+                                    <Layers size={60} className="mb-6 stroke-[1px]" />
+                                    <p className="text-[10px] font-black tracking-[0.4em] uppercase">No Dynamic Sequence Found</p>
                                 </div>
                             )}
                         </div>

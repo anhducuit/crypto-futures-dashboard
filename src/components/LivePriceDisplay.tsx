@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, Activity, AlertCircle } from 'lucide-react';
 import { formatNumber } from '../utils/calculations';
+import { useTranslation, type Language } from '../utils/translations';
 
 interface LivePriceDisplayProps {
     price: number | null;
@@ -9,6 +10,7 @@ interface LivePriceDisplayProps {
     symbol: string;
     error: string | null;
     onManualPrice: (price: number) => void;
+    language: Language;
 }
 
 export const LivePriceDisplay: React.FC<LivePriceDisplayProps> = ({
@@ -17,8 +19,10 @@ export const LivePriceDisplay: React.FC<LivePriceDisplayProps> = ({
     priceDirection,
     symbol,
     error,
-    onManualPrice
+    onManualPrice,
+    language
 }) => {
+    const t = useTranslation(language);
     const [flashClass, setFlashClass] = useState('');
     const [manualInput, setManualInput] = useState('');
     const priceRef = useRef<HTMLDivElement>(null);
@@ -30,7 +34,7 @@ export const LivePriceDisplay: React.FC<LivePriceDisplayProps> = ({
             setFlashClass('flash-red');
         }
 
-        const timer = setTimeout(() => setFlashClass(''), 300);
+        const timer = setTimeout(() => setFlashClass(''), 400);
         return () => clearTimeout(timer);
     }, [price, priceDirection]);
 
@@ -53,72 +57,71 @@ export const LivePriceDisplay: React.FC<LivePriceDisplayProps> = ({
     const priceChangePercent = price && previousPrice ? ((price - previousPrice) / previousPrice) * 100 : 0;
 
     return (
-        <div className="card">
-            <div className="card-header">
-                <Activity size={16} className="text-[var(--color-golden)]" />
-                GIÁ REAL-TIME
+        <div className="card flare-border reveal">
+            <div className="card-header border-b border-[var(--color-border)] pb-2 mb-2">
+                <Activity size={14} className="text-[var(--color-flare)]" />
+                <span className="font-black tracking-[0.2em] uppercase">{t('real_time_telemetry')}</span>
             </div>
 
-            <div className="text-center">
-                <div className="text-sm text-[var(--color-text-secondary)] mb-2">
-                    {symbol || 'Chưa chọn Symbol'}
+            <div className="text-center px-4">
+                <div className="text-[10px] font-black text-[var(--color-silver)] uppercase tracking-[0.4em] mb-1 opacity-40">
+                    {symbol || 'WAITING_FOR_DATA'}
                 </div>
 
                 {price !== null ? (
                     <div
                         ref={priceRef}
-                        className={`text-4xl md:text-5xl font-bold mb-3 rounded-lg py-3 transition-colors ${flashClass} ${priceDirection === 'up'
-                            ? 'text-green-500'
+                        className={`text-3xl lg:text-4xl font-black tracking-tighter italic mb-1 py-1 transition-all duration-300 ${flashClass} ${priceDirection === 'up'
+                            ? 'text-[var(--color-long)] drop-shadow-[0_0_15px_rgba(0,255,163,0.2)]'
                             : priceDirection === 'down'
-                                ? 'text-red-500'
+                                ? 'text-[var(--color-short)] drop-shadow-[0_0_15px_rgba(255,0,51,0.2)]'
                                 : 'text-white'
                             }`}
                     >
-                        ${formatNumber(price, getDecimals(price))}
+                        <span className="opacity-30 text-xl mr-1">$</span>
+                        {formatNumber(price, getDecimals(price))}
                     </div>
                 ) : (
-                    <div className="text-4xl font-bold mb-3 text-[var(--color-text-secondary)]">
-                        ---
+                    <div className="text-3xl lg:text-4xl font-black mb-1 text-[var(--color-bg-tertiary)] italic">
+                        OFFLINE
                     </div>
                 )}
 
                 {price !== null && previousPrice !== null && (
-                    <div className={`flex items-center justify-center gap-2 text-sm ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'
+                    <div className={`flex items-center justify-center gap-2 py-1.5 px-3 bg-[var(--color-bg-tertiary)] rounded-[1px] border border-[var(--color-border)] text-xs font-black tracking-widest ${priceChange >= 0 ? 'text-[var(--color-long)]' : 'text-[var(--color-short)]'
                         }`}>
-                        {priceChange >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                        <span>
-                            {priceChange >= 0 ? '+' : ''}{formatNumber(priceChange, getDecimals(price))}
-                        </span>
-                        <span className="text-[var(--color-text-secondary)]">|</span>
-                        <span>
-                            {priceChange >= 0 ? '+' : ''}{priceChangePercent.toFixed(4)}%
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            {priceChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                            <span>{priceChange >= 0 ? '+' : ''}{formatNumber(priceChange, getDecimals(price))}</span>
+                        </div>
+                        <div className="w-[1px] h-3 bg-[var(--color-border)]"></div>
+                        <span>{priceChange >= 0 ? '+' : ''}{priceChangePercent.toFixed(4)}%</span>
                     </div>
                 )}
             </div>
 
             {error && (
-                <div className="mt-4 alert-warning">
-                    <AlertCircle size={18} className="text-red-400 flex-shrink-0" />
-                    <div>
-                        <p className="text-sm">{error}</p>
-                        <form onSubmit={handleManualSubmit} className="mt-2 flex gap-2">
-                            <input
-                                type="number"
-                                value={manualInput}
-                                onChange={(e) => setManualInput(e.target.value)}
-                                placeholder="Nhập giá thủ công"
-                                className="flex-1 py-2 px-3 text-sm"
-                                step="any"
-                            />
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-[var(--color-golden)] text-black rounded-lg text-sm font-semibold hover:bg-yellow-400 transition-colors"
-                            >
-                                Áp dụng
-                            </button>
-                        </form>
+                <div className="mt-2 pt-2 border-t border-[var(--color-border)]">
+                    <div className="flex items-center gap-2 text-[var(--color-short)] mb-4">
+                        <AlertCircle size={16} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('feed_overridden')}</span>
                     </div>
+                    <form onSubmit={handleManualSubmit} className="space-y-3">
+                        <input
+                            type="number"
+                            value={manualInput}
+                            onChange={(e) => setManualInput(e.target.value)}
+                            placeholder={t('manual_override')}
+                            className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-[2px] w-full py-2.5 px-4 text-xs font-mono text-white outline-none focus:border-[var(--color-flare)] placeholder:opacity-20"
+                            step="any"
+                        />
+                        <button
+                            type="submit"
+                            className="w-full py-2.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[10px] font-black text-[var(--color-flare)] hover:bg-[var(--color-flare)] hover:text-black transition-all uppercase tracking-widest"
+                        >
+                            {t('sync_manual')}
+                        </button>
+                    </form>
                 </div>
             )}
         </div>

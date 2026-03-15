@@ -1,6 +1,8 @@
 import React from 'react';
 import { X, BookOpen, Zap, BarChart3, Layers, TrendingUp, Target, Sparkles, Activity, ShieldCheck, ChevronRight, Swords } from 'lucide-react';
 
+import { useTranslation, type Language } from '../utils/translations';
+
 export type GuideType =
     | 'COMBO_STRATEGIES'
     | 'MA_CROSS'
@@ -17,9 +19,11 @@ export type GuideType =
 interface GuideModalProps {
     type: GuideType;
     onClose: () => void;
+    language: Language;
 }
 
-export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
+export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose, language }) => {
+    const t = useTranslation(language);
     const renderContent = () => {
         switch (type) {
             case 'COMBO_STRATEGIES':
@@ -27,38 +31,38 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
                             <h3 className="text-red-400 font-bold mb-2 flex items-center gap-2">
-                                <Swords size={18} /> HỆ THỐNG 5 COMBO CHIẾN LƯỢC
+                                <Swords size={18} /> {t('combo_strategies_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Robot chỉ nổ lệnh khi đủ điều kiện vào 1 trong 5 Combo chiến lược. Mỗi combo là sự kết hợp của nhiều chỉ báo xác nhận lẫn nhau, giúp tăng độ chính xác và giảm nhiễu.
+                                {t('combo_strategies_desc')}
                             </p>
                         </div>
 
                         {/* Combo 1 */}
                         <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl">
                             <h4 className="text-purple-400 font-black mb-2 flex items-center gap-2">
-                                💎 COMBO 1: SÁT THỦ BẮT ĐỈNH ĐÁY
+                                {t('combo1_title')}
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Bắt điểm đảo chiều tại đỉnh/đáy với độ chính xác cao.
+                                <b>{t('target')}:</b> {t('combo1_purpose')}
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-purple-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">RSI Divergence:</b> Phân kỳ giữa giá và RSI (Bullish/Bearish)</span>
+                                    <span className="text-gray-400">{t('combo1_step1')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-purple-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Price Action:</b> PinBar hoặc Engulfing tại vùng Support/Resistance</span>
+                                    <span className="text-gray-400">{t('combo1_step2')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-purple-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Volume Spike:</b> Khối lượng tăng đột biến (&gt;1.8x)</span>
+                                    <span className="text-gray-400">{t('combo1_step3')}</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-purple-500/10 rounded-lg border-l-2 border-purple-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Vào lệnh khi thấy phân kỳ + nến đảo chiều tại vùng cản quan trọng.
+                                    💡 {t('combo1_tip')}
                                 </p>
                             </div>
                         </div>
@@ -66,28 +70,28 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         {/* Combo 2 */}
                         <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl">
                             <h4 className="text-green-400 font-black mb-2 flex items-center gap-2">
-                                ⚔️ COMBO 2: CHIẾN THẦN ĐU TREND
+                                {t('combo2_title')}
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Đi theo xu hướng mạnh với xác nhận đa chỉ báo.
+                                <b>{t('target')}:</b> {t('combo2_purpose')}
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-green-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Trend Align:</b> 4H và 1H cùng chiều (Bullish hoặc Bearish)</span>
+                                    <span className="text-gray-400">{t('combo2_step1')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-green-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Ichimoku Cloud:</b> Giá trên/dưới mây (Cloud Align)</span>
+                                    <span className="text-gray-400">{t('combo2_step2')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-green-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">EMA Cross:</b> Đường nhanh cắt đường chậm</span>
+                                    <span className="text-gray-400">{t('combo2_step3')}</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-green-500/10 rounded-lg border-l-2 border-green-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Chỉ vào lệnh khi cả 3 yếu tố đồng thuận cùng chiều.
+                                    💡 {t('combo2_tip')}
                                 </p>
                             </div>
                         </div>
@@ -95,28 +99,28 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         {/* Combo 3 */}
                         <div className="p-4 bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border border-orange-500/20 rounded-xl">
                             <h4 className="text-orange-400 font-black mb-2 flex items-center gap-2">
-                                🪤 COMBO 3: BẪY GIÁ - SĂN THANH KHOẢN
+                                {t('combo3_title')}
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Bắt các đợt fake breakout và liquidity hunt.
+                                <b>{t('target')}:</b> {t('combo3_purpose')}
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-orange-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Level Break:</b> Giá phá vùng cản quan trọng</span>
+                                    <span className="text-gray-400">{t('combo3_step1')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-orange-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">PinBar Rejection:</b> Nến PinBar bị từ chối</span>
+                                    <span className="text-gray-400">{t('combo3_step2')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-orange-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng cực cao (&gt;2.0x)</span>
+                                    <span className="text-gray-400">{t('combo3_step3')}</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-orange-500/10 rounded-lg border-l-2 border-orange-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Vào lệnh ngược chiều khi thấy PinBar rejection + volume cao.
+                                    💡 {t('combo3_tip')}
                                 </p>
                             </div>
                         </div>
@@ -124,28 +128,28 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         {/* Combo 4 */}
                         <div className="p-4 bg-gradient-to-br from-red-500/10 to-pink-500/10 border border-red-500/20 rounded-xl">
                             <h4 className="text-red-400 font-black mb-2 flex items-center gap-2">
-                                💣 COMBO 4: QUẢ BOM ĐỘNG LƯỢNG
+                                {t('combo4_title')}
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Bắt breakout mạnh với động lượng cao.
+                                <b>{t('target')}:</b> {t('combo4_purpose')}
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-red-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">EMA Squeeze:</b> Các đường EMA hội tụ sát nhau</span>
+                                    <span className="text-gray-400">{t('combo4_step1')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-red-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Marubozu Candle:</b> Nến thân dài, không râu</span>
+                                    <span className="text-gray-400">{t('combo4_step2')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-red-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Volume Explosion:</b> Khối lượng nổ (&gt;3.0x)</span>
+                                    <span className="text-gray-400">{t('combo4_step3')}</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-red-500/10 rounded-lg border-l-2 border-red-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Vào lệnh ngay khi nến Marubozu xuất hiện với volume cực cao.
+                                    💡 {t('combo4_tip')}
                                 </p>
                             </div>
                         </div>
@@ -153,28 +157,28 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         {/* Combo 5 */}
                         <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl">
                             <h4 className="text-blue-400 font-black mb-2 flex items-center gap-2">
-                                🔔 COMBO 5: CHỈ BÁO THOÁT CHANDELIER
+                                {t('combo5_title')}
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Phát hiện đảo chiều xu hướng dựa trên độ bám sát của Chandelier Exit (Heikin Ashi + RMA).
+                                <b>{t('target')}:</b> {t('combo5_purpose')}
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Exit Long:</b> Đỉnh HA (1 kỳ) − ATR × 1.85 → Giá bám siết chặt, nếu thủng = SHORT</span>
+                                    <span className="text-gray-400">{t('combo5_step1')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Exit Short:</b> Đáy HA (1 kỳ) + ATR × 1.85 → Giá bám siết chặt, nếu vượt = LONG</span>
+                                    <span className="text-gray-400">{t('combo5_step2')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Trailing Ratchet:</b> Exit Long chỉ dịch lên, Exit Short chỉ dịch xuống. Tín hiệu cực nhạy.</span>
+                                    <span className="text-gray-400">{t('combo5_step3')}</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-blue-500/10 rounded-lg border-l-2 border-blue-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Dùng nến Heikin Ashi khử nhiễu kết hợp Trailing bám siêu sát (m=1.85). Nổ khi trạng thái Market Direction đổi chiều thực sự thay vì cross ảo.
+                                    💡 {t('combo5_tip')}
                                 </p>
                             </div>
                         </div>
@@ -182,40 +186,35 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         {/* Combo 6 */}
                         <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl">
                             <h4 className="text-emerald-400 font-black mb-2 flex items-center gap-2">
-                                🏦 COMBO 6: ICT KILLZONES + PIVOTS
+                                {t('combo6_title')}
                             </h4>
                             <p className="text-xs text-gray-300 mb-3">
-                                <b>Mục đích:</b> Phát hiện Smart Money sweep pivot của phiên Asia rồi đảo chiều.
+                                <b>{t('target')}:</b> {t('combo6_purpose')}
                             </p>
                             <div className="space-y-2 text-xs">
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-emerald-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Sweep Asia Low:</b> Giá phá xuống dưới Asia Low → đóng lại trên = LONG</span>
+                                    <span className="text-gray-400">{t('combo6_step1')}</span>
                                 </div>
                                 <div className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-emerald-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Sweep Asia High:</b> Giá phá lên trên Asia High → đóng lại dưới = SHORT</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <ChevronRight size={14} className="text-emerald-400 mt-0.5" />
-                                    <span className="text-gray-400"><b className="text-white">Trade Zone:</b> Chỉ nổ trong phiên London (14:00-17:00 VN) hoặc NY AM (21:30-23:00 VN)</span>
+                                    <span className="text-gray-400">{t('combo6_step2')}</span>
                                 </div>
                             </div>
                             <div className="mt-3 p-2 bg-emerald-500/10 rounded-lg border-l-2 border-emerald-500">
                                 <p className="text-[10px] text-gray-400 italic">
-                                    💡 <b>Chiến thuật:</b> Smart Money (ngân hàng, quỹ) thường quét thanh khoản tại Asia pivot rồi đảo chiều. Bot phát hiện sweep + rejection để vào lệnh.
+                                    💡 {t('combo6_tip')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Summary */}
                         <div className="p-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl">
-                            <p className="text-xs font-bold text-yellow-400 mb-2 uppercase">⚠️ LƯU Ý QUAN TRỌNG</p>
+                            <p className="text-xs font-bold text-yellow-400 mb-2 uppercase">⚠️ {t('guide_note_title')}</p>
                             <ul className="space-y-1 text-[10px] text-gray-400">
-                                <li>• Robot chỉ nổ lệnh khi đủ điều kiện vào 1 trong 6 Combo</li>
-                                <li>• Mỗi Combo có nhiều chỉ báo xác nhận lẫn nhau</li>
-                                <li>• Số lượng tín hiệu giảm nhưng chất lượng tăng</li>
-                                <li>• Kiểm tra phân tích 6 Combo ở bảng "PHÂN TÍCH GIờ VÀNG VÀ CHIẾ̂N LƯỢC"</li>
+                                <li>• {t('guide_note_1')}</li>
+                                <li>• {t('guide_note_2')}</li>
+                                <li>• {t('guide_note_3')}</li>
                             </ul>
                         </div>
                     </div>
@@ -225,30 +224,30 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                             <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2">
-                                <Zap size={18} /> CƠ CHẾ HOẠT ĐỘNG
+                                <Zap size={18} /> {t('ma_cross_how_it_works')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Robot sử dụng các đường EMA (Exponential Moving Average) để xác định điểm đảo chiều sớm. Có 2 trường phái chính:
+                                {t('ma_cross_desc')}
                             </p>
                             <ul className="mt-3 space-y-2 text-xs text-gray-400">
                                 <li className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-500 mt-0.5" />
-                                    <span><b>Scalping (1m):</b> Cặp EMA 5 & 13. Phản ứng cực nhanh với biến động ngắn hạn.</span>
+                                    <span>{t('ma_cross_scalping')}</span>
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <ChevronRight size={14} className="text-blue-500 mt-0.5" />
-                                    <span><b>An Toàn (15m/1h):</b> Cặp EMA 12 & 26. Giảm nhiễu và bắt sóng trung hạn ổn định.</span>
+                                    <span>{t('ma_cross_safe')}</span>
                                 </li>
                             </ul>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
-                                <p className="text-[10px] font-bold text-green-400 mb-1 uppercase">BULLISH CROSS</p>
-                                <p className="text-xs text-gray-400">Đường nhanh cắt lên đường chậm. Tín hiệu MUA (LONG).</p>
+                                <p className="text-[10px] font-bold text-green-400 mb-1 uppercase">{t('bullish_cross_title')}</p>
+                                <p className="text-xs text-gray-400">{t('bullish_cross_desc')}</p>
                             </div>
                             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                                <p className="text-[10px] font-bold text-red-400 mb-1 uppercase">BEARISH CROSS</p>
-                                <p className="text-xs text-gray-400">Đường nhanh cắt xuống đường chậm. Tín hiệu BÁN (SHORT).</p>
+                                <p className="text-[10px] font-bold text-red-400 mb-1 uppercase">{t('bearish_cross_title')}</p>
+                                <p className="text-xs text-gray-400">{t('bearish_cross_desc')}</p>
                             </div>
                         </div>
                     </div>
@@ -258,24 +257,24 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
                             <h3 className="text-orange-400 font-bold mb-2 flex items-center gap-2">
-                                <BarChart3 size={18} /> VOLUME RATIO (Tỉ lệ khối lượng)
+                                <BarChart3 size={18} /> {t('volume_ratio_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                So sánh khối lượng giao dịch hiện tại với trung bình 20 cây nến gần nhất.
+                                {t('volume_ratio_desc')}
                             </p>
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                                 <div className="p-2 bg-green-500/20 rounded-lg text-green-500 font-bold text-xs">&gt; 1.5x</div>
-                                <div className="text-xs text-gray-300"><b>Đột phá:</b> Dòng tiền lớn đang vào, xác nhận xu hướng mạnh.</div>
+                                <div className="text-xs text-gray-300"><b>{t('vol_breakout_label')}:</b> {t('vol_breakout_desc')}</div>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                                 <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500 font-bold text-xs">0.8x - 1.2x</div>
-                                <div className="text-xs text-gray-300"><b>Bình ổn:</b> Thị trường đang lưỡng lự hoặc tích lũy.</div>
+                                <div className="text-xs text-gray-300"><b>{t('vol_stable_label')}:</b> {t('vol_stable_desc')}</div>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                                 <div className="p-2 bg-red-500/20 rounded-lg text-red-500 font-bold text-xs">&lt; 0.5x</div>
-                                <div className="text-xs text-gray-300"><b>Cạn kiệt:</b> Thiếu thanh khoản, dễ xảy ra đảo chiều hoặc "quét" râu nến.</div>
+                                <div className="text-xs text-gray-300"><b>{t('vol_exhaustion_label')}:</b> {t('vol_exhaustion_desc')}</div>
                             </div>
                         </div>
                     </div>
@@ -285,20 +284,20 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
                             <h3 className="text-purple-400 font-bold mb-2 flex items-center gap-2">
-                                <Layers size={18} /> PHÂN TÍCH ĐA KHUNG (MTF)
+                                <Layers size={18} /> {t('mtf_analysis_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Quy tắc vàng: <b>"Thuận xu hướng lớn, bắt sóng khung nhỏ"</b>. Robot tự động tổng hợp xu hướng từ 4 khung thời gian để đưa ra xác suất thắng (Confidence).
+                                {t('mtf_analysis_rule')}: <b>"{t('mtf_analysis_rule_quote')}"</b>. {t('mtf_analysis_desc')}
                             </p>
                         </div>
                         <div className="space-y-2">
                             <div className="p-3 bg-white/5 rounded-lg border-l-4 border-purple-500">
-                                <p className="text-xs font-bold text-white uppercase">Overall Bias</p>
-                                <p className="text-[10px] text-gray-400 mt-1">Gợi ý hướng đánh dựa trên sự đồng thuận của 1m, 15m, 1h và 4h.</p>
+                                <p className="text-xs font-bold text-white uppercase">{t('overall_bias')}</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{t('overall_bias_desc_long')}</p>
                             </div>
                             <div className="p-3 bg-white/5 rounded-lg border-l-4 border-yellow-500">
-                                <p className="text-xs font-bold text-white uppercase">Confidence (%)</p>
-                                <p className="text-[10px] text-gray-400 mt-1">Độ tin cậy của tín hiệu. Trên 70% được coi là tín hiệu mạnh.</p>
+                                <p className="text-xs font-bold text-white uppercase">{t('confidence')} (%)</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{t('confidence_desc_long')}</p>
                             </div>
                         </div>
                     </div>
@@ -308,24 +307,24 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                             <h3 className="text-emerald-400 font-bold mb-2 flex items-center gap-2">
-                                <TrendingUp size={18} /> EMA TREND BIAS
+                                <TrendingUp size={18} /> {t('ema_trend_bias_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Sử dụng 3 đường hầm EMA (20, 50, 200) để xác định "vùng định giá" của thị trường.
+                                {t('ema_trend_bias_desc')}
                             </p>
                         </div>
                         <div className="grid grid-cols-1 gap-2 text-xs">
                             <div className="flex justify-between p-2 rounded-lg bg-green-500/5">
-                                <span className="text-green-500 font-bold">Giá &gt; EMA 200</span>
-                                <span className="text-gray-400">Xu hướng TĂNG dài hạn</span>
+                                <span className="text-green-500 font-bold">{t('price_gt_ema200')}</span>
+                                <span className="text-gray-400">{t('bullish_trend_long')}</span>
                             </div>
                             <div className="flex justify-between p-2 rounded-lg bg-red-500/5">
-                                <span className="text-red-500 font-bold">Giá &lt; EMA 200</span>
-                                <span className="text-gray-400">Xu hướng GIẢM dài hạn</span>
+                                <span className="text-red-500 font-bold">{t('price_lt_ema200')}</span>
+                                <span className="text-gray-400">{t('bearish_trend_long')}</span>
                             </div>
                             <div className="flex justify-between p-2 rounded-lg bg-yellow-500/5">
                                 <span className="text-yellow-500 font-bold">GAP (%)</span>
-                                <span className="text-gray-400">Khoảng cách từ giá tới EMA. Gap quá lớn (&gt;2-3%) dễ bị điều chỉnh (Rebound).</span>
+                                <span className="text-gray-400">{t('ema_gap_desc_long')}</span>
                             </div>
                         </div>
                     </div>
@@ -335,28 +334,28 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
                             <h3 className="text-indigo-400 font-bold mb-2 flex items-center gap-2">
-                                <Sparkles size={18} /> MÂY ICHIMOKU
+                                <Sparkles size={18} /> {t('ichimoku_cloud_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Hệ thống xác định xu hướng và vùng hỗ trợ/kháng cự động thông qua "Mây" (Kumo Cloud).
+                                {t('ichimoku_cloud_desc')}
                             </p>
                         </div>
                         <ul className="space-y-2 text-xs text-gray-400">
                             <li className="flex gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5"></div>
-                                <span><b>Trên Mây:</b> Thị trường cực mạnh, ưu tiên lệnh LONG.</span>
+                                <span><b>{t('above_cloud_label')}:</b> {t('above_cloud_desc')}</span>
                             </li>
                             <li className="flex gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5"></div>
-                                <span><b>Dưới Mây:</b> Thị trường cực yếu, ưu tiên lệnh SHORT.</span>
+                                <span><b>{t('below_cloud_label')}:</b> {t('below_cloud_desc')}</span>
                             </li>
                             <li className="flex gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-gray-500 mt-1.5"></div>
-                                <span><b>Trong Mây:</b> Vùng tích lũy, không rõ xu hướng. Hạn chế vào lệnh.</span>
+                                <span><b>{t('inside_cloud_label')}:</b> {t('inside_cloud_desc')}</span>
                             </li>
                             <li className="flex gap-2 border-t border-white/5 pt-2 mt-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5"></div>
-                                <span><b>Tenkan &gt; Kijun:</b> Tín hiệu tăng giá sớm.</span>
+                                <span><b>{t('tenkan_gt_kijun_label')}:</b> {t('tenkan_gt_kijun_desc')}</span>
                             </li>
                         </ul>
                     </div>
@@ -366,20 +365,20 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-pink-500/10 border border-pink-500/20 rounded-xl">
                             <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
-                                <Activity size={18} /> PHÂN KỲ RSI
+                                <Activity size={18} /> {t('rsi_divergence_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Hiện tượng giá và RSI đi ngược chiều nhau, báo hiệu một cú đảo chiều mạnh sắp xảy ra.
+                                {t('rsi_divergence_desc')}
                             </p>
                         </div>
                         <div className="space-y-3">
                             <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
-                                <p className="text-xs font-bold text-green-400 uppercase">Bullish Divergence (Hội tụ)</p>
-                                <p className="text-[10px] text-gray-400 mt-1">Giá tạo đáy thấp mới nhưng RSI tạo đáy cao hơn. Báo hiệu sức bán cạn kiệt, giá chuẩn bị bay.</p>
+                                <p className="text-xs font-bold text-green-400 uppercase">{t('bullish_div_title_long')}</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{t('bullish_div_desc_long')}</p>
                             </div>
                             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                                <p className="text-xs font-bold text-red-400 uppercase">Bearish Divergence (Phân kỳ)</p>
-                                <p className="text-[10px] text-gray-400 mt-1">Giá tạo đỉnh cao mới nhưng RSI tạo đỉnh thấp hơn. Báo hiệu sức mua cạn kiệt, giá chuẩn bị sập.</p>
+                                <p className="text-xs font-bold text-red-400 uppercase">{t('bearish_div_title_long')}</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{t('bearish_div_desc_long')}</p>
                             </div>
                         </div>
                     </div>
@@ -389,25 +388,25 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
                             <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
-                                <Target size={18} /> VÙNG CẢN QUAN TRỌNG (PIVOT)
+                                <Target size={18} /> {t('pivot_points_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Robot tính toán các mức Pivot Point dựa trên biến động của ngày/giờ trước đó để tìm ra các "bến đỗ" của giá.
+                                {t('pivot_points_desc')}
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-xs">
                             <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-                                <span className="block text-red-400 font-bold mb-1">R1/R2/R3</span>
-                                <span className="text-[10px] text-gray-400">Kháng cự (Resistance). Nơi phe Bán tập trung.</span>
+                                <span className="block text-red-400 font-bold mb-1">{t('resistance_label')}</span>
+                                <span className="text-[10px] text-gray-400">{t('resistance_desc_long')}</span>
                             </div>
                             <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-                                <span className="block text-green-400 font-bold mb-1">S1/S2/S3</span>
-                                <span className="text-[10px] text-gray-400">Hỗ trợ (Support). Nơi phe Mua chờ đợi.</span>
+                                <span className="block text-green-400 font-bold mb-1">{t('support_label')}</span>
+                                <span className="text-[10px] text-gray-400">{t('support_desc_long')}</span>
                             </div>
                         </div>
                         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                            <p className="text-[10px] font-bold text-blue-400 mb-1 uppercase">CHIẾN THUẬT QUYẾT ĐỊNH</p>
-                            <p className="text-xs text-gray-400 italic">"Chờ giá chạm Cản + Xuất hiện nến đảo chiều (Pinbar/Engulfing) = Vào lệnh."</p>
+                            <p className="text-[10px] font-bold text-blue-400 mb-1 uppercase">{t('decision_strategy_long')}</p>
+                            <p className="text-xs text-gray-400 italic">{t('decision_tip_long')}</p>
                         </div>
                     </div>
                 );
@@ -416,23 +415,23 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-amber-600/10 border border-amber-600/20 rounded-xl">
                             <h3 className="text-amber-500 font-bold mb-2 flex items-center gap-2">
-                                <Sparkles size={18} /> BỘ TÍNH FIBONACCI
+                                <Sparkles size={18} /> {t('fibonacci_tool_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Công cụ tìm điểm "hồi mã thương". Giá thường quay lại các tỷ lệ Fibonacci vàng để lấy đà trước khi tiếp tục xu hướng.
+                                {t('fibonaci_tool_desc')}
                             </p>
                         </div>
                         <div className="space-y-3">
                             <div className="p-3 bg-[var(--color-golden)]/10 border border-[var(--color-golden)]/20 rounded-xl flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs font-bold text-[var(--color-golden)] uppercase italic">Golden Zone</p>
-                                    <p className="text-[10px] text-gray-400">Mức 0.5 - 0.618</p>
+                                    <p className="text-xs font-bold text-[var(--color-golden)] uppercase italic">{t('fib_golden_zone')}</p>
+                                    <p className="text-[10px] text-gray-400">{t('fib_level')} 0.5 - 0.618</p>
                                 </div>
-                                <span className="text-[10px] text-gray-400 text-right">Vùng vào lệnh đẹp nhất.</span>
+                                <span className="text-[10px] text-gray-400 text-right">{t('golden_zone_desc_long')}</span>
                             </div>
                             <div className="text-xs text-gray-400 p-2 border-l-2 border-white/20 ml-2">
-                                <p>• <b>0.236 / 0.382:</b> Điều chỉnh nông, xu hướng rất mạnh.</p>
-                                <p className="mt-1">• <b>0.786:</b> Điều chỉnh sâu, ranh giới cuối cùng của xu hướng.</p>
+                                <p>• <b>0.236 / 0.382:</b> {t('fib_shallow_desc_long')}</p>
+                                <p className="mt-1">• <b>0.786:</b> {t('fib_deep_desc_long')}</p>
                             </div>
                         </div>
                     </div>
@@ -442,16 +441,16 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
                             <h3 className="text-cyan-400 font-bold mb-2 flex items-center gap-2">
-                                <BarChart3 size={18} /> TRADING ANALYTICS
+                                <BarChart3 size={18} /> {t('trading_analytics_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Nhật ký và dữ liệu thống kê hiệu suất thực tế của Robot để tối ưu hóa lợi nhuận.
+                                {t('trading_analytics_desc')}
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[10px]">
                             <div className="p-2 border border-white/5 rounded-lg">
-                                <p className="text-white/40 uppercase font-bold mb-1">Win Rate</p>
-                                <p className="text-gray-300">Tỉ lệ lệnh chiến thắng trong tổng số lệnh Robot đã chốt.</p>
+                                <p className="text-white/40 uppercase font-bold mb-1">{t('success_rate')}</p>
+                                <p className="text-gray-300">{t('win_rate_desc_long')}</p>
                             </div>
                         </div>
                     </div>
@@ -461,64 +460,64 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                     <div className="space-y-4">
                         <div className="p-4 bg-pink-500/10 border border-pink-500/20 rounded-xl">
                             <h3 className="text-pink-400 font-bold mb-2 flex items-center gap-2">
-                                <Activity size={18} /> BOT THEO DÕI BIẾN ĐỘNG
+                                <Activity size={18} /> {t('anomaly_detection_title')}
                             </h3>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                Hệ thống phát hiện sớm các cú "Bơm/Xả" (Pump/Dump) bất thường dựa trên chênh lệch giá % và biến động tương đối (ATR).
+                                {t('anomaly_detection_desc')}
                             </p>
                         </div>
 
                         <div className="space-y-3">
                             <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold text-blue-400 mb-2 uppercase">GIẢI THÍCH CHỈ SỐ</p>
+                                <p className="text-[10px] font-bold text-blue-400 mb-2 uppercase">{t('anomaly_metrics_title')}</p>
                                 <ul className="space-y-2 text-[11px] text-gray-400">
                                     <li className="flex gap-2">
-                                        <b className="text-white min-w-[60px]">Mẫu (N):</b>
-                                        <span>Số lượng biến động được ghi nhận trong hệ thống.</span>
+                                        <b className="text-white min-w-[60px]">{t('anomaly_n_label')}:</b>
+                                        <span>{t('anomaly_n_desc')}</span>
                                     </li>
                                     <li className="flex gap-2">
-                                        <b className="text-white min-w-[60px]">Tỉ lệ hồi:</b>
-                                        <span>Xác suất giá quay về điểm bắt đầu sau khi đột biến (Mean Reversion).</span>
+                                        <b className="text-white min-w-[60px]">{t('anomaly_recovery_rate')}:</b>
+                                        <span>{t('anomaly_recovery_rate_desc')}</span>
                                     </li>
                                     <li className="flex gap-2">
-                                        <b className="text-white min-w-[60px]">Trung bình hồi:</b>
-                                        <span>Thời gian trung bình (phút) để giá phục hồi hoàn toàn. Số càng nhỏ nghĩa là giá hồi càng nhanh.</span>
+                                        <b className="text-white min-w-[60px]">{t('anomaly_avg_recovery_label')}:</b>
+                                        <span>{t('anomaly_avg_recovery_desc')}</span>
                                     </li>
                                 </ul>
                             </div>
 
                             <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold text-yellow-500 mb-2 uppercase">CÁC TRẠNG THÁI</p>
+                                <p className="text-[10px] font-bold text-yellow-500 mb-2 uppercase">{t('anomaly_states_title_long')}</p>
                                 <div className="space-y-2">
                                     <div className="flex items-start gap-2">
-                                        <div className="mt-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-black rounded uppercase">TRACKING</div>
-                                        <p className="text-[10px] text-gray-400"><b>Đang theo dõi:</b> Bot vừa phát hiện giá sập/bơm và đang chờ xem giá có hồi lại hay không.</p>
+                                        <div className="mt-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-black rounded uppercase">{t('anomaly_tracking_label')}</div>
+                                        <p className="text-[10px] text-gray-400"><b>{t('anomaly_tracking_label')}:</b> {t('anomaly_tracking_desc_long')}</p>
                                     </div>
                                     <div className="flex items-start gap-2">
-                                        <div className="mt-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[9px] font-black rounded uppercase">RECOVERED</div>
-                                        <p className="text-[10px] text-gray-400"><b>Đã hồi phục:</b> Giá đã quay lại mức giá trước khi xảy ra biến động.</p>
+                                        <div className="mt-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[9px] font-black rounded uppercase">{t('anomaly_recovered_label')}</div>
+                                        <p className="text-[10px] text-gray-400"><b>{t('anomaly_recovered_label')}:</b> {t('anomaly_recovered_desc_long')}</p>
                                     </div>
                                     <div className="flex items-start gap-2">
-                                        <div className="mt-1 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[9px] font-black rounded uppercase">KHÔNG HỒI PHỤC</div>
-                                        <p className="text-[10px] text-gray-400"><b>Không hồi:</b> Giá không quay lại điểm cũ sau một thời gian theo dõi quy định.</p>
+                                        <div className="mt-1 px-1.5 py-0.5 bg-gray-500/20 text-gray-400 text-[9px] font-black rounded uppercase">{t('anomaly_no_recovery_label')}</div>
+                                        <p className="text-[10px] text-gray-400"><b>{t('anomaly_no_recovery_label')}:</b> {t('anomaly_no_recovery_desc_long')}</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold text-cyan-400 mb-2 uppercase">THỜI GIAN THEO DÕI</p>
+                                <p className="text-[10px] font-bold text-cyan-400 mb-2 uppercase">{t('anomaly_timer_title_long')}</p>
                                 <ul className="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
-                                    <li>• Khung 1m: <b>1 giờ</b></li>
-                                    <li>• Khung 15m: <b>4 giờ</b></li>
-                                    <li>• Khung 1h: <b>24 giờ</b></li>
-                                    <li>• Khung 4h: <b>48 giờ</b></li>
+                                    <li>• {t('tf_1m_timer')}</li>
+                                    <li>• {t('tf_15m_timer')}</li>
+                                    <li>• {t('tf_1h_timer')}</li>
+                                    <li>• {t('tf_4h_timer')}</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                            <p className="text-[10px] font-bold text-blue-400 mb-1 uppercase">CƠ CHẾ KÍCH HOẠT</p>
-                            <p className="text-[10px] text-gray-400 italic">"Bot quét từng giây, phát hiện nến dài gấp 3 lần bình thường (ATR) hoặc vọt ngưỡng % cố định để báo động."</p>
+                            <p className="text-[10px] font-bold text-blue-400 mb-1 uppercase">{t('anomaly_trigger_mechanism')}</p>
+                            <p className="text-[10px] text-gray-400 italic">"{t('anomaly_trigger_desc_long')}"</p>
                         </div>
                     </div>
                 );
@@ -527,16 +526,17 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
 
     const getTitle = () => {
         switch (type) {
-            case 'MA_CROSS': return 'Chiến lược MA Cross';
-            case 'VOLUME': return 'Phân tích Khối lượng';
-            case 'MULTI_TF_MA': return 'Phân tích Đa khung';
-            case 'EMA_TREND': return 'Xu hướng EMA';
-            case 'ICHIMOKU': return 'Mây Ichimoku';
-            case 'DIVERGENCE': return 'Phân tích Phân Kỳ';
-            case 'KEY_LEVELS': return 'Vùng Cản Quan Trọng';
-            case 'FIBONACCI': return 'Bộ tính Fibonacci';
-            case 'ANALYTICS': return 'Trading Analytics';
-            case 'ANOMALY': return 'Bot Theo Dõi Biến Động';
+            case 'COMBO_STRATEGIES': return t('combo_strategies_guide');
+            case 'MA_CROSS': return t('ma_cross_guide');
+            case 'VOLUME': return t('volume_guide');
+            case 'MULTI_TF_MA': return t('multi_tf_ma_guide');
+            case 'EMA_TREND': return t('ema_trend_guide');
+            case 'ICHIMOKU': return t('ichimoku_guide');
+            case 'DIVERGENCE': return t('divergence_guide');
+            case 'KEY_LEVELS': return t('key_levels_guide');
+            case 'FIBONACCI': return t('fibonacci_guide');
+            case 'ANALYTICS': return t('analytics_guide');
+            case 'ANOMALY': return t('anomaly_guide');
         }
     };
 
@@ -551,7 +551,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                         </div>
                         <div>
                             <h2 className="font-black uppercase text-sm tracking-tight">{getTitle()}</h2>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hướng dẫn đọc hiểu</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('guide_modal_subtitle')}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
@@ -568,13 +568,13 @@ export const GuideModal: React.FC<GuideModalProps> = ({ type, onClose }) => {
                 <div className="p-4 border-t border-[var(--color-border)] flex items-center justify-between bg-black/20">
                     <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase italic">
                         <ShieldCheck size={14} className="text-green-500" />
-                        Kiến thức Trading Pro
+                        {t('trading_pro_knowledge')}
                     </div>
                     <button
                         onClick={onClose}
                         className="px-6 py-2 bg-[var(--color-bg-tertiary)] hover:bg-white/10 text-white rounded-xl font-bold transition-all text-xs"
                     >
-                        ĐÃ HIỂU
+                        {t('got_it')}
                     </button>
                 </div>
             </div>

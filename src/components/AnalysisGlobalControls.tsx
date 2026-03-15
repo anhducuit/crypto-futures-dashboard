@@ -1,6 +1,6 @@
-import React from 'react';
-import { Clock, TrendingUp, TrendingDown, Info, BarChart2, Menu, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart2, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { MAAnalysis } from '../hooks/useBinanceKlines';
+import { useTranslation, type Language } from '../utils/translations';
 
 interface AnalysisGlobalControlsProps {
     symbol: string;
@@ -10,6 +10,7 @@ interface AnalysisGlobalControlsProps {
     direction: 'long' | 'short';
     onDirectionChange: (dir: 'long' | 'short') => void;
     maAnalysis: MAAnalysis | null;
+    language: Language;
 }
 
 export const AnalysisGlobalControls: React.FC<AnalysisGlobalControlsProps> = ({
@@ -19,123 +20,121 @@ export const AnalysisGlobalControls: React.FC<AnalysisGlobalControlsProps> = ({
     onTimeframeChange,
     direction,
     onDirectionChange,
-    maAnalysis
+    maAnalysis,
+    language
 }) => {
-    const symbols = ['BTCUSDT', 'ETHUSDT', 'XAUUSDT', 'XAGUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
+    const t = useTranslation(language);
+    const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
     const timeframes = [
-        { id: '1', label: '1m' },
-        { id: '15', label: '15m' },
-        { id: '60', label: '1h' },
-        { id: '240', label: '4h' }
+        { id: '1', label: '1M' },
+        { id: '15', label: '15M' },
+        { id: '60', label: '1H' },
+        { id: '240', label: '4H' }
     ];
 
     return (
-        <div className="card !p-0 overflow-hidden border border-[var(--color-golden)]/30 shadow-lg shadow-[var(--color-golden)]/5">
-            <div className="flex flex-col md:flex-row items-stretch md:items-center bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
-                {/* Symbol Selector Section */}
-                <div className="flex items-center gap-3 px-5 py-3 border-r border-[var(--color-border)] bg-[var(--color-golden)]/5 group relative">
-                    <div className="w-8 h-8 rounded-full bg-[var(--color-golden)]/10 flex items-center justify-center border border-[var(--color-golden)]/20">
-                        <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                    </div>
+        <div className="card flare-border !p-8 reveal shadow-2xl shadow-black/40">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+                
+                {/* Left Cluster: Instrument & Resolution */}
+                <div className="flex flex-wrap items-center gap-10">
+                    {/* Instrument Selector */}
                     <div className="flex flex-col">
-                        <label className="text-[10px] text-[var(--color-text-secondary)] uppercase font-bold tracking-wider leading-none mb-1 cursor-pointer">Chọn Coin</label>
-                        <select 
-                            value={symbol}
-                            onChange={(e) => onSymbolChange(e.target.value)}
-                            className="bg-transparent text-lg font-black text-white hover:text-[var(--color-golden)] transition-colors outline-none cursor-pointer appearance-none pr-6"
-                        >
-                            {symbols.map(s => (
-                                <option key={s} value={s} className="bg-[var(--color-bg-secondary)] text-white font-sans text-sm">
-                                    {s.replace('USDT', '')}
-                                </option>
+                        <h2 className="text-[10px] font-black text-[var(--color-flare)] tracking-[0.3em] mb-3 uppercase">{t('protocol')}</h2>
+                        <div className="flex items-center gap-3 bg-[var(--color-bg-tertiary)] p-1.5 rounded-[2px] border border-[var(--color-border)]">
+                            <div className="relative group">
+                                <select 
+                                    value={symbol}
+                                    onChange={(e) => onSymbolChange(e.target.value)}
+                                    className="bg-transparent pl-4 pr-8 py-1.5 text-lg font-black text-white outline-none cursor-pointer appearance-none transition-colors hover:text-[var(--color-flare)]"
+                                >
+                                    {symbols.map(s => (
+                                        <option key={s} value={s} className="bg-[var(--color-bg-secondary)] text-white">
+                                            {s.replace('USDT', '')}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-silver)] opacity-50">
+                                    <BarChart2 size={12} className="rotate-90" />
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => onSymbolChange(symbol)}
+                                className="p-2 text-[var(--color-silver)] hover:text-white transition-colors border-l border-[var(--color-border)]"
+                                title="Sync Engine"
+                            >
+                                <RefreshCw size={14} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="w-[1px] h-12 bg-[var(--color-border)] hidden xl:block"></div>
+
+                    {/* Resolution Selector */}
+                    <div className="flex flex-col">
+                        <h2 className="text-[10px] font-black text-[var(--color-silver)] tracking-[0.3em] mb-3 uppercase opacity-50">{t('resolution')}</h2>
+                        <div className="flex p-1 bg-[var(--color-bg-tertiary)] rounded-[2px] border border-[var(--color-border)]">
+                            {timeframes.map((tf) => (
+                                <button
+                                    key={tf.id}
+                                    onClick={() => onTimeframeChange(tf.id)}
+                                    className={`px-5 py-2 rounded-[2px] text-[10px] font-black tracking-widest transition-all duration-300 ${
+                                        activeTimeframe === tf.id
+                                            ? 'bg-[var(--color-white)] text-black shadow-lg shadow-white/5'
+                                            : 'text-[var(--color-silver)] hover:text-white hover:bg-white/5'
+                                    }`}
+                                >
+                                    {tf.label}
+                                </button>
                             ))}
-                        </select>
-                        {/* Custom Dropdown Arrow */}
-                        <div className="absolute right-4 bottom-4 pointer-events-none text-[var(--color-golden)] opacity-50 group-hover:opacity-100 transition-opacity">
-                            <Menu size={10} className="rotate-90" />
                         </div>
                     </div>
                 </div>
 
-                {/* Main Controls Wrapper */}
-                <div className="flex-1 flex flex-col md:flex-row items-center">
-                    <div className="flex-1 flex flex-col sm:flex-row items-center gap-4 px-6 py-3">
-                        {/* Timeframe Selector Group */}
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
-                                <Clock size={14} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Khung:</span>
-                            </div>
-                            <div className="flex p-0.5 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] w-full sm:w-auto">
-                                {timeframes.map((tf) => (
-                                    <button
-                                        key={tf.id}
-                                        onClick={() => onTimeframeChange(tf.id)}
-                                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex-1 sm:flex-none ${
-                                            activeTimeframe === tf.id
-                                                ? 'bg-[var(--color-golden)] text-black shadow-inner shadow-black/10'
-                                                : 'text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5'
-                                        }`}
-                                    >
-                                        {tf.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="hidden sm:block w-px h-6 bg-[var(--color-border)] opacity-50 mx-2"></div>
-
-                        {/* Direction Selector Group */}
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
+                {/* Right Cluster: Bias & Integrity */}
+                <div className="flex flex-wrap items-center gap-10">
+                    {/* Direction Selection */}
+                    <div className="flex flex-col">
+                        <h2 className="text-[10px] font-black text-[var(--color-silver)] tracking-[0.3em] mb-3 uppercase opacity-50">{t('active_bias')}</h2>
+                        <div className="flex p-1 bg-[var(--color-bg-tertiary)] rounded-[2px] border border-[var(--color-border)]">
+                            <button
+                                onClick={() => onDirectionChange('long')}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-[2px] text-[10px] font-black tracking-widest transition-all duration-500 ${
+                                    direction === 'long'
+                                        ? 'bg-[var(--color-long)] text-black shadow-lg shadow-green-500/10'
+                                        : 'text-[var(--color-silver)] hover:text-[var(--color-long)]'
+                                }`}
+                            >
                                 <TrendingUp size={14} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">Hướng:</span>
-                            </div>
-                            <div className="flex p-0.5 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] w-full sm:w-auto">
-                                <button
-                                    onClick={() => onDirectionChange('long')}
-                                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-bold transition-all flex-1 sm:flex-none ${
-                                        direction === 'long'
-                                            ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
-                                            : 'text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5'
-                                    }`}
-                                >
-                                    <TrendingUp size={14} />
-                                    LONG
-                                </button>
-                                <button
-                                    onClick={() => onDirectionChange('short')}
-                                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-bold transition-all flex-1 sm:flex-none ${
-                                        direction === 'short'
-                                            ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                                            : 'text-[var(--color-text-secondary)] hover:text-white hover:bg-white/5'
-                                    }`}
-                                >
-                                    <TrendingDown size={14} />
-                                    SHORT
-                                </button>
-                            </div>
+                                BULLISH
+                            </button>
+                            <button
+                                onClick={() => onDirectionChange('short')}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-[2px] text-[10px] font-black tracking-widest transition-all duration-500 ${
+                                    direction === 'short'
+                                        ? 'bg-[var(--color-short)] text-white shadow-lg shadow-red-500/10'
+                                        : 'text-[var(--color-silver)] hover:text-[var(--color-short)]'
+                                }`}
+                            >
+                                <TrendingDown size={14} />
+                                BEARISH
+                            </button>
                         </div>
                     </div>
 
-                    {/* Conflict Warning Banner - Moved to the right */}
+                    {/* Conflict Telemetry */}
                     {maAnalysis && maAnalysis.overallBias !== 'neutral' && maAnalysis.overallBias !== direction && (
-                        <div className="flex items-center gap-2 px-4 py-3 bg-red-500/20 border-l border-[var(--color-border)] animate-pulse lg:min-w-[300px]">
-                            <AlertTriangle size={14} className="text-red-500 animate-bounce" />
-                            <div className="text-[10px] sm:text-xs whitespace-nowrap">
-                                <span className="font-bold text-red-400 uppercase">Cảnh Báo Xung Đột: </span>
-                                <span className="text-white opacity-90">
-                                    Robot báo <b className="text-red-400 uppercase">{maAnalysis.overallBias}</b>!
-                                </span>
+                        <div className="flex flex-col lg:min-w-[240px]">
+                            <h2 className="text-[10px] font-black text-[var(--color-short)] tracking-[0.3em] mb-3 uppercase animate-pulse">{t('integrity_warning')}</h2>
+                            <div className="flex items-center gap-3 px-5 py-2.5 bg-red-500/5 border border-red-500/20 rounded-[2px]">
+                                <AlertTriangle size={14} className="text-[var(--color-short)] animate-bounce" />
+                                <div className="text-[10px] uppercase font-black tracking-tight">
+                                    <span className="text-[var(--color-short)]">{t('bias_mismatch')}: </span>
+                                    <span className="text-white opacity-80">{t('robot_suggests')} {maAnalysis.overallBias}</span>
+                                </div>
                             </div>
                         </div>
                     )}
-                </div>
-
-                {/* Dashboard Tip */}
-                <div className="hidden lg:flex items-center gap-2 px-6 py-3 bg-blue-500/5 text-blue-400 text-[10px] italic border-l border-[var(--color-border)] max-w-sm">
-                    <Info size={12} className="flex-shrink-0" />
-                    <span>Thay đổi tại đây sẽ đồng bộ toàn bộ các bảng phân tích bên dưới.</span>
                 </div>
             </div>
         </div>

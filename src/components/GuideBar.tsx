@@ -2,22 +2,28 @@ import React, { useState } from 'react';
 import { HelpCircle, Zap, BarChart3, Layers, TrendingUp, Sparkles, Activity, Target, PieChart, Swords } from 'lucide-react';
 import { GuideModal } from './GuideModal';
 import type { GuideType } from './GuideModal';
+import { useTranslation, type Language } from '../utils/translations';
 
-export const GuideBar: React.FC = () => {
+interface GuideBarProps {
+    language: Language;
+}
+
+export const GuideBar: React.FC<GuideBarProps> = ({ language }) => {
     const [activeGuide, setActiveGuide] = useState<GuideType | null>(null);
+    const t = useTranslation(language);
 
     const guides: { id: GuideType; label: string; icon: React.ReactNode; color: string }[] = [
-        { id: 'COMBO_STRATEGIES', label: '5 Combo Chiến Lược', icon: <Swords size={14} />, color: 'text-red-500' },
-        { id: 'MA_CROSS', label: 'Chiến lược MA Cross', icon: <Zap size={14} />, color: 'text-blue-400' },
-        { id: 'VOLUME', label: 'Volume Analysis', icon: <BarChart3 size={14} />, color: 'text-orange-400' },
-        { id: 'MULTI_TF_MA', label: 'Phân tích Đa khung', icon: <Layers size={14} />, color: 'text-purple-400' },
-        { id: 'EMA_TREND', label: 'Xu hướng EMA', icon: <TrendingUp size={14} />, color: 'text-emerald-400' },
-        { id: 'ICHIMOKU', label: 'Mây Ichimoku', icon: <Sparkles size={14} />, color: 'text-indigo-400' },
-        { id: 'DIVERGENCE', label: 'Phân tích Phân Kỳ', icon: <Activity size={14} />, color: 'text-pink-400' },
-        { id: 'KEY_LEVELS', label: 'Vùng Cản', icon: <Target size={14} />, color: 'text-yellow-400' },
-        { id: 'FIBONACCI', label: 'Bộ tính Fibonacci', icon: <Sparkles size={14} />, color: 'text-amber-500' },
-        { id: 'ANALYTICS', label: 'Trading Analytics', icon: <PieChart size={14} />, color: 'text-cyan-400' },
-        { id: 'ANOMALY', label: 'Bot Biến Động', icon: <Activity size={14} />, color: 'text-pink-400' },
+        { id: 'COMBO_STRATEGIES', label: t('combo_strategies_guide'), icon: <Swords size={14} />, color: 'text-red-500' },
+        { id: 'MA_CROSS', label: t('ma_cross_guide'), icon: <Zap size={14} />, color: 'text-blue-400' },
+        { id: 'VOLUME', label: t('volume_guide'), icon: <BarChart3 size={14} />, color: 'text-orange-400' },
+        { id: 'MULTI_TF_MA', label: t('multi_tf_ma_guide'), icon: <Layers size={14} />, color: 'text-purple-400' },
+        { id: 'EMA_TREND', label: t('ema_trend_guide'), icon: <TrendingUp size={14} />, color: 'text-emerald-400' },
+        { id: 'ICHIMOKU', label: t('ichimoku_guide'), icon: <Sparkles size={14} />, color: 'text-indigo-400' },
+        { id: 'DIVERGENCE', label: t('divergence_guide'), icon: <Activity size={14} />, color: 'text-pink-400' },
+        { id: 'KEY_LEVELS', label: t('key_levels_guide'), icon: <Target size={14} />, color: 'text-yellow-400' },
+        { id: 'FIBONACCI', label: t('fibonacci_guide'), icon: <Sparkles size={14} />, color: 'text-amber-500' },
+        { id: 'ANALYTICS', label: t('analytics_guide'), icon: <PieChart size={14} />, color: 'text-cyan-400' },
+        { id: 'ANOMALY', label: t('anomaly_guide'), icon: <Activity size={14} />, color: 'text-pink-400' },
     ];
 
     return (
@@ -26,7 +32,7 @@ export const GuideBar: React.FC = () => {
                 <div className="w-full flex items-center gap-3 min-w-max px-4">
                     <div className="flex items-center gap-2 pr-4 border-r border-[var(--color-border)]">
                         <HelpCircle size={16} className="text-[var(--color-golden)]" />
-                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Hướng dẫn:</span>
+                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{t('guide')}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -52,6 +58,7 @@ export const GuideBar: React.FC = () => {
                 <GuideModal
                     type={activeGuide}
                     onClose={() => setActiveGuide(null)}
+                    language={language}
                 />
             )}
         </>

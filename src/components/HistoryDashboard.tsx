@@ -1,10 +1,8 @@
-/**
- * Copyright © 2026 Anh Duc Trader. All rights reserved.
- */
 import React, { useEffect, useState } from 'react';
-import { History, CheckCircle2, XCircle, Clock, Trash2, Share2 } from 'lucide-react';
+import { History, CheckCircle2, XCircle, Clock, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PnLShareModal } from './PnLShareModal';
+import { useTranslation, type Language } from '../utils/translations';
 
 interface HistoryItem {
     id: string;
@@ -25,9 +23,10 @@ interface HistoryItem {
 
 interface HistoryDashboardProps {
     symbol?: string;
+    language: Language;
 }
 
-export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) => {
+export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol, language }) => {
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
@@ -36,6 +35,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [sharingItem, setSharingItem] = useState<HistoryItem | null>(null);
+    const t = useTranslation(language);
     const ITEMS_PER_PAGE = 15;
 
     const symbols = ['All', 'BTCUSDT', 'ETHUSDT', 'XAUUSDT', 'XAGUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
@@ -107,17 +107,8 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
         setPage(1);
     };
 
-    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-    const deleteItem = async (id: string) => {
-        try {
-            const { error } = await supabase.from('trading_history').delete().eq('id', id);
-            if (error) throw error;
-            setHistory(history.filter(item => item.id !== id));
-        } catch (e) {
-            console.error('Error deleting item:', e);
-        }
-    };
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
     const [successRate, setSuccessRate] = useState(0);
     const [lossRate, setLossRate] = useState(0);
@@ -172,164 +163,168 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
     };
 
     return (
-        <div className="card h-full flex flex-col">
-            <div className="card-header justify-between">
-                <div className="flex items-center gap-2">
-                    <History size={16} className="text-[var(--color-golden)]" />
-                    LỊCH SỬ ĐỀ XUẤT ({localSymbol})
+        <div className="card h-full flex flex-col overflow-hidden p-0! flare-border shadow-2xl reveal">
+            <div className="card-header justify-between p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] mb-0">
+                <div className="flex items-center gap-3">
+                    <History size={14} className="text-[var(--color-flare)]" />
+                    <span className="font-black tracking-[0.2em] uppercase text-[10px] text-white italic">
+                        {t('history_title')} [{localSymbol === 'All' ? 'GLOBAL' : localSymbol.replace('USDT', '')}]
+                    </span>
                 </div>
                 <div className="flex gap-2">
                     <select
                         value={localSymbol}
                         onChange={(e) => handleSymbolChange(e.target.value)}
-                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none text-[var(--color-golden)] font-bold min-w-[70px]"
+                        className="bg-[var(--color-bg-secondary)] text-[9px] font-black px-3 py-1 rounded-[1px] border border-white/10 outline-none min-w-[90px] focus:border-[var(--color-flare)] transition-all uppercase tracking-widest italic"
                     >
                         {symbols.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? '🪙 ALL' : s.replace('USDT', '')}</option>
+                            <option key={s} value={s} className="bg-[var(--color-bg-secondary)] text-white">
+                                {s === 'All' ? t('all_units') : `${t('unit_prefix')}${s.replace('USDT', '')}`}
+                            </option>
                         ))}
                     </select>
 
                     <select
                         value={filter}
                         onChange={(e) => handleFilterChange(e.target.value)}
-                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
+                        className="bg-[var(--color-bg-secondary)] text-[9px] font-black px-3 py-1 rounded-[1px] border border-white/10 outline-none focus:border-[var(--color-flare)] uppercase tracking-widest italic"
                     >
-                        <option value="All">⏱️ All</option>
-                        <option value="1m">1m</option>
-                        <option value="15m">15m</option>
-                        <option value="1h">1h</option>
-                        <option value="4h">4h</option>
+                        <option value="All" className="bg-[var(--color-bg-secondary)] text-white">{t('all_tf')}</option>
+                        <option value="1m" className="bg-[var(--color-bg-secondary)] text-white">M1</option>
+                        <option value="15m" className="bg-[var(--color-bg-secondary)] text-white">M15</option>
+                        <option value="1h" className="bg-[var(--color-bg-secondary)] text-white">H1</option>
+                        <option value="4h" className="bg-[var(--color-bg-secondary)] text-white">H4</option>
                     </select>
 
                     <select
                         value={statusFilter}
                         onChange={(e) => handleStatusFilterChange(e.target.value)}
-                        className="bg-slate-800 text-[10px] px-2 py-1 rounded border border-slate-700 outline-none"
+                        className="bg-[var(--color-bg-secondary)] text-[9px] font-black px-3 py-1 rounded-[1px] border border-white/10 outline-none focus:border-[var(--color-flare)] uppercase tracking-widest italic"
                     >
-                        <option value="All">Status</option>
-                        <option value="SUCCESS">WIN</option>
-                        <option value="FAILED">LOSS</option>
-                        <option value="PENDING">PENDING</option>
+                        <option value="All" className="bg-[var(--color-bg-secondary)] text-white">{t('all_status')}</option>
+                        <option value="SUCCESS" className="bg-[var(--color-bg-secondary)] text-white">{t('win_logs')}</option>
+                        <option value="FAILED" className="bg-[var(--color-bg-secondary)] text-white">{t('loss_logs')}</option>
+                        <option value="PENDING" className="bg-[var(--color-bg-secondary)] text-white">{t('active_vouchers')}</option>
                     </select>
                 </div>
             </div>
 
-            {/* Sticky Stats Row - Compact */}
+            {/* Sticky Stats Row - Overhauled to Lab Style */}
             {!loading && history.length > 0 && (
-                <div className="flex items-center gap-4 px-3 py-2 mb-3 bg-slate-800/40 rounded-lg border border-slate-700/50 flex-shrink-0 text-[10px]">
-                    <div className="flex items-center gap-2">
-                        <span className="text-slate-400 uppercase tracking-tighter">Thắng ({filter}):</span>
-                        <span className="text-sm font-black text-green-400">{successRate.toFixed(1)}%</span>
-                        <span className="text-slate-500">({winCount})</span>
+                <div className="flex items-center gap-6 px-4 py-3 border-b border-white/5 bg-black/20 flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black text-[var(--color-silver)] uppercase tracking-widest opacity-40 italic">{t('win_efficiency')}:</span>
+                        <span className="text-base font-black text-[var(--color-long)] font-mono tracking-tighter shadowed-text">{successRate.toFixed(1)}%</span>
+                        <span className="text-[10px] font-bold text-[var(--color-silver)] opacity-20 font-mono">N={winCount}</span>
                     </div>
-                    <div className="w-px h-3 bg-slate-700"></div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-slate-400 uppercase tracking-tighter">Thua ({filter}):</span>
-                        <span className="text-sm font-black text-red-400">{lossRate.toFixed(1)}%</span>
-                        <span className="text-slate-500">({lossCount})</span>
+                    <div className="w-[1px] h-4 bg-white/5"></div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black text-[var(--color-silver)] uppercase tracking-widest opacity-40 italic">{t('loss_delta')}:</span>
+                        <span className="text-base font-black text-[var(--color-short)] font-mono tracking-tighter shadowed-text">{lossRate.toFixed(1)}%</span>
+                        <span className="text-[10px] font-bold text-[var(--color-silver)] opacity-20 font-mono">N={lossCount}</span>
                     </div>
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
                 {loading ? (
-                    <div className="text-center py-4 text-slate-500">Đang tải...</div>
+                    <div className="text-center py-12 text-[10px] font-black text-[var(--color-silver)] italic tracking-[0.4em] animate-pulse">{t('syncing_logs')}</div>
                 ) : history.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-xs">Chưa có lịch sử đề xuất</div>
+                    <div className="text-center py-12 text-[10px] font-black text-[var(--color-silver)] italic tracking-[0.4em] opacity-40">{t('no_execution_data')}</div>
                 ) : (
                     <>
-
                         {history.map((item) => (
                             <div
                                 key={item.id}
-                                className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg space-y-2 border border-slate-700/30 relative group"
+                                className="p-4 bg-white/[0.02] rounded-[1px] space-y-4 border border-white/5 hover:border-[var(--color-flare)]/30 transition-all duration-500 relative group overflow-hidden"
                             >
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${item.signal === 'LONG' ? 'bg-green-500/20 text-green-400' :
-                                            item.signal === 'SHORT' ? 'bg-red-500/20 text-red-400' :
-                                                'bg-slate-500/20 text-slate-400'
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-flare)] opacity-[0.02] blur-3xl -translate-y-16 translate-x-16 pointer-events-none"></div>
+                                
+                                <div className="flex justify-between items-start relative z-10">
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-[1px] border italic tracking-widest uppercase ${item.signal === 'LONG' ? 'border-[var(--color-long)]/30 bg-[var(--color-long)]/10 text-[var(--color-long)]' :
+                                            item.signal === 'SHORT' ? 'border-[var(--color-short)]/30 bg-[var(--color-short)]/10 text-[var(--color-short)]' :
+                                                'border-white/20 bg-white/5 text-[var(--color-silver)]'
                                             }`}>
-                                            {item.signal === 'NEUTRAL' ? 'SIDELINES' : item.signal}
+                                            {item.signal === 'NEUTRAL' ? t('sidelines') : item.signal}
                                         </span>
-                                        <span className="text-xs font-bold">{item.symbol}</span>
+                                        <span className="text-[13px] font-black text-white tracking-[0.1em] italic">{item.symbol.replace('USDT', '')}</span>
                                         {item.trade_id && (
-                                            <span className="text-[10px] font-mono text-[var(--color-golden)] bg-[var(--color-golden)]/10 px-1 rounded">
-                                                #{item.trade_id}
+                                            <span className="text-[9px] font-black font-mono text-[var(--color-flare)] bg-[var(--color-flare)]/10 px-1.5 py-0.5 rounded-[1px] tracking-widest italic opacity-60">
+                                                ID_{item.trade_id}
                                             </span>
                                         )}
                                         {item.strategy_name && (
-                                            <span className="text-[9px] font-extrabold text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded-md border border-blue-400/20 uppercase tracking-tighter">
-                                                {item.strategy_name.split('(')[0].trim()}
+                                            <span className="hidden sm:inline-block text-[8px] font-black text-[var(--color-flare)] bg-white/5 px-2 py-1 rounded-[1px] border border-white/10 uppercase tracking-widest italic opacity-40 group-hover:opacity-80 transition-opacity">
+                                                {t('protocol')}: {t('protocol', item.strategy_name)}
                                             </span>
                                         )}
-                                        <span className="text-[10px] text-slate-500">{item.timeframe}</span>
-                                        {item.pnl_reason?.includes('🛡️') && (
-                                            <span className="flex items-center gap-1 text-[8px] font-bold text-green-400 bg-green-400/10 px-1 rounded-full border border-green-400/20">
-                                                🛡️ [BE]
-                                            </span>
-                                        )}
+                                        <span className="text-[10px] font-black text-[var(--color-silver)] opacity-30 italic">{item.timeframe}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {item.status === 'SUCCESS' ? (
-                                            <CheckCircle2 size={14} className="text-green-500" />
-                                        ) : item.status === 'FAILED' ? (
-                                            <XCircle size={14} className="text-red-500" />
-                                        ) : (
-                                            <Clock size={14} className="text-yellow-500 animate-pulse" />
-                                        )}
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center px-2 py-1 bg-black/40 border border-white/5 rounded-[1px] scale-90 group-hover:scale-100 transition-transform duration-500">
+                                            {item.status === 'SUCCESS' ? (
+                                                <div className="flex items-center gap-2 text-[var(--color-long)]">
+                                                    <CheckCircle2 size={10} strokeWidth={3} />
+                                                    <span className="text-[8px] font-black tracking-widest italic">{t('confirmed').toUpperCase()}</span>
+                                                </div>
+                                            ) : item.status === 'FAILED' ? (
+                                                <div className="flex items-center gap-2 text-[var(--color-short)]">
+                                                    <XCircle size={10} strokeWidth={3} />
+                                                    <span className="text-[8px] font-black tracking-widest italic">{t('liquidated').toUpperCase()}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 text-[var(--color-flare)] animate-pulse">
+                                                    <Clock size={10} strokeWidth={3} />
+                                                    <span className="text-[8px] font-black tracking-widest italic">{t('pending_exec').toUpperCase()}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                         {item.status !== 'PENDING' && (
                                             <button
                                                 onClick={() => setSharingItem(item)}
-                                                className="p-1 hover:text-[var(--color-golden)] transition-all"
-                                                title="Chia sẻ PnL"
+                                                className="p-1 text-[var(--color-silver)] opacity-30 hover:opacity-100 hover:text-[var(--color-flare)] transition-all"
                                             >
                                                 <Share2 size={12} />
                                             </button>
                                         )}
-                                        <button
-                                            onClick={() => deleteItem(item.id)}
-                                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all"
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">Entry:</span>
-                                        <span className="text-slate-300 font-bold">${Number(item.price_at_signal).toFixed(2)}</span>
+                                <div className="grid grid-cols-3 gap-4 text-[10px] relative z-10 border-t border-white/5 pt-3">
+                                    <div className="space-y-0.5">
+                                        <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('entry')}</span>
+                                        <div className="text-[11px] font-black text-white font-mono tracking-widest italic">${Number(item.price_at_signal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">Volume:</span>
-                                        <span className={`font-bold ${item.volume_ratio > 1.2 ? 'text-blue-400' : 'text-slate-400'}`}>
-                                            {item.volume_ratio ? item.volume_ratio.toFixed(2) : '1.00'}x
-                                        </span>
+                                    <div className="space-y-0.5">
+                                        <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('target')}</span>
+                                        <div className="text-[11px] font-black text-[var(--color-long)] font-mono tracking-widest italic">${Number(item.target_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">Target:</span>
-                                        <span className="text-green-500/80">${Number(item.target_price).toFixed(2)}</span>
+                                    <div className="space-y-0.5">
+                                        <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('stop_loss')}</span>
+                                        <div className="text-[11px] font-black text-[var(--color-short)] font-mono tracking-widest italic">${Number(item.stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">RSI:</span>
-                                        <span className="text-slate-300">{item.rsi ? item.rsi.toFixed(1) : '--'}</span>
+                                    <div className="space-y-0.5">
+                                        <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('vol_impact')}</span>
+                                        <div className={`text-[9px] font-black font-mono tracking-widest italic ${item.volume_ratio > 1.2 ? 'text-[var(--color-flare)]' : 'text-white/40'}`}>
+                                            {item.volume_ratio ? item.volume_ratio.toFixed(2) : '1.00'} [X]
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">StopLoss:</span>
-                                        <span className="text-red-500/80">${Number(item.stop_loss).toFixed(2)}</span>
+                                    <div className="space-y-0.5">
+                                        <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('engine_rsi')}</span>
+                                        <div className="text-[9px] font-black text-white font-mono tracking-widest italic">{item.rsi ? item.rsi.toFixed(1) : '---'}</div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">Time:</span>
-                                        <span className="text-slate-400">
+                                    <div className="space-y-0.5">
+                                        <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('temporal_marker')}</span>
+                                        <div className="text-[9px] font-black text-white/30 font-mono tracking-widest italic uppercase">
                                             {(() => {
                                                 const d = new Date(item.created_at);
                                                 const hh = d.getHours().toString().padStart(2, '0');
                                                 const mm = d.getMinutes().toString().padStart(2, '0');
                                                 const day = d.getDate().toString().padStart(2, '0');
                                                 const mo = (d.getMonth() + 1).toString().padStart(2, '0');
-                                                return `${hh}:${mm} ${day}/${mo}`;
+                                                return `${hh}:${mm} // ${day}.${mo}`;
                                             })()}
-                                        </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -338,42 +333,48 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol }) =>
                 )}
             </div>
 
-            {/* Fixed Pagination Bar */}
+            {/* Pagination Overhaul - Minimal & Clinical */}
             {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-1 py-4 border-t border-slate-800 bg-[var(--color-bg-secondary)] mt-auto px-4">
-                    <button
-                        onClick={() => setPage(1)}
-                        disabled={page === 1}
-                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                    >
-                        Đầu
-                    </button>
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                    >
-                        Trước
-                    </button>
+                <div className="flex justify-between items-center gap-4 py-3 px-5 border-t border-white/5 bg-black/40 mt-auto">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setPage(1)}
+                            disabled={page === 1}
+                            className="px-2 py-1 hover:bg-[var(--color-flare)]/10 disabled:opacity-10 rounded-[1px] text-[8px] font-black text-[var(--color-silver)] border border-white/10 hover:border-[var(--color-flare)]/30 transition-all uppercase tracking-widest italic"
+                        >
+                            {t('page_head')}
+                        </button>
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-2 py-1 hover:bg-[var(--color-flare)]/10 disabled:opacity-10 rounded-[1px] text-[8px] font-black text-[var(--color-silver)] border border-white/10 hover:border-[var(--color-flare)]/30 transition-all uppercase tracking-widest italic"
+                        >
+                            {t('page_prev')}
+                        </button>
+                    </div>
 
-                    <span className="px-3 text-[10px] text-slate-400">
-                        Trang <span className="text-[var(--color-golden)] font-bold">{page}</span> / {totalPages}
-                    </span>
+                    <div className="text-[8px] font-black text-[var(--color-silver)] uppercase tracking-[0.2em] italic flex items-center gap-2">
+                        <span className="opacity-20">{t('sector_prefix')}</span>
+                        <span className="text-[var(--color-flare)]">{page}</span>
+                        <span className="opacity-20">/ {totalPages}</span>
+                    </div>
 
-                    <button
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                    >
-                        Sau
-                    </button>
-                    <button
-                        onClick={() => setPage(totalPages)}
-                        disabled={page === totalPages}
-                        className="px-2 py-1 bg-slate-800 rounded text-[10px] disabled:opacity-30 hover:bg-slate-700 transition-colors"
-                    >
-                        Cuối
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="px-2 py-1 hover:bg-[var(--color-flare)]/10 disabled:opacity-10 rounded-[1px] text-[8px] font-black text-[var(--color-silver)] border border-white/10 hover:border-[var(--color-flare)]/30 transition-all uppercase tracking-widest italic"
+                        >
+                            {t('page_next')}
+                        </button>
+                        <button
+                            onClick={() => setPage(totalPages)}
+                            disabled={page === totalPages}
+                            className="px-2 py-1 hover:bg-[var(--color-flare)]/10 disabled:opacity-10 rounded-[1px] text-[8px] font-black text-[var(--color-silver)] border border-white/10 hover:border-[var(--color-flare)]/30 transition-all uppercase tracking-widest italic"
+                        >
+                            {t('page_tail')}
+                        </button>
+                    </div>
                 </div>
             )}
 

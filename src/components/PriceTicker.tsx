@@ -11,7 +11,7 @@ export const PriceTicker: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 overflow-hidden relative mx-4 hidden md:block group">
+        <div className="flex-1 overflow-hidden relative mx-6 hidden md:block group [mask-image:linear-gradient(to_right,transparent,white_20%,white_80%,transparent)]">
             <div className="flex animate-ticker hover:pause-ticker whitespace-nowrap gap-8 py-1 items-center">
                 {/* Double the list for infinite scrolling effect */}
                 {[...symbols, ...symbols].map((symbol, idx) => {

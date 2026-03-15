@@ -25,7 +25,6 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
         const value = e.target.value.toUpperCase();
         setInputValue(value);
 
-        // Debounce the symbol change
         if (debounceRef.current) {
             clearTimeout(debounceRef.current);
         }
@@ -37,29 +36,28 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
         }, 500);
     };
 
-    const commonSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT'];
+    const commonSymbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'NEARUSDT'];
 
     return (
         <div className="space-y-3">
-            <div className="relative">
+            <div className="relative group">
                 <input
                     type="text"
                     value={inputValue}
                     onChange={handleInputChange}
-                    placeholder="Nhập Symbol (VD: BTCUSDT)"
-                    className="pl-4 pr-12 w-full uppercase"
+                    placeholder="PROTOCOL_ENTRY (e.g. BTCUSDT)"
+                    className="w-full bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-[2px] pl-4 pr-12 py-2 text-sm font-black tracking-widest uppercase focus:border-[var(--color-flare)] focus:ring-1 focus:ring-[var(--color-flare)]/20 transition-all outline-none placeholder:opacity-30"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
                     {isConnected ? (
-                        <div className="flex items-center gap-1.5 text-green-500">
-                            <div className="status-dot connected"></div>
-                            <Wifi size={16} />
+                        <div className="flex items-center gap-2 text-[var(--color-long)]">
+                            <Wifi size={16} className="animate-pulse" />
                         </div>
                     ) : (
                         <button
                             onClick={onReconnect}
-                            className="flex items-center gap-1.5 text-red-500 hover:text-red-400 transition-colors"
-                            title="Kết nối lại"
+                            className="flex items-center gap-2 text-[var(--color-short)] hover:text-red-400 transition-colors"
+                            title="Signal Re-entry"
                         >
                             <WifiOff size={16} />
                             <RefreshCw size={14} className="hover:animate-spin" />
@@ -76,12 +74,12 @@ export const SymbolInput: React.FC<SymbolInputProps> = ({
                             setInputValue(sym);
                             onSymbolChange(sym);
                         }}
-                        className={`px-3 py-1.5 text-sm rounded-lg transition-all ${symbol === sym
-                            ? 'bg-[var(--color-golden)] text-black font-semibold'
-                            : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border)]'
+                        className={`px-3 py-1 text-[9px] font-black tracking-widest rounded-[2px] transition-all duration-300 ${symbol === sym
+                            ? 'bg-[var(--color-flare)] text-black shadow-lg shadow-orange-500/20'
+                            : 'bg-[var(--color-bg-tertiary)] text-[var(--color-silver)] hover:bg-[var(--color-border)] hover:text-white'
                             }`}
                     >
-                        {sym}
+                        {sym.replace('USDT', '')}
                     </button>
                 ))}
             </div>

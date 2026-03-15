@@ -256,10 +256,10 @@ function findSwingPoints(klines: KlineData[]): { swingHigh: number; swingLow: nu
 }
 
 const timeframeConfigs = [
-    { interval: '1m', label: '1 Phút', limit: 500, tvKey: '1' },
-    { interval: '15m', label: '15 Phút', limit: 500, tvKey: '15' },
-    { interval: '1h', label: '1 Giờ', limit: 500, tvKey: '60' },
-    { interval: '4h', label: '4 Giờ', limit: 500, tvKey: '240' },
+    { interval: '1m', label: 'tf_1m', limit: 500, tvKey: '1' },
+    { interval: '15m', label: 'tf_15m', limit: 500, tvKey: '15' },
+    { interval: '1h', label: 'tf_1h', limit: 500, tvKey: '60' },
+    { interval: '4h', label: 'tf_4h', limit: 500, tvKey: '240' },
 ];
 
 export function useBinanceKlines(symbol: string) {
