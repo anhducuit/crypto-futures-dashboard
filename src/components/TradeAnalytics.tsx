@@ -106,6 +106,7 @@ export const TradeAnalytics: React.FC = () => {
                                 <th className="px-3 py-2">Coin</th>
                                 <th className="px-3 py-2">Lệnh</th>
                                 <th className="px-3 py-2">Thắng</th>
+                                <th className="px-3 py-2">Thua</th>
                                 <th className="px-3 py-2">Tỷ lệ</th>
                                 <th className="px-3 py-2 text-center"></th>
                             </tr>
@@ -116,6 +117,7 @@ export const TradeAnalytics: React.FC = () => {
                                     <td className="px-3 py-2 font-bold text-white italic">{s.symbol}</td>
                                     <td className="px-3 py-2">{s.total}</td>
                                     <td className="px-3 py-2 text-green-400 font-bold">{s.wins}</td>
+                                    <td className="px-3 py-2 text-red-400 font-bold">{s.losses}</td>
                                     <td className="px-3 py-2 font-mono">{s.winRate.toFixed(0)}%</td>
                                     <td className="px-3 py-2">
                                         <button onClick={() => setShareModalCoin(s)} className="p-1 hover:text-[var(--color-golden)]">
