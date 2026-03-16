@@ -1,6 +1,6 @@
-import { LayoutDashboard, History, Zap, Settings } from 'lucide-react';
+import { LayoutDashboard, Microscope, Bot } from 'lucide-react';
 
-export type TabType = 'trade' | 'history' | 'bots' | 'menu';
+export type TabType = 'overview' | 'analysis' | 'bot';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -9,10 +9,9 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
   const tabs = [
-    { id: 'trade' as TabType, label: 'Giao dịch', icon: LayoutDashboard },
-    { id: 'history' as TabType, label: 'Lệnh', icon: History },
-    { id: 'bots' as TabType, label: 'Bot Phân Tích', icon: Zap },
-    { id: 'menu' as TabType, label: 'Mở Rộng', icon: Settings },
+    { id: 'overview' as TabType, label: 'Tổng quan', icon: LayoutDashboard },
+    { id: 'analysis' as TabType, label: 'Phân tích', icon: Microscope },
+    { id: 'bot' as TabType, label: 'Bot Trade', icon: Bot },
   ];
 
   return (

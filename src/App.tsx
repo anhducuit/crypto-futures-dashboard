@@ -42,7 +42,7 @@ import './index.css';
 function App() {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [direction, setDirection] = useState<'long' | 'short'>('long');
-  const [activeTab, setActiveTab] = useState<TabType>('trade');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTimeframe, setActiveTimeframe] = useState('15'); // 15, 1, 60, 240
@@ -120,22 +120,12 @@ function App() {
 
       {/* Main Content Area - Scrollable */}
       <main className="flex-1 overflow-y-auto relative z-10 w-full pt-2 pb-24">
+        <EventTicker language={language} />
         
-        {activeTab === 'trade' && (
+        {activeTab === 'overview' && (
           <div className="space-y-4 px-3 pb-6">
-            <EventTicker language={language} />
-            
-            <div className="card !p-3">
-              <div className="card-header !mb-2">
-                <BarChart2 size={16} className="text-[var(--color-golden)]" />
-                {t('trading_symbol')}
-              </div>
-              <SymbolInput
-                symbol={symbol}
-                onSymbolChange={setSymbol}
-                isConnected={isConnected}
-                onReconnect={reconnect}
-              />
+            <div className="h-[450px] mt-2 card !p-0 overflow-hidden border-none shadow-xl">
+              <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
             </div>
 
             <LivePriceDisplay
@@ -148,6 +138,19 @@ function App() {
               language={language}
             />
 
+            <div className="card flare-border !p-3">
+              <div className="card-header !mb-2 text-xs">
+                <BarChart2 size={14} className="text-[var(--color-flare)]" />
+                {t('active_instrument')}
+              </div>
+              <SymbolInput
+                symbol={symbol}
+                onSymbolChange={setSymbol}
+                isConnected={isConnected}
+                onReconnect={reconnect}
+              />
+            </div>
+
             <div className="card !p-3">
               <div className="card-header !mb-2">{t('direction_order')}</div>
               <DirectionSelector
@@ -156,19 +159,57 @@ function App() {
               />
             </div>
 
-            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} language={language} />
-
-            <div className="h-[400px]">
-              <TradingViewWidget symbol={symbol} timeframe={activeTimeframe} />
-            </div>
-
+            <MarketTrends onSymbolSelect={setSymbol} language={language} />
             <PriceTicker />
           </div>
         )}
 
-        {activeTab === 'history' && (
-          <div className="space-y-4 px-3 pb-6">
-            <div className="card !p-3 mt-2">
+        {activeTab === 'analysis' && (
+          <div className="space-y-4 px-3 pb-6 mt-2">
+            <AnalysisGlobalControls 
+              symbol={symbol}
+              onSymbolChange={setSymbol}
+              activeTimeframe={activeTimeframe}
+              onTimeframeChange={setActiveTimeframe}
+              direction={direction}
+              onDirectionChange={setDirection}
+              maAnalysis={maAnalysis}
+              language={language}
+            />
+
+            <EMATrendBias trends={emaTrends} />
+            <MovingAveragesPanel
+              symbol={symbol}
+              data={maAnalysis}
+              loading={maLoading}
+              onRefresh={refetchMA}
+              activeTimeframe={activeTimeframe}
+              language={language}
+            />
+            <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
+            <ICTKillzonesPanel language={language} />
+            <FibonacciCalculator
+              symbol={symbol}
+              direction={direction}
+              maAnalysis={maAnalysis}
+              maLoading={maLoading}
+              onRefreshMA={refetchMA}
+            />
+            <TradingRecommendation
+              maAnalysis={maAnalysis}
+              onDirectionChange={setDirection}
+              language={language}
+            />
+            <VolumeAnalysis symbol={symbol} maAnalysis={maAnalysis} language={language} />
+            <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} language={language} />
+          </div>
+        )}
+
+        {activeTab === 'bot' && (
+          <div className="space-y-4 px-3 pb-6 mt-2">
+            <div className="card !p-3">
               <div className="card-header !mb-2 flex justify-between items-center">
                 <span className="flex items-center gap-2">
                   <Activity size={16} className="text-[var(--color-golden)]" />
@@ -182,55 +223,15 @@ function App() {
               <HistoryDashboard symbol={symbol} language={language} />
             </div>
 
+            <GoldenHourAnalysis bestHours={bestHours} strategyStats={strategyStats} language={language} />
             <TradeAnalytics language={language} />
-          </div>
-        )}
-
-        {activeTab === 'bots' && (
-          <div className="space-y-4 px-3 pb-6 mt-2">
-            <TradingRecommendation
-              maAnalysis={maAnalysis}
-              onDirectionChange={setDirection}
-              language={language}
-            />
             
-            <MarketTrends onSymbolSelect={setSymbol} language={language} />
-            
-            <ICTKillzonesPanel language={language} />
+            <div className="card !p-3 mt-4">
+              <GuideBar language={language} />
+            </div>
 
-            <MovingAveragesPanel
-              symbol={symbol}
-              data={maAnalysis}
-              loading={maLoading}
-              onRefresh={refetchMA}
-              activeTimeframe={activeTimeframe}
-              language={language}
-            />
-
-            <IchimokuPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-            <DivergencePanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-            <KeyLevelsPanel data={maAnalysis} activeTimeframe={activeTimeframe} />
-            <ChandelierExitPanel data={maAnalysis} activeTimeframe={activeTimeframe} language={language} />
-          </div>
-        )}
-
-        {activeTab === 'menu' && (
-          <div className="space-y-4 px-3 pb-6 mt-2">
-            <GuideBar language={language} />
-            
-            <EMATrendBias trends={emaTrends} />
-
-            <FibonacciCalculator
-              symbol={symbol}
-              direction={direction}
-              maAnalysis={maAnalysis}
-              maLoading={maLoading}
-              onRefreshMA={refetchMA}
-            />
-
-            <div className="text-center text-xs text-[var(--color-text-secondary)] opacity-50 mt-8 mb-4">
-              <p>{t('app_version')}</p>
-              <p>© 2026 Anh Duc Trader</p>
+            <div className="text-center text-[10px] text-[var(--color-silver)] opacity-30 mt-8 mb-4 uppercase tracking-[0.2em] font-black">
+               <p>© 2026 Anh Duc Trader  //  PRO-PROTOCOLS</p>
             </div>
           </div>
         )}
