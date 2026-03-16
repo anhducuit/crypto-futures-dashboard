@@ -53,9 +53,9 @@ body::before {
   position: fixed;
   inset: 0;
   background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-  opacity: 0.15;
+  opacity: 0.1;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 0; /* Background layer */
   mix-blend-mode: overlay;
 }
 
@@ -244,10 +244,21 @@ option {
 }
 
 .glass-luxury {
-  background: rgba(10, 10, 15, 0.8);
+  background: rgba(10, 10, 15, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-morphism {
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gold-glow {
+  box-shadow: 0 0 40px rgba(255, 184, 0, 0.05), inset 0 0 20px rgba(255, 184, 0, 0.02);
 }
 
 /* Animations from previous version kept but refined */
@@ -267,4 +278,50 @@ option {
 /* Auth Styles Refined */
 .auth-bg {
   background: radial-gradient(circle at 50% 50%, #12121e 0%, #050505 100%);
-}
+}
+/* Auth & Bubbles Refined */
+.bubble-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.crypto-bubble {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  font-weight: 900;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+.bubble-green {
+  background: radial-gradient(circle at 30% 30%, rgba(0, 255, 163, 0.3), rgba(0, 255, 163, 0.1));
+  box-shadow: 0 0 40px rgba(0, 255, 163, 0.1), inset 0 0 20px rgba(0, 255, 163, 0.1);
+}
+
+.bubble-red {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 0, 51, 0.3), rgba(255, 0, 51, 0.1));
+  box-shadow: 0 0 40px rgba(255, 0, 51, 0.1), inset 0 0 20px rgba(255, 0, 51, 0.1);
+}
+
+.bubble-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.animate-pulse-slow {
+  animation: signal-pulse 4s ease-in-out infinite;
+}

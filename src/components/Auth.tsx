@@ -162,7 +162,7 @@ export const Auth: React.FC = () => {
                 {bubbles.map((bubble) => (
                     <div
                         key={bubble.id}
-                        className={`crypto-bubble bubble-${bubble.color} transition-colors duration-500`}
+                        className={`crypto-bubble bubble-${bubble.color} transition-colors duration-500 opacity-20 md:opacity-100`}
                         style={{
                             left: `${bubble.x}%`,
                             top: `${bubble.y}%`,
@@ -186,7 +186,7 @@ export const Auth: React.FC = () => {
                 ))}
             </div>
 
-            <div className="glass-morphism gold-glow max-w-md w-full p-8 rounded-2xl relative z-10 mx-auto">
+            <div className="glass-morphism gold-glow w-full max-w-[90%] sm:max-w-md p-6 sm:p-8 rounded-2xl relative z-40 mx-auto">
                 <div className="text-center mb-8">
                     <div className="inline-flex p-3 bg-gradient-to-br from-[var(--color-golden)] to-yellow-600 rounded-xl mb-4 shadow-lg shadow-yellow-500/20">
                         <ShieldCheck size={32} className="text-black" />
@@ -196,10 +196,10 @@ export const Auth: React.FC = () => {
 
                     <a
                         href="/intro"
-                        className="group relative inline-flex items-center gap-3 px-6 py-3 bg-[var(--color-golden)]/10 border border-[var(--color-golden)]/30 rounded-2xl hover:bg-[var(--color-golden)]/20 transition-all duration-300 animate-pulse-slow shadow-[0_0_20px_rgba(255,184,0,0.1)]"
+                        className="group relative inline-flex items-center gap-3 px-4 sm:px-6 py-2.5 sm:py-3 bg-[var(--color-golden)]/10 border border-[var(--color-golden)]/30 rounded-2xl hover:bg-[var(--color-golden)]/20 transition-all duration-300 animate-pulse-slow shadow-[0_0_20px_rgba(255,184,0,0.1)]"
                     >
-                        <BarChart3 size={20} className="text-[var(--color-golden)] group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-black text-[var(--color-golden)] uppercase tracking-[0.15em]">
+                        <BarChart3 size={18} className="text-[var(--color-golden)] group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] sm:text-sm font-black text-[var(--color-golden)] uppercase tracking-[0.15em]">
                             Xem giới thiệu tính năng hệ thống
                         </span>
                         <div className="absolute -inset-1 bg-[var(--color-golden)] opacity-10 blur-lg rounded-2xl pointer-events-none group-hover:opacity-20 transition-opacity"></div>
@@ -212,13 +212,13 @@ export const Auth: React.FC = () => {
                             Email truy cập
                         </label>
                         <div className="relative group">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[var(--color-golden)] transition-colors" size={18} />
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-golden)] transition-colors" size={18} />
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="name@email.com"
-                                className="pl-12 pr-4 py-3.5 w-full bg-[#08080a] border border-slate-800 focus:border-[var(--color-golden)] focus:ring-2 focus:ring-[var(--color-golden)]/10 transition-all rounded-xl text-white placeholder:text-slate-600 outline-none"
+                                className="pl-12 pr-4 py-3.5 w-full bg-[#121215] border border-slate-700/50 focus:border-[var(--color-golden)] focus:ring-2 focus:ring-[var(--color-golden)]/10 transition-all rounded-xl text-white placeholder:text-slate-500 outline-none"
                                 required
                             />
                         </div>
@@ -229,13 +229,13 @@ export const Auth: React.FC = () => {
                             Mật khẩu bảo mật
                         </label>
                         <div className="relative group">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[var(--color-golden)] transition-colors" size={18} />
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-golden)] transition-colors" size={18} />
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="pl-12 pr-4 py-3.5 w-full bg-[#08080a] border border-slate-800 focus:border-[var(--color-golden)] focus:ring-2 focus:ring-[var(--color-golden)]/10 transition-all rounded-xl text-white placeholder:text-slate-600 outline-none"
+                                className="pl-12 pr-4 py-3.5 w-full bg-[#121215] border border-slate-700/50 focus:border-[var(--color-golden)] focus:ring-2 focus:ring-[var(--color-golden)]/10 transition-all rounded-xl text-white placeholder:text-slate-500 outline-none"
                                 required
                             />
                         </div>

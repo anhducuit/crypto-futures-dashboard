@@ -110,7 +110,7 @@ function App() {
 
   const renderMobileView = () => {
     return (
-      <div className="w-[450px] h-[600px] flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans relative overflow-hidden">
+      <div className="w-full min-h-screen flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-sans relative overflow-hidden">
         {/* Background Gradient */}
         <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[var(--color-golden)]/5 to-transparent pointer-events-none z-0"></div>
         
@@ -119,7 +119,7 @@ function App() {
         <MobileHeader session={session} isConnected={isConnected} />
 
       {/* Main Content Area - Scrollable */}
-      <main className="flex-1 overflow-y-auto relative z-10 w-full pt-2">
+      <main className="flex-1 overflow-y-auto relative z-10 w-full pt-2 pb-24">
         
         {activeTab === 'trade' && (
           <div className="space-y-4 px-3 pb-6">
@@ -479,7 +479,7 @@ function App() {
 
   if (!session) {
     return (
-      <div className={isMobileView ? "w-[450px] h-[600px] bg-[var(--color-bg-primary)] overflow-y-auto" : "min-h-screen bg-[var(--color-bg-primary)]"}>
+      <div className="w-full min-h-screen bg-[var(--color-bg-primary)] overflow-y-auto">
         <Auth />
       </div>
     );
