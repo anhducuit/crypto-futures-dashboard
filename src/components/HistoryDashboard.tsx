@@ -16,9 +16,10 @@ interface HistoryItem {
     volume_ratio: number;
     target_price?: number;
     stop_loss?: number;
-    trade_id?: string;
     pnl_reason?: string;
     strategy_name?: string;
+    trade_id?: string;
+    initial_stop_loss?: number;
 }
 
 interface HistoryDashboardProps {

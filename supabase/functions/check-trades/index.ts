@@ -1169,6 +1169,8 @@ Deno.serve(async (req) => {
                             `Result: <b>${resultText}</b>\n` +
                             `Type: ${trade.signal}\n` +
                             `Entry: $${trade.price_at_signal}\n` +
+                            `Initial SL: $${trade.initial_stop_loss || trade.stop_loss}\n` +
+                            `Exit SL: $${trade.stop_loss}\n` +
                             `Close Price: $${currentPrice}\n` +
                             `Lý do Robot: <i>${autoReason}</i>`;
 
@@ -1686,6 +1688,7 @@ Deno.serve(async (req) => {
                         symbol, timeframe: sig.tf, signal: sig.type,
                         price_at_signal: sig.ref.close,
                         target_price: target, stop_loss: stopLoss,
+                        initial_stop_loss: stopLoss, // Store the original SL
                         status: 'PENDING',
                         telegram_message_id: null,
                         rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
