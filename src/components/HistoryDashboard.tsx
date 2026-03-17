@@ -309,12 +309,14 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol, lang
                                     <div className="space-y-0.5">
                                         <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('stop_loss')}</span>
                                         <div className="flex flex-col">
-                                            <div className="text-[11px] font-black text-[var(--color-short)] font-mono tracking-widest italic leading-tight">
+                                            <div className={`text-[11px] font-black font-mono tracking-widest italic leading-tight ${item.status === 'PROTECTED' ? 'text-[var(--color-long)]' : 'text-[var(--color-short)]'}`}>
                                                 ${Number(item.stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {item.status === 'PROTECTED' && <span className="text-[7px] ml-1 opacity-60">(HÒA VỐN)</span>}
                                             </div>
                                             {item.initial_stop_loss && Math.abs(item.initial_stop_loss - (item.stop_loss || 0)) > 0.0001 && (
-                                                <div className="text-[8px] font-bold text-white/30 font-mono tracking-tighter italic">
-                                                    (ORIG: ${Number(item.initial_stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                                <div className="text-[8px] font-bold text-white/30 font-mono tracking-tighter italic flex items-center gap-1 mt-0.5">
+                                                    <span className="opacity-50 uppercase">{t('initial_sl')}:</span>
+                                                    <span>${Number(item.initial_stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </div>
                                             )}
                                         </div>
