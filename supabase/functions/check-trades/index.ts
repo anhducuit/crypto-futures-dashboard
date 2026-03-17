@@ -459,8 +459,8 @@ function calculateDynamicTPSL(
     }
 
     let target, stopLoss;
-    // ATR Multiplier optimized by Timeframe
-    const atrMultiplier = timeframe === '4h' ? 4.0 : (timeframe === '1h' ? 3.5 : 3.0);
+    // ATR Multiplier optimized by Timeframe - Widened for H1/H4 per user request
+    const atrMultiplier = timeframe === '4h' ? 5.0 : (timeframe === '1h' ? 4.2 : 3.0);
     const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.5);
 
     if (signal === 'LONG') {
@@ -470,9 +470,9 @@ function calculateDynamicTPSL(
         stopLoss = entryPrice - volatilityBuffer;
 
         // Hard limits for safety and minimum R:R
-        const minRR = 1.5; // Increased from 1.3 for Bot 1 optimization
-        const maxSL = 0.035; // Max 3.5%
-        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.012)); // Tightened 1m to 1.2%
+        const minRR = 1.5; 
+        const maxSL = 0.06; // Increased from 3.5% to 6% for higher TFs
+        const minSL = timeframe === '4h' ? 0.035 : (timeframe === '1h' ? 0.022 : (timeframe === '15m' ? 0.012 : 0.012)); 
 
         const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
@@ -486,8 +486,8 @@ function calculateDynamicTPSL(
         stopLoss = entryPrice + volatilityBuffer;
 
         const minRR = 1.5;
-        const maxSL = 0.035;
-        const minSL = timeframe === '4h' ? 0.02 : (timeframe === '1h' ? 0.015 : (timeframe === '15m' ? 0.012 : 0.012));
+        const maxSL = 0.06;
+        const minSL = timeframe === '4h' ? 0.035 : (timeframe === '1h' ? 0.022 : (timeframe === '15m' ? 0.012 : 0.012));
 
         const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
@@ -1153,11 +1153,16 @@ Deno.serve(async (req) => {
                         }
 
                         const updateData: any = { status: newStatus, pnl_reason: autoReason };
+                        if (newStatus === 'PROTECTED') {
+                            updateData.stop_loss = trade.price_at_signal;
+                        }
                         const { error: upErr } = await supabase.from('trading_history').update(updateData).eq('id', trade.id);
 
                         // Fallback if pnl_reason column still not added by user
                         if (upErr && upErr.message.includes('column') && upErr.message.includes('not exist')) {
-                            await supabase.from('trading_history').update({ status: newStatus }).eq('id', trade.id);
+                            const fallbackData: any = { status: newStatus };
+                            if (newStatus === 'PROTECTED') fallbackData.stop_loss = trade.price_at_signal;
+                            await supabase.from('trading_history').update(fallbackData).eq('id', trade.id);
                         }
 
                         updates.push({ id: trade.id, status: newStatus });

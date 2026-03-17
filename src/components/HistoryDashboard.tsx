@@ -308,7 +308,16 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol, lang
                                     </div>
                                     <div className="space-y-0.5">
                                         <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('stop_loss')}</span>
-                                        <div className="text-[11px] font-black text-[var(--color-short)] font-mono tracking-widest italic">${Number(item.stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                        <div className="flex flex-col">
+                                            <div className="text-[11px] font-black text-[var(--color-short)] font-mono tracking-widest italic leading-tight">
+                                                ${Number(item.stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                            {item.initial_stop_loss && Math.abs(item.initial_stop_loss - (item.stop_loss || 0)) > 0.0001 && (
+                                                <div className="text-[8px] font-bold text-white/30 font-mono tracking-tighter italic">
+                                                    (ORIG: ${Number(item.initial_stop_loss).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="space-y-0.5">
                                         <span className="text-[8px] font-black text-[var(--color-silver)] opacity-20 uppercase tracking-widest italic">{t('vol_impact')}</span>
@@ -394,6 +403,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol, lang
                         status: sharingItem.status as 'SUCCESS' | 'FAILED',
                         target_price: sharingItem.target_price,
                         stop_loss: sharingItem.stop_loss,
+                        initial_stop_loss: sharingItem.initial_stop_loss,
                         timeframe: sharingItem.timeframe,
                         pnl_reason: sharingItem.pnl_reason,
                         strategy_name: sharingItem.strategy_name
