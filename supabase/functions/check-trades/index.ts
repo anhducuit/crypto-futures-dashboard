@@ -1064,12 +1064,18 @@ Deno.serve(async (req) => {
                         continue;
                     }
 
+                    const isBreakeven = Math.abs(trade.price_at_signal - trade.stop_loss) < 0.0001;
+
                     if (trade.signal === 'LONG') {
                         if (currentPrice >= trade.target_price) newStatus = 'SUCCESS';
-                        else if (currentPrice <= trade.stop_loss) newStatus = 'FAILED';
+                        else if (currentPrice <= trade.stop_loss) {
+                            newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
+                        }
                     } else {
                         if (currentPrice <= trade.target_price) newStatus = 'SUCCESS';
-                        else if (currentPrice >= trade.stop_loss) newStatus = 'FAILED';
+                        else if (currentPrice >= trade.stop_loss) {
+                            newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
+                        }
                     }
 
                     if (newStatus === 'PENDING') {
@@ -1091,10 +1097,10 @@ Deno.serve(async (req) => {
                                     newStatus = 'SUCCESS';
                                     break;
                                 } else if (c.l <= trade.stop_loss) {
-                                    newStatus = 'FAILED';
+                                    newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
                                     break;
                                 } else if (hitMilestone && c.l <= trade.price_at_signal) {
-                                    newStatus = 'SUCCESS'; // Break-even hit after 50% TP
+                                    newStatus = 'PROTECTED'; // Break-even hit after 50% TP
                                     break;
                                 }
                             } else {
@@ -1104,10 +1110,10 @@ Deno.serve(async (req) => {
                                     newStatus = 'SUCCESS';
                                     break;
                                 } else if (c.h >= trade.stop_loss) {
-                                    newStatus = 'FAILED';
+                                    newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
                                     break;
                                 } else if (hitMilestone && c.h >= trade.price_at_signal) {
-                                    newStatus = 'SUCCESS';
+                                    newStatus = 'PROTECTED';
                                     break;
                                 }
                             }
@@ -1117,10 +1123,10 @@ Deno.serve(async (req) => {
                         if (newStatus === 'PENDING') {
                             if (trade.signal === 'LONG') {
                                 if (currentPrice >= milestone50) hitMilestone = true;
-                                if (hitMilestone && currentPrice <= trade.price_at_signal) newStatus = 'SUCCESS';
+                                if (hitMilestone && currentPrice <= trade.price_at_signal) newStatus = 'PROTECTED';
                             } else {
                                 if (currentPrice <= milestone50) hitMilestone = true;
-                                if (hitMilestone && currentPrice >= trade.price_at_signal) newStatus = 'SUCCESS';
+                                if (hitMilestone && currentPrice >= trade.price_at_signal) newStatus = 'PROTECTED';
                             }
                         }
                     }
@@ -1136,9 +1142,12 @@ Deno.serve(async (req) => {
 
                             if (isBreakEven) {
                                 autoReason = `🛡️ Thắng bảo vệ: Đã chốt lời 50% và đóng hòa vốn phần còn lại. Chiến lược: ${trade.strategy_name}.`;
+                                newStatus = 'PROTECTED'; // Change status to PROTECTED for break-even outcomes
                             } else {
                                 autoReason = `✅ Thắng lệnh (Full Target) do: ${trade.strategy_name}. RSI: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x.`;
                             }
+                        } else if (newStatus === 'PROTECTED') {
+                            autoReason = `🛡️ Bảo vệ hòa vốn: Hệ thống tự động đóng lệnh để bảo toàn vốn khi phát hiện áp lực đảo chiều. Chiến lược: ${trade.strategy_name}.`;
                         } else {
                             autoReason = `❌ Thua lệnh: Giá đi ngược dự đoán (Stoploss). RSI vào lệnh: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x. Thị trường đảo chiều mạnh.`;
                         }
@@ -1154,9 +1163,10 @@ Deno.serve(async (req) => {
                         updates.push({ id: trade.id, status: newStatus });
 
                         // REPLY TO OPEN MESSAGE IF EXISTS (Closed Trades)
-                        const icon = newStatus === 'SUCCESS' ? '✅' : '❌';
+                        const icon = newStatus === 'SUCCESS' ? '✅' : (newStatus === 'PROTECTED' ? '🛡️' : '❌');
+                        const resultText = newStatus === 'SUCCESS' ? 'SUCCESS' : (newStatus === 'PROTECTED' ? 'PROTECTED (Breakeven)' : 'FAILED');
                         const msg = `${icon} <b>TRADE CLOSED: ${trade.symbol}</b>\n` +
-                            `Result: <b>${newStatus}</b>\n` +
+                            `Result: <b>${resultText}</b>\n` +
                             `Type: ${trade.signal}\n` +
                             `Entry: $${trade.price_at_signal}\n` +
                             `Close Price: $${currentPrice}\n` +

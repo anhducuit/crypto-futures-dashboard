@@ -115,7 +115,7 @@ export const TradeAnalytics: React.FC<TradeAnalyticsProps> = ({ language }) => {
                                 </h3>
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-[8px] font-black italic tracking-widest">
+                        <div className="grid grid-cols-4 gap-2 text-[8px] font-black italic tracking-widest">
                             <div className="space-y-0.5">
                                 <span className="text-[var(--color-silver)] opacity-20 uppercase block">{t('win_label')}</span>
                                 <span className="text-[var(--color-long)] font-mono">{s.wins} [W]</span>
@@ -123,6 +123,10 @@ export const TradeAnalytics: React.FC<TradeAnalyticsProps> = ({ language }) => {
                             <div className="space-y-0.5">
                                 <span className="text-[var(--color-silver)] opacity-20 uppercase block">{t('loss_label')}</span>
                                 <span className="text-[var(--color-short)] font-mono">{s.losses} [L]</span>
+                            </div>
+                            <div className="space-y-0.5">
+                                <span className="text-[var(--color-silver)] opacity-20 uppercase block">{t('protected_logs')}</span>
+                                <span className="text-[var(--color-flare)] font-mono">{s.protected} [P]</span>
                             </div>
                             <div className="space-y-0.5 text-right">
                                 <span className="text-[var(--color-silver)] opacity-20 uppercase block">POP</span>
@@ -145,12 +149,13 @@ export const TradeAnalytics: React.FC<TradeAnalyticsProps> = ({ language }) => {
                     <table className="w-full text-left border-collapse table-fixed lg:table-auto">
                         <thead className="bg-black/40 text-[10px] font-black text-[var(--color-silver)] uppercase tracking-wider border-b border-white/5 opacity-60 text-center">
                             <tr>
-                                <th className="w-[18%] px-3 py-4 text-left">{t('asset')}</th>
-                                <th className="w-[12%] px-2 py-4">{t('total_vectors')}</th>
-                                <th className="w-[12%] px-2 py-4 text-[var(--color-long)]">{t('confirmed_wins')}</th>
-                                <th className="w-[12%] px-2 py-4 text-[var(--color-short)]">{t('liquidated_losses')}</th>
-                                <th className="w-[34%] px-3 py-4">{t('efficiency_ratio')}</th>
-                                <th className="w-[12%] px-3 py-4">{t('protocol')}</th>
+                                <th className="w-[10%] px-3 py-4 text-left">{t('asset')}</th>
+                                <th className="w-[10%] px-2 py-4">{t('total_vectors')}</th>
+                                <th className="w-[10%] px-2 py-4 text-[var(--color-long)]">{t('confirmed_wins')}</th>
+                                <th className="w-[10%] px-2 py-4 text-[var(--color-short)]">{t('liquidated_losses')}</th>
+                                <th className="w-[10%] px-2 py-4 text-[var(--color-flare)]">{t('protected_logs')}</th>
+                                <th className="w-[30%] px-3 py-4">{t('efficiency_ratio')}</th>
+                                <th className="w-[10%] px-3 py-4">{t('protocol')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-center">
@@ -160,6 +165,7 @@ export const TradeAnalytics: React.FC<TradeAnalyticsProps> = ({ language }) => {
                                     <td className="px-2 py-4 font-black font-mono text-[var(--color-silver)] opacity-30 italic">{s.total}</td>
                                     <td className="px-2 py-4 font-black font-mono text-[var(--color-long)]/60 italic">{s.wins}</td>
                                     <td className="px-2 py-4 font-black font-mono text-[var(--color-short)]/60 italic">{s.losses}</td>
+                                    <td className="px-2 py-4 font-black font-mono text-[var(--color-flare)]/60 italic">{s.protected}</td>
                                     <td className="px-3 py-4">
                                         <div className="flex items-center justify-center gap-2">
                                             <div className="w-12 h-1.5 bg-white/5 rounded-[1px] overflow-hidden border border-white/5">

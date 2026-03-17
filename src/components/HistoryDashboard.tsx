@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { History, CheckCircle2, XCircle, Clock, Share2 } from 'lucide-react';
+import { History, CheckCircle2, XCircle, Clock, Share2, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PnLShareModal } from './PnLShareModal';
 import { useTranslation, type Language } from '../utils/translations';
@@ -11,7 +11,7 @@ interface HistoryItem {
     timeframe: string;
     signal: string;
     price_at_signal: number;
-    status: 'PENDING' | 'SUCCESS' | 'FAILED';
+    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'PROTECTED';
     rsi: number;
     volume_ratio: number;
     target_price?: number;
@@ -204,6 +204,7 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol, lang
                         <option value="All" className="bg-[var(--color-bg-secondary)] text-white">{t('all_status')}</option>
                         <option value="SUCCESS" className="bg-[var(--color-bg-secondary)] text-white">{t('win_logs')}</option>
                         <option value="FAILED" className="bg-[var(--color-bg-secondary)] text-white">{t('loss_logs')}</option>
+                        <option value="PROTECTED" className="bg-[var(--color-bg-secondary)] text-white">{t('protected_logs')}</option>
                         <option value="PENDING" className="bg-[var(--color-bg-secondary)] text-white">{t('active_vouchers')}</option>
                     </select>
                 </div>
@@ -272,6 +273,11 @@ export const HistoryDashboard: React.FC<HistoryDashboardProps> = ({ symbol, lang
                                                 <div className="flex items-center gap-2 text-[var(--color-short)]">
                                                     <XCircle size={10} strokeWidth={3} />
                                                     <span className="text-[8px] font-black tracking-widest italic">{t('liquidated').toUpperCase()}</span>
+                                                </div>
+                                            ) : item.status === 'PROTECTED' ? (
+                                                <div className="flex items-center gap-2 text-[var(--color-flare)]">
+                                                    <Shield size={10} strokeWidth={3} />
+                                                    <span className="text-[8px] font-black tracking-widest italic">{t('breakeven_protected').toUpperCase()}</span>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2 text-[var(--color-flare)] animate-pulse">

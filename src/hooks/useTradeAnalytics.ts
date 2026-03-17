@@ -6,14 +6,15 @@ export interface AnalyticsData {
     total: number;
     wins: number;
     losses: number;
+    protected: number; // New field for breakeven trades
     winRate: number;
-    tfBreakdown?: Record<string, { total: number, wins: number, losses: number }>;
+    tfBreakdown?: Record<string, { total: number, wins: number, losses: number, protected: number }>;
 }
 
 export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
     const [stats, setStats] = useState<AnalyticsData[]>([]);
-    const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number }>>({});
-    const [strategyStats, setStrategyStats] = useState<Record<string, { wins: number, losses: number }>>({});
+    const [bestHours, setBestHours] = useState<Record<string, { wins: number, losses: number, protected: number }>>({});
+    const [strategyStats, setStrategyStats] = useState<Record<string, { wins: number, losses: number, protected: number }>>({});
     const [lastScan, setLastScan] = useState<string | null>(null);
     const [botOnline, setBotOnline] = useState<boolean>(true);
     const [loading, setLoading] = useState(true);
@@ -66,20 +67,20 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
             const data = allData;
 
             if (data) {
-                const symbolMap: Record<string, { wins: number, losses: number, tfMap: any }> = {};
+                const symbolMap: Record<string, { wins: number, losses: number, protected: number, tfMap: any }> = {};
                 const baseSymbols = ['XAUUSDT', 'XAGUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
                 baseSymbols.forEach(s => {
-                    symbolMap[s] = { wins: 0, losses: 0, tfMap: {} };
+                    symbolMap[s] = { wins: 0, losses: 0, protected: 0, tfMap: {} };
                 });
 
-                let totalWin = 0, totalLoss = 0;
+                let totalWin = 0, totalLoss = 0, totalProtected = 0;
 
                 data.forEach(t => {
                     const sym = t.symbol;
-                    if (!symbolMap[sym]) symbolMap[sym] = { wins: 0, losses: 0, tfMap: {} };
+                    if (!symbolMap[sym]) symbolMap[sym] = { wins: 0, losses: 0, protected: 0, tfMap: {} };
 
                     const tf = t.timeframe || 'Unknown';
-                    if (!symbolMap[sym].tfMap[tf]) symbolMap[sym].tfMap[tf] = { total: 0, wins: 0, losses: 0 };
+                    if (!symbolMap[sym].tfMap[tf]) symbolMap[sym].tfMap[tf] = { total: 0, wins: 0, losses: 0, protected: 0 };
 
                     if (t.status === 'SUCCESS') {
                         symbolMap[sym].wins++;
@@ -89,17 +90,21 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                         symbolMap[sym].losses++;
                         symbolMap[sym].tfMap[tf].losses++;
                         totalLoss++;
+                    } else if (t.status === 'PROTECTED') {
+                        symbolMap[sym].protected++;
+                        symbolMap[sym].tfMap[tf].protected++;
+                        totalProtected++;
                     }
                     if (t.status !== 'PENDING') {
                         symbolMap[sym].tfMap[tf].total++;
                     }
                 });
 
-                const hourMap: Record<string, { wins: number, losses: number }> = {
-                    'morning': { wins: 0, losses: 0 },
-                    'afternoon': { wins: 0, losses: 0 },
-                    'evening': { wins: 0, losses: 0 },
-                    'night': { wins: 0, losses: 0 }
+                const hourMap: Record<string, { wins: number, losses: number, protected: number }> = {
+                    'morning': { wins: 0, losses: 0, protected: 0 },
+                    'afternoon': { wins: 0, losses: 0, protected: 0 },
+                    'evening': { wins: 0, losses: 0, protected: 0 },
+                    'night': { wins: 0, losses: 0, protected: 0 }
                 };
 
                 data.forEach(t => {
@@ -112,16 +117,17 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
 
                     if (t.status === 'SUCCESS') hourMap[session].wins++;
                     else if (t.status === 'FAILED') hourMap[session].losses++;
+                    else if (t.status === 'PROTECTED') hourMap[session].protected++;
                 });
                 setBestHours(hourMap);
 
-                const strategyMap: Record<string, { wins: number, losses: number }> = {
-                    '💎 SÁT THỦ BẮT ĐỈNH ĐÁY': { wins: 0, losses: 0 },
-                    '⚔️ CHIẾN THẦN ĐU TREND': { wins: 0, losses: 0 },
-                    '🪤 BẪY GIÁ - SĂN THANH KHOẢN': { wins: 0, losses: 0 },
-                    '💣 QUẢ BOM ĐỘNG LƯỢNG': { wins: 0, losses: 0 },
-                    '🔔 CHỈ BÁO THOÁT CHANDELIER': { wins: 0, losses: 0 },
-                    '🏦 ICT KILLZONES': { wins: 0, losses: 0 }
+                const strategyMap: Record<string, { wins: number, losses: number, protected: number }> = {
+                    '💎 SÁT THỦ BẮT ĐỈNH ĐÁY': { wins: 0, losses: 0, protected: 0 },
+                    '⚔️ CHIẾN THẦN ĐU TREND': { wins: 0, losses: 0, protected: 0 },
+                    '🪤 BẪY GIÁ - SĂN THANH KHOẢN': { wins: 0, losses: 0, protected: 0 },
+                    '💣 QUẢ BOM ĐỘNG LƯỢ lượng': { wins: 0, losses: 0, protected: 0 },
+                    '🔔 CHỈ BÁO THOÁT CHANDELIER': { wins: 0, losses: 0, protected: 0 },
+                    '🏦 ICT KILLZONES': { wins: 0, losses: 0, protected: 0 }
                 };
 
                 data.forEach(t => {
@@ -131,6 +137,7 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                             if (strategyName.includes(key)) {
                                 if (t.status === 'SUCCESS') value.wins++;
                                 else if (t.status === 'FAILED') value.losses++;
+                                else if (t.status === 'PROTECTED') value.protected++;
                                 break;
                             }
                         }
@@ -142,7 +149,8 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                     symbol,
                     wins: counts.wins,
                     losses: counts.losses,
-                    total: counts.wins + counts.losses,
+                    protected: counts.protected,
+                    total: counts.wins + counts.losses + counts.protected,
                     winRate: counts.wins + counts.losses > 0 ? (counts.wins / (counts.wins + counts.losses)) * 100 : 0,
                     tfBreakdown: counts.tfMap
                 })).sort((a, b) => b.total - a.total);
@@ -151,7 +159,8 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                     symbol: 'TẤT CẢ (ALL)',
                     wins: totalWin,
                     losses: totalLoss,
-                    total: totalWin + totalLoss,
+                    protected: totalProtected,
+                    total: totalWin + totalLoss + totalProtected,
                     winRate: (totalWin + totalLoss) > 0 ? (totalWin / (totalWin + totalLoss)) * 100 : 0
                 };
 
