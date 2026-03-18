@@ -38,6 +38,7 @@ import { DexTrendingPanel } from './components/DexTrendingPanel';
 import { useTradeAnalytics } from './hooks/useTradeAnalytics';
 import { AnalysisGlobalControls } from './components/AnalysisGlobalControls';
 import { useTranslation, type Language } from './utils/translations';
+import { MascotIcon, Mascot } from './components/MascotGallery';
 import './index.css';
 
 function App() {
@@ -319,10 +320,20 @@ function App() {
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Vertical Sidebar - Minimalist Precision */}
-          <aside className="w-20 lg:w-64 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col p-4 space-y-3 flex-shrink-0 transition-all duration-500">
-            <div className="mb-8 px-2 hidden lg:block">
-              <p className="text-[10px] font-black text-[var(--color-silver)] tracking-[0.3em] uppercase opacity-40">{t('command_center')}</p>
+          {/* Vertical Sidebar - Cyberpunk */}
+          <aside className="w-20 lg:w-64 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col p-4 space-y-3 flex-shrink-0 transition-all duration-500 relative overflow-hidden">
+            {/* Ambient neon glow on sidebar */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-flare)]/5 via-transparent to-[var(--color-long)]/5 pointer-events-none"></div>
+
+            {/* LUCIA Mascot - Sidebar header */}
+            <div className="relative mb-4 hidden lg:flex flex-col items-center pt-2 pb-4 border-b border-[var(--color-border)]">
+              <MascotIcon variant="lucia" className="w-28 h-28" />
+              <p className="font-kanit text-[10px] font-extrabold text-[var(--color-flare)] tracking-[0.1em] uppercase mt-1" style={{textShadow: '0 0 8px var(--color-flare)'}}>LUCIA Pro</p>
+              <p className="font-inter text-[7px] text-white/20 uppercase tracking-widest font-medium">Alpha_Legend</p>
+            </div>
+
+            <div className="mb-2 px-2 hidden lg:block">
+              <p className="text-[9px] font-kanit font-bold text-[var(--color-silver)] tracking-[0.15em] uppercase opacity-40">{t('command_center')}</p>
             </div>
 
             <button
@@ -423,6 +434,16 @@ function App() {
 
               {desktopActiveTab === 'analysis' && (
                 <div className="space-y-12">
+                  {/* ARIA Mascot Banner */}
+                  <div className="flex items-center gap-8 p-6 card border-[var(--color-flare-alt)]/20" style={{borderColor: 'rgba(191,0,255,0.2)'}}>
+                    <Mascot variant="analysis" size="sm" />
+                    <div>
+                      <p className="font-kanit text-[10px] font-bold tracking-[0.1em] text-white/30 uppercase mb-1">System Advisor</p>
+                      <h2 className="font-kanit text-2xl font-black italic text-white uppercase leading-none mb-2">ARIA <span className="text-[var(--color-flare-alt)]" style={{textShadow: '0 0 20px rgba(191,0,255,0.5)'}}>X</span></h2>
+                      <p className="font-inter text-sm text-white/40 uppercase tracking-widest font-medium">Tactical Analysis Engine — Đang giám sát {symbol}</p>
+                    </div>
+                  </div>
+
                   <AnalysisGlobalControls 
                     symbol={symbol}
                     onSymbolChange={setSymbol}
@@ -462,7 +483,17 @@ function App() {
               {desktopActiveTab === 'bot' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                   <div className="lg:col-span-8 space-y-10">
-                    <div className="h-[800px] card !p-0 overflow-hidden border-none shadow-2xl">
+                    {/* NEXUS Mascot Banner */}
+                    <div className="flex items-center gap-8 p-6 card" style={{borderColor: 'rgba(0,240,255,0.2)'}}>
+                      <Mascot variant="bot" size="sm" />
+                      <div>
+                        <p className="font-kanit text-[10px] font-bold tracking-[0.1em] text-white/30 uppercase mb-1">Automated Warrior</p>
+                        <h2 className="font-kanit text-2xl font-black italic text-white uppercase leading-none mb-2">NEXUS <span className="text-[var(--color-long)]" style={{textShadow: '0 0 20px rgba(0,240,255,0.5)'}}>BOT</span></h2>
+                        <p className="font-inter text-sm text-white/40 uppercase tracking-widest font-medium">Protocol: 6-Combo Strategy v2 — Chiến thần đang tuần tra thị trường</p>
+                      </div>
+                    </div>
+
+                    <div className="h-[700px] card !p-0 overflow-hidden border-none shadow-2xl">
                       <HistoryDashboard symbol={symbol} language={language} />
                     </div>
                     <GoldenHourAnalysis bestHours={bestHours} strategyStats={strategyStats} language={language} />
