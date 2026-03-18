@@ -126,7 +126,6 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                     'C2:': { wins: 0, losses: 0, protected: 0 },
                     'C3:': { wins: 0, losses: 0, protected: 0 },
                     'C4:': { wins: 0, losses: 0, protected: 0 },
-                    'C5:': { wins: 0, losses: 0, protected: 0 },
                     'C6:': { wins: 0, losses: 0, protected: 0 }
                 };
 

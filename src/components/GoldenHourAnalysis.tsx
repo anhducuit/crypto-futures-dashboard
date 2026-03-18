@@ -1,4 +1,4 @@
-import { Clock, Activity, TrendingUp } from 'lucide-react';
+import { Clock, Activity } from 'lucide-react';
 import { useTranslation, type Language } from '../utils/translations';
 
 interface GoldenHourAnalysisProps {
@@ -43,40 +43,74 @@ export const GoldenHourAnalysis: React.FC<GoldenHourAnalysisProps> = ({ bestHour
                     </h3>
                     <span className="text-[9px] text-slate-500 font-bold px-2 py-0.5 bg-white/5 border border-white/10 rounded-full uppercase">Unified Orchestrator v2</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-                    {Object.entries(strategyStats).map(([strategy, counts]) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                    {Object.entries(strategyStats)
+                    .filter(([s]) => s !== 'C5:')
+                    .sort(([a], [b]) => {
+                        const scores: any = { 'C2:': 100, 'C4:': 90, 'C1:': 80, 'C3:': 75, 'C6:': 70 };
+                        return (scores[b] || 0) - (scores[a] || 0);
+                    })
+                    .map(([strategy, counts]) => {
                         const total = counts.wins + counts.losses + (counts.protected || 0);
                         const rate = (counts.wins + counts.losses) > 0 ? (counts.wins / (counts.wins + counts.losses) * 100) : 0;
                         const displayTitle = t('strat_liquidity_trap', strategy);
                         
+                        const meta: any = {
+                            'C2:': { score: 100, risk: '3.0%', label: 'TREND KING' },
+                            'C4:': { score: 90, risk: '2.0%', label: 'MOMENTUM' },
+                            'C1:': { score: 80, risk: '1.0%', label: 'REVERSAL' },
+                            'C3:': { score: 75, risk: '1.0%', label: 'FAKEOUT' },
+                            'C6:': { score: 70, risk: '1.0%', label: 'STRUCTURE' },
+                        };
+                        const info = meta[strategy] || { score: 0, risk: '0%', label: 'UNKNOWN' };
+
                         return (
-                            <div key={strategy} className="group relative overflow-hidden bg-gradient-to-br from-white/5 to-transparent p-4 rounded-[2px] border border-white/5 hover:border-[var(--color-golden)]/30 transition-all duration-300">
-                                <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-30 transition-opacity">
-                                    <Activity size={32} />
+                            <div key={strategy} className="group relative overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02] p-4 rounded-[2px] border border-white/5 hover:border-[var(--color-golden)]/30 transition-all duration-300">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex flex-col">
+                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm mb-1 w-fit ${
+                                            info.score >= 90 ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-400'
+                                        }`}>
+                                            {info.score} ĐIỂM
+                                        </span>
+                                        <p className="text-[10px] text-slate-300 font-black leading-tight uppercase tracking-tight min-h-[32px]">
+                                            {displayTitle}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[9px] text-slate-500 font-black">{info.risk}</p>
+                                        <p className="text-[7px] text-slate-600 font-bold">RISK</p>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] text-slate-400 font-black mb-3 leading-tight uppercase tracking-tight min-h-[24px]">{displayTitle}</p>
+
                                 <div className="flex items-end gap-2 mb-2">
-                                    <p className={`text-2xl font-black leading-none ${rate >= 50 ? 'text-green-400' : (total > 0 ? 'text-red-400' : 'text-slate-600')}`}>
-                                        {total > 0 ? `${rate.toFixed(0)}%` : '--'}
-                                    </p>
-                                    <span className="text-[9px] text-slate-500 font-bold mb-0.5">WR</span>
+                                    <div className="flex-1">
+                                        <div className="flex items-end gap-1.5 leading-none">
+                                            <p className={`text-2xl font-black ${rate >= 50 ? 'text-green-400' : (total > 0 ? 'text-red-400' : 'text-slate-600')}`}>
+                                                {total > 0 ? `${rate.toFixed(0)}%` : '--'}
+                                            </p>
+                                            <span className="text-[8px] text-slate-500 font-bold mb-1">WINRATE</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col gap-1.5 text-[9px] mt-3 pt-3 border-t border-white/5">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-500">THẮNG</span>
+
+                                <div className="flex justify-between gap-1 text-[9px] mt-3 pt-3 border-t border-white/5">
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-600 font-bold uppercase tracking-tighter">SUCCESS</span>
                                         <span className="text-green-500 font-bold">{counts.wins}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-500">THUA</span>
+                                    <div className="flex flex-col text-center">
+                                        <span className="text-slate-600 font-bold uppercase tracking-tighter">FAILED</span>
                                         <span className="text-red-500 font-bold">{counts.losses}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-slate-500">TỔNG</span>
+                                    <div className="flex flex-col text-right">
+                                        <span className="text-slate-600 font-bold uppercase tracking-tighter">TOTAL</span>
                                         <span className="text-white/40 font-bold">{total}</span>
                                     </div>
                                 </div>
+                                
                                 {rate >= 70 && total >= 3 && (
-                                    <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                                    <div className="absolute top-2 right-2 w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
                                 )}
                             </div>
                         );

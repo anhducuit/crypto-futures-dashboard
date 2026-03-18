@@ -350,11 +350,15 @@ function checkCombo1(data: SymbolData): ComboSignal | null {
     const rsis = c.map((_, idx) => calculateRSI(c.slice(0, idx + 1)));
     const div = detectRSIDivergence(c, rsis);
 
+    // Support / Resistance Check
+    const isAtKeyLevel = checkKeySRLevels(c[c.length - 1], h, l);
+    if (!isAtKeyLevel) return null;
+
     if (rsi < 30 && div === 'BULLISH' && pa.pinBar === 'BULLISH' && vol > volMA * 1.8) {
-        return { combo: 1, direction: 'LONG', risk: 0.02, rr: 2, reason: 'C1: Reversal Bullish + Div' };
+        return { combo: 1, direction: 'LONG', risk: 0.01, rr: 2, reason: 'C1: Reversal Bullish + SR' };
     }
     if (rsi > 70 && div === 'BEARISH' && pa.pinBar === 'BEARISH' && vol > volMA * 1.8) {
-        return { combo: 1, direction: 'SHORT', risk: 0.02, rr: 2, reason: 'C1: Reversal Bearish + Div' };
+        return { combo: 1, direction: 'SHORT', risk: 0.01, rr: 2, reason: 'C1: Reversal Bearish + SR' };
     }
     return null;
 }
@@ -402,11 +406,14 @@ function checkCombo3(data: SymbolData): ComboSignal | null {
     const price = c[c.length - 1];
     const pa = detectPriceAction(o, h, l, c);
 
-    if (prevHigh > recentHigh && price < recentHigh && pa.pinBar === 'BEARISH' && vol > volMA * 2.0) {
-        return { combo: 3, direction: 'SHORT', risk: 0.015, rr: 1.5, reason: 'C3: Fakeout High' };
+    const isStrongVol = vol > volMA * 2.5;
+    const risk = isStrongVol ? 0.01 : 0.005; // 1% if strong, 0.5% if normal
+
+    if (prevHigh > recentHigh && price < recentHigh && pa.pinBar === 'BEARISH' && vol > volMA * 1.8) {
+        return { combo: 3, direction: 'SHORT', risk, rr: 1.5, reason: `C3: Fakeout High (${isStrongVol ? 'Strong' : 'Light'})` };
     }
-    if (prevLow < recentLow && price > recentLow && pa.pinBar === 'BULLISH' && vol > volMA * 2.0) {
-        return { combo: 3, direction: 'LONG', risk: 0.015, rr: 1.5, reason: 'C3: Fakeout Low' };
+    if (prevLow < recentLow && price > recentLow && pa.pinBar === 'BULLISH' && vol > volMA * 1.8) {
+        return { combo: 3, direction: 'LONG', risk, rr: 1.5, reason: `C3: Fakeout Low (${isStrongVol ? 'Strong' : 'Light'})` };
     }
     return null;
 }
@@ -431,30 +438,19 @@ function checkCombo4(data: SymbolData): ComboSignal | null {
     const isMarubozu = detectMarubozu(o[o.length-1], h[h.length-1], l[l.length-1], c[c.length-1]);
 
     if (isMarubozu && price > o[o.length - 1] && vol > volMA * 3.0) {
-        return { combo: 4, direction: 'LONG', risk: 0.025, rr: 2, reason: 'C4: Momentum Breakout Up' };
+        return { combo: 4, direction: 'LONG', risk: 0.02, rr: 2, reason: 'C4: Momentum Breakout Up' };
     }
     if (isMarubozu && price < o[o.length - 1] && vol > volMA * 3.0) {
-        return { combo: 4, direction: 'SHORT', risk: 0.025, rr: 2, reason: 'C4: Momentum Breakout Down' };
+        return { combo: 4, direction: 'SHORT', risk: 0.02, rr: 2, reason: 'C4: Momentum Breakout Down' };
     }
     return null;
 }
 
-// COMBO 5: EXIT (Chỉ Báo Thoát)
-function checkCombo5(data: SymbolData): ComboSignal | null {
-    const { o, h, l, c, v } = data.m15;
+// COMBO 5: TRAILING STOP HELPER (Dùng cho quản lý lệnh)
+function getCombo5TrailingLevel(o: number[], h: number[], l: number[], c: number[], direction: 'LONG' | 'SHORT') {
     const res = calculateChandelierExitHeikinAshi(o, h, l, c, 1, 1.85);
     if (!res) return null;
-
-    const vol = v[v.length - 1];
-    const volMA = calculateSMA(v, 20);
-
-    if (res.buySignal && vol > volMA * 1.5) {
-        return { combo: 5, direction: 'LONG', risk: 0.02, rr: 2, reason: 'C5: Chandelier Buy (HA)' };
-    }
-    if (res.sellSignal && vol > volMA * 1.5) {
-        return { combo: 5, direction: 'SHORT', risk: 0.02, rr: 2, reason: 'C5: Chandelier Sell (HA)' };
-    }
-    return null;
+    return direction === 'LONG' ? res.highestHigh - (res.atr * 1.85) : res.lowestLow + (res.atr * 1.85);
 }
 
 // COMBO 6: ICT (Quét Thanh Khoản Á)
@@ -479,9 +475,46 @@ function checkCombo6(data: SymbolData): ComboSignal | null {
 
 function resolveSignalConflict(signals: ComboSignal[]): ComboSignal | null {
     if (signals.length === 0) return null;
-    const priorities: Record<number, number> = { 2: 100, 4: 90, 1: 80, 3: 75, 6: 70 };
-    const sorted = [...signals].sort((a, b) => (priorities[b.combo] || 0) - (priorities[a.combo] || 0));
-    return sorted[0];
+    
+    const scores: Record<number, number> = { 2: 100, 4: 90, 1: 80, 3: 75, 6: 70 };
+    const sorted = [...signals].sort((a, b) => scores[b.combo] - scores[a.combo]);
+    
+    const best = sorted[0];
+    
+    // IF C2 (100 pts) present -> King of Trend -> Discard others
+    if (best.combo === 2) return best;
+
+    // IF C4 (90 pts) present
+    if (best.combo === 4) {
+        const c2 = signals.find(s => s.combo === 2);
+        // User rule: If C2 also present (conflict), comparison handled by score above, 
+        // but if we want to handle "Merge/Increase Size" logic:
+        if (c2) {
+            if (c2.direction === best.direction) {
+                best.risk = Math.min(0.05, best.risk + 0.015); // Merge: increase exposure
+                best.reason += " (Merged with C2)";
+                return best;
+            } else {
+                return c2; // If opposite, prioritize C2 (King)
+            }
+        }
+        return best;
+    }
+
+    // C1 (80 pts): Reversal needs validation (already handled in checkCombo1 via SR check)
+    // C3 (75 pts): Fakeout handled in checkCombo3 via Volume sizing
+    // C6 (70 pts): Low priority, taken if alone.
+
+    return best;
+}
+
+function checkKeySRLevels(price: number, high: number[], low: number[]) {
+    // Basic pivot check from last 50 candles
+    const h = Math.max(...high.slice(-50));
+    const l = Math.min(...low.slice(-50));
+    const range = h - l;
+    const threshold = range * 0.05; // 5% of range buffer
+    return (Math.abs(price - h) < threshold) || (Math.abs(price - l) < threshold);
 }
 
 function detectMarubozu(open: number, high: number, low: number, close: number) {
@@ -1348,7 +1381,11 @@ Deno.serve(async (req) => {
                 if (!Array.isArray(klineData)) continue;
 
                 const candles = klineData.map((c: any) => ({
-                    h: parseFloat(c[2]), l: parseFloat(c[3]), t: c[6]
+                    o: parseFloat(c[1]), 
+                    h: parseFloat(c[2]), 
+                    l: parseFloat(c[3]), 
+                    c: parseFloat(c[4]),
+                    t: c[6]
                 }));
 
                 const tickerRes = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${sym}`);
@@ -1375,6 +1412,32 @@ Deno.serve(async (req) => {
                         if (currentPrice <= trade.target_price) newStatus = 'SUCCESS';
                         else if (currentPrice >= trade.stop_loss) {
                             newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
+                        }
+                    }
+
+                    // --- COMBO 5: TRAILING STOP PROTECTION ---
+                    if (newStatus === 'PENDING' || newStatus === 'PROTECTED') {
+                        const m15 = candles;
+                        const trailingSL = getCombo5TrailingLevel(
+                            m15.map(c => c.o),
+                            m15.map(c => c.h), 
+                            m15.map(c => c.l), 
+                            m15.map(c => c.c), 
+                            trade.signal as 'LONG' | 'SHORT'
+                        );
+                        
+                        if (trailingSL) {
+                            let shouldUpdate = false;
+                            if (trade.signal === 'LONG' && trailingSL > trade.stop_loss) shouldUpdate = true;
+                            if (trade.signal === 'SHORT' && trailingSL < trade.stop_loss) shouldUpdate = true;
+
+                            if (shouldUpdate) {
+                                console.log(`[TRAILING SL] ${trade.symbol} update to ${trailingSL.toFixed(5)}`);
+                                await supabase.from('trading_history')
+                                    .update({ stop_loss: trailingSL })
+                                    .eq('id', trade.id);
+                                trade.stop_loss = trailingSL; // Sync for further checks in this loop
+                            }
                         }
                     }
 
@@ -1588,7 +1651,6 @@ Deno.serve(async (req) => {
             const c2 = checkCombo2(symbolData); if (c2) possibleSignals.push(c2);
             const c3 = checkCombo3(symbolData); if (c3) possibleSignals.push(c3);
             const c4 = checkCombo4(symbolData); if (c4) possibleSignals.push(c4);
-            const c5 = checkCombo5(symbolData); if (c5) possibleSignals.push(c5);
             const c6 = checkCombo6(symbolData); if (c6) possibleSignals.push(c6);
 
             const bestSignal = resolveSignalConflict(possibleSignals);
