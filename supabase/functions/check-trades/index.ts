@@ -439,6 +439,24 @@ function checkCombo4(data: SymbolData): ComboSignal | null {
     return null;
 }
 
+// COMBO 5: EXIT (Chỉ Báo Thoát)
+function checkCombo5(data: SymbolData): ComboSignal | null {
+    const { o, h, l, c, v } = data.m15;
+    const res = calculateChandelierExitHeikinAshi(o, h, l, c, 1, 1.85);
+    if (!res) return null;
+
+    const vol = v[v.length - 1];
+    const volMA = calculateSMA(v, 20);
+
+    if (res.buySignal && vol > volMA * 1.5) {
+        return { combo: 5, direction: 'LONG', risk: 0.02, rr: 2, reason: 'C5: Chandelier Buy (HA)' };
+    }
+    if (res.sellSignal && vol > volMA * 1.5) {
+        return { combo: 5, direction: 'SHORT', risk: 0.02, rr: 2, reason: 'C5: Chandelier Sell (HA)' };
+    }
+    return null;
+}
+
 // COMBO 6: ICT (Quét Thanh Khoản Á)
 function checkCombo6(data: SymbolData): ComboSignal | null {
     const killzone = getICTKillzone(data.utcHour, data.utcMinute);

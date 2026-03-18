@@ -107,7 +107,7 @@ export const translations = {
 
         // Guide Bar
         guide: "HƯỚNG DẪN:",
-        combo_strategies_guide: "5 Combo Chiến Lược",
+        combo_strategies_guide: "6 Combo Chiến Lược",
         ma_cross_guide: "Chiến lược MA Cross",
         volume_guide: "Phân tích Volume",
         multi_tf_ma_guide: "Phân tích Đa khung",
@@ -340,7 +340,7 @@ export const translations = {
 
         // Golden Hour Analysis
         golden_hour_title: "PHÂN TÍCH GIỜ VÀNG VÀ CHIẾN LƯỢC",
-        combo_perf: "Hiệu Suất 5 Chiến Lược Combo",
+        combo_perf: "Hiệu Suất 6 Chiến Lược Combo Hợp Nhất",
         robot_tip: "Gợi ý: Robot vận hành tự động theo các khung giờ vàng để tối ưu xác suất thắng cao nhất.",
 
         overall_bias: "Xu hướng tổng thể",
@@ -395,8 +395,10 @@ export const translations = {
 
         // Strategy Names
         strat_liquidity_trap: "🪤 BẪY GIÁ - SĂN THANH KHOẢN",
-        strat_rsi_divergence: "⚡ PHÂN KỲ PHÁ VỠ - RSI",
-        strat_dragon_tail: "🐉 RỒNG QUAY ĐUÔI - EMA",
+        strat_rsi_divergence: "💎 SÁT THỦ BẮT ĐỈNH ĐÁY",
+        strat_dragon_tail: "⚔️ CHIẾN THẦN ĐU TREND",
+        strat_momentum_bomb: "💣 QUẢ BOM ĐỘNG LƯỢNG",
+        strat_chandelier_exit: "🔔 CHỈ BÁO THOÁT CHANDELIER",
         strat_ict_structure: "🛡️ CẤU TRÚC ICT - KILLZONE",
         strat_power_combo: "💎 COMBO QUYỀN NĂNG - V1.5",
     },
@@ -515,7 +517,7 @@ export const translations = {
 
         // Guide Bar
         guide: "GUIDE:",
-        combo_strategies_guide: "5 Strategy Combos",
+        combo_strategies_guide: "6 Strategy Combos",
         ma_cross_guide: "MA Cross Strategy",
         volume_guide: "Volume Analysis",
         multi_tf_ma_guide: "Multi-TF Analysis",
@@ -748,7 +750,7 @@ export const translations = {
 
         // Golden Hour Analysis
         golden_hour_title: "GOLDEN HOUR & STRATEGY ANALYSIS",
-        combo_perf: "5 Strategy Combo Performance",
+        combo_perf: "6-Combo Master Strategy Performance",
         robot_tip: "Tip: Robot operates automatically during golden hours to optimize for high win probability.",
 
         overall_bias: "Overall Bias",
@@ -792,8 +794,10 @@ export const translations = {
 
         // Strategy Names
         strat_liquidity_trap: "🪤 LIQUIDITY TRAP - HUNTING",
-        strat_rsi_divergence: "⚡ RSI DIVERGENCE BREAKOUT",
-        strat_dragon_tail: "🐉 DRAGON TAIL SPIN - EMA",
+        strat_rsi_divergence: "💎 TOP/BOTTOM ASSASSIN",
+        strat_dragon_tail: "⚔️ TREND WARRIOR",
+        strat_momentum_bomb: "💣 MOMENTUM BOMB",
+        strat_chandelier_exit: "🔔 CHANDELIER EXIT PROTOCOL",
         strat_ict_structure: "🛡️ ICT STRUCTURE - KILLZONE",
         strat_power_combo: "💎 POWER COMBO - V1.5",
     }
@@ -804,10 +808,12 @@ export const useTranslation = (lang: Language) => {
         if (!name) return name;
         const normalized = name.toUpperCase();
         const tObj = translations[lang] as any;
-        if (normalized.includes("BẪY GIÁ") || normalized.includes("LIQUIDITY TRAP")) return tObj.strat_liquidity_trap;
-        if (normalized.includes("PHÂN KỲ") || normalized.includes("DIVERGENCE")) return tObj.strat_rsi_divergence;
-        if (normalized.includes("RỒNG") || normalized.includes("DRAGON")) return tObj.strat_dragon_tail;
-        if (normalized.includes("ICT") || normalized.includes("KILLZONE")) return tObj.strat_ict_structure;
+        if (normalized.includes("C1:") || normalized.includes("SÁT THỦ") || normalized.includes("ASSASSIN")) return tObj.strat_rsi_divergence;
+        if (normalized.includes("C2:") || normalized.includes("CHIẾN THẦN") || normalized.includes("WARRIOR")) return tObj.strat_dragon_tail;
+        if (normalized.includes("C3:") || normalized.includes("BẪY GIÁ") || normalized.includes("LIQUIDITY TRAP")) return tObj.strat_liquidity_trap;
+        if (normalized.includes("C4:") || normalized.includes("QUẢ BOM") || normalized.includes("MOMENTUM")) return tObj.strat_momentum_bomb;
+        if (normalized.includes("C5:") || normalized.includes("THOÁT") || normalized.includes("CHANDELIER")) return tObj.strat_chandelier_exit;
+        if (normalized.includes("C6:") || normalized.includes("ICT") || normalized.includes("KILLZONE")) return tObj.strat_ict_structure;
         if (normalized.includes("COMBO") || normalized.includes("POWER")) return tObj.strat_power_combo;
         return name;
     };

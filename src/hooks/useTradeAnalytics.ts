@@ -122,12 +122,12 @@ export const useTradeAnalytics = (timeFilter: '24h' | '7d' | '30d' | 'all') => {
                 setBestHours(hourMap);
 
                 const strategyMap: Record<string, { wins: number, losses: number, protected: number }> = {
-                    '💎 SÁT THỦ BẮT ĐỈNH ĐÁY': { wins: 0, losses: 0, protected: 0 },
-                    '⚔️ CHIẾN THẦN ĐU TREND': { wins: 0, losses: 0, protected: 0 },
-                    '🪤 BẪY GIÁ - SĂN THANH KHOẢN': { wins: 0, losses: 0, protected: 0 },
-                    '💣 QUẢ BOM ĐỘNG LƯỢ lượng': { wins: 0, losses: 0, protected: 0 },
-                    '🔔 CHỈ BÁO THOÁT CHANDELIER': { wins: 0, losses: 0, protected: 0 },
-                    '🏦 ICT KILLZONES': { wins: 0, losses: 0, protected: 0 }
+                    'C1:': { wins: 0, losses: 0, protected: 0 },
+                    'C2:': { wins: 0, losses: 0, protected: 0 },
+                    'C3:': { wins: 0, losses: 0, protected: 0 },
+                    'C4:': { wins: 0, losses: 0, protected: 0 },
+                    'C5:': { wins: 0, losses: 0, protected: 0 },
+                    'C6:': { wins: 0, losses: 0, protected: 0 }
                 };
 
                 data.forEach(t => {
