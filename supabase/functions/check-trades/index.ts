@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const DEFAULT_SYMBOLS = ['XAUUSDT', 'XAGUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
 const BACKFILL_START_TIME = new Date('2026-01-18T17:00:00Z').getTime(); // 00:00 Jan 19 VN
 const TF_CONFIG = [
-    { interval: '1m', limit: 300 },
+    { interval: '5m', limit: 300 },
     { interval: '15m', limit: 100 },
     { interval: '1h', limit: 100 },
     { interval: '4h', limit: 300 }
@@ -153,22 +153,156 @@ function calculatePivotPoints(high: number, low: number, close: number) {
     };
 }
 
+function calculateADX(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+    if (closes.length <= period * 2) return 0;
+
+    const trs: number[] = [];
+    const plusDM: number[] = [];
+    const minusDM: number[] = [];
+
+    for (let i = 1; i < closes.length; i++) {
+        const tr = Math.max(
+            highs[i] - lows[i],
+            Math.abs(highs[i] - closes[i - 1]),
+            Math.abs(lows[i] - closes[i - 1])
+        );
+        trs.push(tr);
+
+        const upMove = highs[i] - highs[i - 1];
+        const downMove = lows[i - 1] - lows[i];
+
+        if (upMove > downMove && upMove > 0) {
+            plusDM.push(upMove);
+        } else {
+            plusDM.push(0);
+        }
+
+        if (downMove > upMove && downMove > 0) {
+            minusDM.push(downMove);
+        } else {
+            minusDM.push(0);
+        }
+    }
+
+    const smoothTR = [trs.slice(0, period).reduce((a, b) => a + b, 0)];
+    const smoothPlusDM = [plusDM.slice(0, period).reduce((a, b) => a + b, 0)];
+    const smoothMinusDM = [minusDM.slice(0, period).reduce((a, b) => a + b, 0)];
+
+    for (let i = period; i < trs.length; i++) {
+        smoothTR.push(smoothTR[smoothTR.length - 1] - (smoothTR[smoothTR.length - 1] / period) + trs[i]);
+        smoothPlusDM.push(smoothPlusDM[smoothPlusDM.length - 1] - (smoothPlusDM[smoothPlusDM.length - 1] / period) + plusDM[i]);
+        smoothMinusDM.push(smoothMinusDM[smoothMinusDM.length - 1] - (smoothMinusDM[smoothMinusDM.length - 1] / period) + minusDM[i]);
+    }
+
+    const dx: number[] = [];
+    for (let i = 0; i < smoothTR.length; i++) {
+        const plusDI = (smoothPlusDM[i] / smoothTR[i]) * 100;
+        const minusDI = (smoothMinusDM[i] / smoothTR[i]) * 100;
+        const diff = Math.abs(plusDI - minusDI);
+        const sum = plusDI + minusDI;
+        dx.push((diff / (sum || 1)) * 100);
+    }
+
+    const adx = dx.slice(-period).reduce((a, b) => a + b, 0) / period;
+    return adx;
+}
+
+function calculateBollingerBands(closes: number[], period: number = 20, stdDev: number = 2) {
+    if (closes.length < period) return { middle: 0, upper: 0, lower: 0, width: 0 };
+    
+    const slice = closes.slice(-period);
+    const middle = slice.reduce((a, b) => a + b, 0) / period;
+    
+    const variance = slice.reduce((a, b) => a + Math.pow(b - middle, 2), 0) / period;
+    const sd = Math.sqrt(variance);
+    
+    const upper = middle + (stdDev * sd);
+    const lower = middle - (stdDev * sd);
+    const width = (upper - lower) / middle;
+    
+    return { middle, upper, lower, width };
+}
+
+function determineMarketRegime(adx: number, bbWidth: number, ema9: number, ema21: number) {
+    if (adx >= 25) {
+        return ema9 > ema21 ? "TREND_UP" : "TREND_DOWN";
+    }
+    if (bbWidth < 0.2) {
+        return "SIDEWAY_SQUEEZE";
+    }
+    return "SIDEWAY_NORMAL";
+}
+
+function calculateHeikinAshi(opens: number[], highs: number[], lows: number[], closes: number[]) {
+    const haOpens: number[] = [opens[0]];
+    const haCloses: number[] = [(opens[0] + highs[0] + lows[0] + closes[0]) / 4];
+    const haHighs: number[] = [highs[0]];
+    const haLows: number[] = [lows[0]];
+
+    for (let i = 1; i < opens.length; i++) {
+        const haO = (haOpens[i - 1] + haCloses[i - 1]) / 2;
+        const haC = (opens[i] + highs[i] + lows[i] + closes[i]) / 4;
+        const haH = Math.max(highs[i], haO, haC);
+        const haL = Math.min(lows[i], haO, haC);
+        
+        haOpens.push(haO);
+        haCloses.push(haC);
+        haHighs.push(haH);
+        haLows.push(haL);
+    }
+
+    const lastIdx = haCloses.length - 1;
+    return {
+        open: haOpens[lastIdx],
+        high: haHighs[lastIdx],
+        low: haLows[lastIdx],
+        close: haCloses[lastIdx],
+        color: haCloses[lastIdx] >= haOpens[lastIdx] ? 'GREEN' : 'RED'
+    };
+}
+
+function detectICTOrderBlock(highs: number[], lows: number[], closes: number[], opens: number[]) {
+    const i = closes.length - 1;
+    if (i < 5) return 'NONE';
+
+    // Bullish OB: Last down candle before a displacement up
+    // displacement = long green candle + breaking previous high
+    const isDisplacementUp = closes[i] > opens[i] && (closes[i] - opens[i]) > (highs[i] - lows[i]) * 0.6 && closes[i] > Math.max(...highs.slice(i-4, i));
+    
+    if (isDisplacementUp) {
+        // Find the last red candle
+        for (let j = i - 1; j >= i - 3; j--) {
+            if (closes[j] < opens[j]) return 'BULLISH';
+        }
+    }
+
+    // Bearish OB: Last up candle before a displacement down
+    const isDisplacementDown = closes[i] < opens[i] && (opens[i] - closes[i]) > (highs[i] - lows[i]) * 0.6 && closes[i] < Math.min(...lows.slice(i-4, i));
+    
+    if (isDisplacementDown) {
+        for (let j = i - 1; j >= i - 3; j--) {
+            if (closes[j] > opens[j]) return 'BEARISH';
+        }
+    }
+
+    return 'NONE';
+}
+
 
 function detectPriceAction(opens: number[], highs: number[], lows: number[], closes: number[]) {
     const i = closes.length - 1; // Current candle
     const bodySize = Math.abs(closes[i] - opens[i]);
     const candleRange = highs[i] - lows[i];
+    if (candleRange === 0) return { pinBar: 'NONE', engulfing: 'NONE' };
     const upperShadow = highs[i] - Math.max(opens[i], closes[i]);
     const lowerShadow = Math.min(opens[i], closes[i]) - lows[i];
 
     // 1. PIN BAR detection
     let pinBar = 'NONE';
-    if (candleRange > 0) {
-        // Bullish Pin Bar: Small body, long lower shadow
-        if (lowerShadow > bodySize * 2 && upperShadow < bodySize) pinBar = 'BULLISH';
-        // Bearish Pin Bar: Small body, long upper shadow
-        if (upperShadow > bodySize * 2 && lowerShadow < bodySize) pinBar = 'BEARISH';
-    }
+    // Bullish Pin Bar: Small body, long lower shadow
+    if (lowerShadow > bodySize * 2 && upperShadow < bodySize) pinBar = 'BULLISH';
+    // Bearish Pin Bar: Small body, long upper shadow
+    if (upperShadow > bodySize * 2 && lowerShadow < bodySize) pinBar = 'BEARISH';
 
     // 2. ENGULFING detection
     let engulfing = 'NONE';
@@ -182,6 +316,154 @@ function detectPriceAction(opens: number[], highs: number[], lows: number[], clo
     }
 
     return { pinBar, engulfing };
+}
+
+/* --- 6 COMBO STRATEGY LOGIC --- */
+
+interface ComboSignal {
+    combo: number;
+    direction: 'LONG' | 'SHORT';
+    risk: number;
+    rr: number;
+    reason: string;
+}
+
+interface SymbolData {
+    symbol: string;
+    m5: { o: number[], h: number[], l: number[], c: number[], v: number[] };
+    m15: { o: number[], h: number[], l: number[], c: number[], v: number[] };
+    h1: { o: number[], h: number[], l: number[], c: number[], v: number[] };
+    h4: { o: number[], h: number[], l: number[], c: number[], v: number[] };
+    regime: string;
+    utcHour: number;
+    utcMinute: number;
+}
+
+// COMBO 1: REVERSAL (Bắt Đỉnh Đáy)
+function checkCombo1(data: SymbolData): ComboSignal | null {
+    if (data.regime !== "SIDEWAY_NORMAL") return null;
+    const { c, h, l, o, v } = data.h1;
+    const rsi = calculateRSI(c);
+    const vol = v[v.length - 1];
+    const volMA = calculateSMA(v, 20);
+    const pa = detectPriceAction(o, h, l, c);
+    const rsis = c.map((_, idx) => calculateRSI(c.slice(0, idx + 1)));
+    const div = detectRSIDivergence(c, rsis);
+
+    if (rsi < 30 && div === 'BULLISH' && pa.pinBar === 'BULLISH' && vol > volMA * 1.8) {
+        return { combo: 1, direction: 'LONG', risk: 0.02, rr: 2, reason: 'C1: Reversal Bullish + Div' };
+    }
+    if (rsi > 70 && div === 'BEARISH' && pa.pinBar === 'BEARISH' && vol > volMA * 1.8) {
+        return { combo: 1, direction: 'SHORT', risk: 0.02, rr: 2, reason: 'C1: Reversal Bearish + Div' };
+    }
+    return null;
+}
+
+// COMBO 2: TREND (Đi Theo Xu Hướng)
+function checkCombo2(data: SymbolData): ComboSignal | null {
+    if (!data.regime.startsWith("TREND")) return null;
+    const { c: c1, h: h1, l: l1, o: o1, v: v1 } = data.h1;
+    const { h: h4, l: h4l } = data.h4;
+
+    const adx = calculateADX(h1, l1, c1);
+    if (adx < 25) return null;
+
+    const ichiH1 = calculateIchimoku(h1, l1);
+    const ichiH4 = calculateIchimoku(h4, h4l);
+    const ema9 = calculateEMA(c1, 9);
+    const ema21 = calculateEMA(c1, 21);
+    const vol = v1[v1.length - 1];
+    const volMA = calculateSMA(v1, 20);
+
+    const price = c1[c1.length - 1];
+    const aboveCloud = price > ichiH1.spanA && price > ichiH1.spanB && price > ichiH4.spanA && price > ichiH4.spanB;
+    const belowCloud = price < ichiH1.spanA && price < ichiH1.spanB && price < ichiH4.spanA && price < ichiH4.spanB;
+
+    if (aboveCloud && ema9 > ema21 && vol > volMA * 1.5) {
+        return { combo: 2, direction: 'LONG', risk: 0.03, rr: 3, reason: 'C2: Trend Long (Ichi + Cross)' };
+    }
+    if (belowCloud && ema9 < ema21 && vol > volMA * 1.5) {
+        return { combo: 2, direction: 'SHORT', risk: 0.03, rr: 3, reason: 'C2: Trend Short (Ichi + Cross)' };
+    }
+    return null;
+}
+
+// COMBO 3: FAKEOUT (Phá Vỡ Giả)
+function checkCombo3(data: SymbolData): ComboSignal | null {
+    if (data.regime !== "SIDEWAY_NORMAL") return null;
+    const { c, h, l, o, v } = data.m15;
+    
+    const vol = v[v.length - 1];
+    const volMA = calculateSMA(v, 20);
+    const recentHigh = Math.max(...h.slice(-21, -1));
+    const recentLow = Math.min(...l.slice(-21, -1));
+    const prevHigh = h[h.length - 2];
+    const prevLow = l[l.length - 2];
+    const price = c[c.length - 1];
+    const pa = detectPriceAction(o, h, l, c);
+
+    if (prevHigh > recentHigh && price < recentHigh && pa.pinBar === 'BEARISH' && vol > volMA * 2.0) {
+        return { combo: 3, direction: 'SHORT', risk: 0.015, rr: 1.5, reason: 'C3: Fakeout High' };
+    }
+    if (prevLow < recentLow && price > recentLow && pa.pinBar === 'BULLISH' && vol > volMA * 2.0) {
+        return { combo: 3, direction: 'LONG', risk: 0.015, rr: 1.5, reason: 'C3: Fakeout Low' };
+    }
+    return null;
+}
+
+// COMBO 4: MOMENTUM (Nổ Lệnh)
+function checkCombo4(data: SymbolData): ComboSignal | null {
+    if (data.regime !== "SIDEWAY_SQUEEZE") return null;
+    const { c, h, l, o, v } = data.m15;
+
+    const bb = calculateBollingerBands(c);
+    if (bb.width > 0.2) return null;
+
+    const ema9 = calculateEMA(c, 9);
+    const ema21 = calculateEMA(c, 21);
+    const ema50 = calculateEMA(c, 50);
+    const price = c[c.length - 1];
+    const spread = Math.max(ema9, ema21, ema50) - Math.min(ema9, ema21, ema50);
+    if (spread / price > 0.01) return null;
+
+    const vol = v[v.length - 1];
+    const volMA = calculateSMA(v, 20);
+    const isMarubozu = detectMarubozu(o[o.length-1], h[h.length-1], l[l.length-1], c[c.length-1]);
+
+    if (isMarubozu && price > o[o.length - 1] && vol > volMA * 3.0) {
+        return { combo: 4, direction: 'LONG', risk: 0.025, rr: 2, reason: 'C4: Momentum Breakout Up' };
+    }
+    if (isMarubozu && price < o[o.length - 1] && vol > volMA * 3.0) {
+        return { combo: 4, direction: 'SHORT', risk: 0.025, rr: 2, reason: 'C4: Momentum Breakout Down' };
+    }
+    return null;
+}
+
+// COMBO 6: ICT (Quét Thanh Khoản Á)
+function checkCombo6(data: SymbolData): ComboSignal | null {
+    const killzone = getICTKillzone(data.utcHour, data.utcMinute);
+    if (!killzone.isActive) return null;
+
+    const { c, h, l, o, v } = data.m5;
+    const pivots = getAsiaSessionPivots(data.m15.c.map((val, idx) => [0, data.m15.o[idx], data.m15.h[idx], data.m15.l[idx], val]));
+
+    const price = c[c.length - 1];
+    const ob = detectICTOrderBlock(h, l, c, o);
+
+    if (killzone.name === 'NY AM' && price < pivots.asiaLow * 0.999 && ob === 'BULLISH') {
+        return { combo: 6, direction: 'LONG', risk: 0.01, rr: 2, reason: 'C6: NY Sweep Asia Low + OB' };
+    }
+    if (killzone.name === 'London' && price > pivots.asiaHigh * 1.001 && ob === 'BEARISH') {
+        return { combo: 6, direction: 'SHORT', risk: 0.01, rr: 2, reason: 'C6: London Sweep Asia High + OB' };
+    }
+    return null;
+}
+
+function resolveSignalConflict(signals: ComboSignal[]): ComboSignal | null {
+    if (signals.length === 0) return null;
+    const priorities: Record<number, number> = { 2: 100, 4: 90, 1: 80, 3: 75, 6: 70 };
+    const sorted = [...signals].sort((a, b) => (priorities[b.combo] || 0) - (priorities[a.combo] || 0));
+    return sorted[0];
 }
 
 function detectMarubozu(open: number, high: number, low: number, close: number) {
@@ -1231,9 +1513,8 @@ Deno.serve(async (req) => {
 
         console.log(`[CHECK TRADES] Starting scan for ${SYMBOLS_TO_SCAN.length} symbols...`);
         const results = await Promise.allSettled(SYMBOLS_TO_SCAN.map(async (symbol) => {
-            const analyses: Record<string, any> = {};
-            let failed = false;
-
+            const dataMap: any = {};
+            
             // Fetch TFs in parallel for speed
             const fetches = TF_CONFIG.map(cfg =>
                 fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${cfg.interval}&limit=${cfg.limit}`)
@@ -1250,480 +1531,163 @@ Deno.serve(async (req) => {
                     console.error(`[CHECK TRADES] ${symbol}: Failed to fetch ${cfg.interval}`);
                     continue;
                 }
-
-                const closes = data.map((x: any) => parseFloat(x[4]));
-                const highs = data.map((x: any) => parseFloat(x[2]));
-                const lows = data.map((x: any) => parseFloat(x[3]));
-                const volumes = data.map((x: any) => parseFloat(x[5]));
-
-                const currentClose = closes[closes.length - 1];
-                const currentVol = volumes[volumes.length - 1];
-                const avgVol20 = calculateSMA(volumes, 20);
-                const volRatio = avgVol20 > 0 ? (currentVol / avgVol20) : 1;
-                const rsi = calculateRSI(closes);
-
-                // RSI Array for Divergence (last 50)
-                const rsiArr = [];
-                for (let i = Math.max(14, closes.length - 50); i <= closes.length; i++) {
-                    rsiArr.push(calculateRSI(closes.slice(0, i)));
-                }
-                const divergence = detectRSIDivergence(closes.slice(-50), rsiArr.slice(-50));
-
-                const ichimoku = calculateIchimoku(highs, lows);
-                const pivots = calculatePivotPoints(highs[highs.length - 2], lows[lows.length - 2], closes[closes.length - 2]); // Use previous full candle for pivots
-                const priceAction = detectPriceAction(data.map((x: any) => parseFloat(x[1])), highs, lows, closes);
-
-                // 4H Analysis (EMA20/50 Cross - More active than MA50/200)
-                if (cfg.interval === '4h') {
-                    const ema20Arr = calculateEMAArray(closes, 20);
-                    const ema50Arr = calculateEMAArray(closes, 50);
-
-                    if (ema20Arr.length > 2 && ema50Arr.length > 2) {
-                        const ema20_curr = ema20Arr[ema20Arr.length - 1];
-                        const ema50_curr = ema50Arr[ema50Arr.length - 1];
-                        const ema20_prev = ema20Arr[ema20Arr.length - 2];
-                        const ema50_prev = ema50Arr[ema50Arr.length - 2];
-
-                        let cross = 'NONE';
-                        if (ema20_prev <= ema50_prev && ema20_curr > ema50_curr) cross = 'BULLISH_CROSS';
-                        if (ema20_prev >= ema50_prev && ema20_curr < ema50_curr) cross = 'BEARISH_CROSS';
-
-                        const atr = calculateATR(highs, lows, closes, 14);
-                        const distFromEMA = Math.abs(currentClose - ema20_curr) / ema20_curr;
-
-                        analyses['4h'] = {
-                            cross,
-                            close: currentClose,
-                            swingHigh: Math.max(...highs),
-                            swingLow: Math.min(...lows),
-                            rsi, volRatio,
-                            ema20: ema20_curr,
-                            ema50: ema50_curr,
-                            atr, distFromEMA,
-                            ichimoku, pivots, divergence, priceAction
-                        };
-                    }
-                }
-
-                // 1H Analysis (EMA20/50)
-                if (cfg.interval === '1h') {
-                    const ema20Arr = calculateEMAArray(closes, 20);
-                    const ema50Arr = calculateEMAArray(closes, 50);
-                    const ema20_curr = ema20Arr[ema20Arr.length - 1];
-                    const ema50_curr = ema50Arr[ema50Arr.length - 1];
-                    const ema20_prev = ema20Arr[ema20Arr.length - 2];
-                    const ema50_prev = ema50Arr[ema50Arr.length - 2];
-
-                    let cross = 'NONE';
-                    if (ema20_prev <= ema50_prev && ema20_curr > ema50_curr) cross = 'BULLISH_CROSS';
-                    if (ema20_prev >= ema50_prev && ema20_curr < ema50_curr) cross = 'BEARISH_CROSS';
-
-                    const atr = calculateATR(highs, lows, closes, 14);
-                    const distFromEMA = Math.abs(currentClose - ema20_curr) / ema20_curr;
-
-                    analyses['1h'] = {
-                        trend: ema20_curr > ema50_curr ? 'BULLISH' : 'BEARISH',
-                        cross,
-                        ema20: ema20_curr,
-                        ema50: ema50_curr,
-                        close: currentClose,
-                        rsi, volRatio, atr, distFromEMA,
-                        swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows),
-                        ichimoku, pivots, divergence, priceAction
-                    }
-                }
-
-                // 15M Analysis
-                if (cfg.interval === '15m') {
-                    const ema12Array = calculateEMAArray(closes, 12);
-                    const ema26Array = calculateEMAArray(closes, 26);
-
-                    const ema12_curr = ema12Array[ema12Array.length - 1];
-                    const ema26_curr = ema26Array[ema26Array.length - 1];
-                    const ema12_prev = ema12Array[ema12Array.length - 2];
-                    const ema26_prev = ema26Array[ema26Array.length - 2];
-
-                    let cross = 'NONE';
-                    if (ema12_prev <= ema26_prev && ema12_curr > ema26_curr) cross = 'BULLISH_CROSS';
-                    if (ema12_prev >= ema26_prev && ema12_curr < ema26_curr) cross = 'BEARISH_CROSS';
-
-                    const ema20 = calculateEMA(closes, 20);
-                    const atr = calculateATR(highs, lows, closes, 14);
-                    const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
-                    const isExtremeVol = atr > 0 && currentRange > (atr * 2.5);
-                    const distFromEMA = Math.abs(currentClose - ema20) / ema20;
-
-                    const emaDistance = Math.abs(ema12_curr - ema26_curr) / ema26_curr;
-                    const emaDistancePrev = Math.abs(ema12_prev - ema26_prev) / ema26_prev;
-                    const isTrendStrengthening = emaDistance > emaDistancePrev;
-
-                    analyses['15m'] = {
-                        cross: cross,
-                        close: currentClose,
-                        swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows),
-                        rsi, volRatio,
-                        atr, isExtremeVol, distFromEMA, ema20,
-                        isTrendStrengthening, emaDistance,
-                        ichimoku, pivots, divergence, priceAction
-                    }
-                }
-
-                // 1m Scalp Analysis (Using EMA for speed)
-                if (cfg.interval === '1m') {
-                    // School 1: Scalping (EMA5/13)
-                    const ema5Array = calculateEMAArray(closes, 5);
-                    const ema13Array = calculateEMAArray(closes, 13);
-                    const ema5_curr = ema5Array[ema5Array.length - 1];
-                    const ema13_curr = ema13Array[ema13Array.length - 1];
-                    const ema5_prev = ema5Array[ema5Array.length - 2];
-                    const ema13_prev = ema13Array[ema13Array.length - 2];
-
-                    let crossScalp = 'NONE';
-                    if (ema5_prev <= ema13_prev && ema5_curr > ema13_curr) crossScalp = 'BULLISH_CROSS';
-                    if (ema5_prev >= ema13_prev && ema5_curr < ema13_curr) crossScalp = 'BEARISH_CROSS';
-
-                    // School 2: Safe Mode (EMA12/26)
-                    const ema12Array = calculateEMAArray(closes, 12);
-                    const ema26Array = calculateEMAArray(closes, 26);
-                    const ema12_curr = ema12Array[ema12Array.length - 1];
-                    const ema26_curr = ema26Array[ema26Array.length - 1];
-                    const ema12_prev = ema12Array[ema12Array.length - 2];
-                    const ema26_prev = ema26Array[ema26Array.length - 2];
-
-                    let crossSafe = 'NONE';
-                    if (ema12_prev <= ema26_prev && ema12_curr > ema26_curr) crossSafe = 'BULLISH_CROSS';
-                    if (ema12_prev >= ema26_prev && ema12_curr < ema26_curr) crossSafe = 'BEARISH_CROSS';
-
-                    const ema20 = calculateEMA(closes, 20);
-                    const atr = calculateATR(highs, lows, closes, 14);
-                    const currentRange = highs[highs.length - 1] - lows[lows.length - 1];
-                    const isExtremeVol = atr > 0 && currentRange > (atr * 3.0);
-                    const distFromEMA = Math.abs(currentClose - ema20) / ema20;
-
-                    analyses['1m_scalp'] = {
-                        cross: crossScalp,
-                        close: currentClose,
-                        rsi, volRatio, ema20, atr, isExtremeVol, distFromEMA,
-                        swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows),
-                        ichimoku, pivots, divergence, priceAction
-                    };
-                    analyses['1m_safe'] = {
-                        cross: crossSafe,
-                        close: currentClose,
-                        rsi, volRatio, ema20, atr, isExtremeVol, distFromEMA,
-                        swingHigh: Math.max(...highs),
-                        swingLow: Math.min(...lows),
-                        ichimoku, pivots, divergence, priceAction
-                    };
-                }
-
-                // --- NEW: MARKET ANOMALY DETECTION (Dynamic & Static) ---
-                const openPrice = parseFloat(data[data.length - 1][1]);
-                const highPrice = parseFloat(data[data.length - 1][2]);
-                const lowPrice = parseFloat(data[data.length - 1][3]);
-                const closePrice = parseFloat(data[data.length - 1][4]);
-                const candleRange = highPrice - lowPrice;
-                const candleBody = Math.abs(closePrice - openPrice);
-
-                const change = ((closePrice - openPrice) / openPrice) * 100;
-                const absChange = Math.abs(change);
-
-                // 1. Static Thresholds
-                const thresholds: Record<string, number> = { '1m': 0.5, '15m': 1.0, '1h': 2.5, '4h': 4.5 };
-                const currentThreshold = thresholds[cfg.interval] || 1.5;
-
-                // 2. Relative Volatility (ATR-based)
-                const atr = calculateATR(highs, lows, closes, 20);
-                const isRelativeAnomaly = atr > 0 && (candleRange > atr * 3.5 || candleBody > atr * 2.5);
-
-                if (absChange >= currentThreshold || isRelativeAnomaly) {
-                    const anomalyType = change > 0 ? 'PUMP' : 'DUMP';
-                    const triggerType = absChange >= currentThreshold ? 'STATIC' : 'RELATIVE';
-
-                    // Avoid duplicate anomalies
-                    const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-                    const { data: recent } = await supabase
-                        .from('market_anomalies')
-                        .select('id')
-                        .eq('symbol', symbol)
-                        .eq('timeframe', cfg.interval)
-                        .eq('anomaly_type', anomalyType)
-                        .gt('created_at', tenMinsAgo)
-                        .limit(1);
-
-                    if (!recent || recent.length === 0) {
-                        await supabase.from('market_anomalies').insert({
-                            symbol,
-                            timeframe: cfg.interval,
-                            anomaly_type: anomalyType,
-                            start_price: openPrice,
-                            extreme_price: anomalyType === 'PUMP' ? highPrice : lowPrice,
-                            recovery_price: openPrice,
-                            change_percent: change,
-                            rsi_at_anomaly: rsi,
-                            status: 'TRACKING'
-                        });
-                        console.log(`[ANOMALY DETECTED] ${symbol} ${cfg.interval} ${anomalyType} (${triggerType}) ${change.toFixed(2)}% (Body/ATR: ${(candleBody / atr).toFixed(1)}x)`);
-                    }
-                }
+                dataMap[cfg.interval] = {
+                    o: data.map((x: any) => parseFloat(x[1])),
+                    h: data.map((x: any) => parseFloat(x[2])),
+                    l: data.map((x: any) => parseFloat(x[3])),
+                    c: data.map((x: any) => parseFloat(x[4])),
+                    v: data.map((x: any) => parseFloat(x[5]))
+                };
             }
 
-            if (!analyses['15m'] && !analyses['1m_scalp']) {
-                console.log(`[CHECK TRADES] ${symbol}: Missing core analyses (15m/1m)`);
+            if (!dataMap['15m'] || !dataMap['1h'] || !dataMap['4h']) {
+                console.log(`[CHECK TRADES] ${symbol}: Missing core analyses (15m/1h/4h)`);
                 return;
             }
 
-            const tf4h = analyses['4h'] as any;
-            const tf1h = analyses['1h'] as any;
-            const tf15m = analyses['15m'] as any;
-            const tf1m_scalp = analyses['1m_scalp'] as any;
+            const h1 = dataMap['1h'];
+            const adxH1 = calculateADX(h1.h, h1.l, h1.c);
+            const bbH1 = calculateBollingerBands(h1.c);
+            const ema9_h1 = calculateEMA(h1.c, 9);
+            const ema21_h1 = calculateEMA(h1.c, 21);
+            const regime = determineMarketRegime(adxH1, bbH1.width, ema9_h1, ema21_h1);
 
-            const raw_signals: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
-
-            // 1. Collect Base Strategy Signals (For combos and fallback)
-            if (tf4h) {
-                if (tf4h.cross === 'BULLISH_CROSS' && tf4h.volRatio > 1.0) raw_signals.push({ type: 'LONG', tf: '4h', ref: tf4h, name: '4H EMA Trend' });
-                else if (tf4h.cross === 'BEARISH_CROSS' && tf4h.volRatio > 1.0) raw_signals.push({ type: 'SHORT', tf: '4h', ref: tf4h, name: '4H EMA Trend' });
-            }
-            if (tf1h) {
-                if (tf1h.cross === 'BULLISH_CROSS' && tf1h.volRatio > 1.0) raw_signals.push({ type: 'LONG', tf: '1h', ref: tf1h, name: '1H EMA Trend' });
-                else if (tf1h.cross === 'BEARISH_CROSS' && tf1h.volRatio > 1.0) raw_signals.push({ type: 'SHORT', tf: '1h', ref: tf1h, name: '1H EMA Trend' });
-            }
-
-            // Divergence & Vol collection
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '15m' : '1h';
-                if (tf.divergence === 'BULLISH') raw_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BULLISH (${tfName})` });
-                else if (tf.divergence === 'BEARISH') raw_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `PHÂN KỲ RSI BEARISH (${tfName})` });
-
-                if (tf.volRatio > 2.0 && tf.rsi > 70) raw_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
-                else if (tf.volRatio > 2.0 && tf.rsi < 30) raw_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `VOL BREAKOUT (${tfName})` });
-            });
-
-            // --- COMBO DETECTION (CONFLUENCE SYSTEM) ---
-            const final_signals: Array<{ type: 'LONG' | 'SHORT', tf: string, ref: any, name: string }> = [];
-
-            const isPAatLevel = (tf: any, type: 'LONG' | 'SHORT') => {
-                const { pivot, r1, r2, r3, s1, s2, s3 } = tf.pivots;
-                const { pinBar, engulfing } = tf.priceAction;
-                const threshold = 0.007;
-                const nearLevel = (p: number, l: number) => Math.abs(p - l) / l < threshold;
-                const levels = type === 'LONG' ? [s1, s2, s3, pivot] : [r1, r2, r3, pivot];
-                const atLevel = levels.some(lvl => nearLevel(tf.close, lvl));
-                return atLevel && (type === 'LONG' ? (pinBar === 'BULLISH' || engulfing === 'BULLISH') : (pinBar === 'BEARISH' || engulfing === 'BEARISH'));
+            const symbolData: SymbolData = {
+                symbol,
+                m5: dataMap['5m'], 
+                m15: dataMap['15m'],
+                h1: dataMap['1h'],
+                h4: dataMap['4h'],
+                regime,
+                utcHour: now.getUTCHours(),
+                utcMinute: now.getUTCMinutes()
             };
 
-            // COMBO 1: 💎 SÁT THỦ BẮT ĐỈNH ĐÁY (Divergence + PA Support/Res + High Vol)
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '15m' : '1h';
-                const hasDiv = tf.divergence !== 'NONE';
-                const dir = tf.divergence === 'BULLISH' ? 'LONG' : 'SHORT';
-                const hasPA = isPAatLevel(tf, dir);
-                // Siết chặt: Ép buộc phải có đầy đủ Phân Kỳ + Cản/PA + Volume Đột Biến
-                if (hasDiv && hasPA && tf.volRatio > 2.0) {
-                    final_signals.push({ type: dir, tf: tfName, ref: tf, name: `💎 SÁT THỦ BẮT ĐỈNH ĐÁY (${tfName})` });
+            // --- 6-COMBO ORCHESTRATOR ---
+            const possibleSignals: ComboSignal[] = [];
+            
+            const c1 = checkCombo1(symbolData); if (c1) possibleSignals.push(c1);
+            const c2 = checkCombo2(symbolData); if (c2) possibleSignals.push(c2);
+            const c3 = checkCombo3(symbolData); if (c3) possibleSignals.push(c3);
+            const c4 = checkCombo4(symbolData); if (c4) possibleSignals.push(c4);
+            const c5 = checkCombo5(symbolData); if (c5) possibleSignals.push(c5);
+            const c6 = checkCombo6(symbolData); if (c6) possibleSignals.push(c6);
+
+            const bestSignal = resolveSignalConflict(possibleSignals);
+            
+            // --- Legacy Anomaly Detection (Keeping as a secondary info layer) ---
+            const m15 = symbolData.m15;
+            const change15m = ((m15.c[m15.c.length-1] - m15.o[m15.o.length-1]) / m15.o[m15.o.length-1]) * 100;
+            if (Math.abs(change15m) > 1.5) {
+                const anomalyType = change15m > 0 ? 'PUMP' : 'DUMP';
+                console.log(`[ANOMALY] ${symbol} 15m ${anomalyType} ${change15m.toFixed(2)}%`);
+                // (Anomaly DB logging could be added back here if needed, but keeping it simple for now)
+            }
+
+            if (!bestSignal) return;
+
+            // Prepare sig object for position management logic
+            const sig = {
+                type: bestSignal.direction,
+                tf: bestSignal.combo === 6 ? '5m' : (bestSignal.combo === 1 || bestSignal.combo === 2 ? '1h' : '15m'),
+                name: bestSignal.reason,
+                ref: {
+                    close: m15.c[m15.c.length - 1],
+                    swingHigh: Math.max(...m15.h.slice(-20)),
+                    swingLow: Math.min(...m15.l.slice(-20)),
+                    atr: calculateATR(m15.h, m15.l, m15.c, 14),
+                    rsi: calculateRSI(m15.c),
+                    volRatio: m15.v[m15.v.length - 1] / calculateSMA(m15.v, 20)
                 }
-            });
+            };
+            if (!allowedTimeframes.includes(sig.tf)) {
+                console.log(`[CHECK TRADES] ${symbol}: Skipping signal ${sig.name} - Timeframe ${sig.tf} not allowed`);
+                return;
+            }
 
-            // COMBO 2: ⚔️ CHIẾN THẦN ĐU TREND (Trend Align + Cloud Align + Cross)
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf || !tf1h) return;
-                const tfName = idx === 0 ? '15m' : '1h';
-                const currentDir: 'LONG' | 'SHORT' = tf.close > tf.ema20 ? 'LONG' : 'SHORT';
-                const trendAlign = tf1h.trend === (currentDir === 'LONG' ? 'BULLISH' : 'BEARISH');
-                const cloudAlign = currentDir === 'LONG' ? (tf.close > tf.ichimoku.spanA && tf.close > tf.ichimoku.spanB) : (tf.close < tf.ichimoku.spanA && tf.close < tf.ichimoku.spanB);
-                const cross = tf.cross !== 'NONE';
-                if (trendAlign && cloudAlign && cross) {
-                    final_signals.push({ type: currentDir, tf: tfName, ref: tf, name: `⚔️ CHIẾN THẦN ĐU TREND (${tfName})` });
-                }
-            });
+            const filterResult: any = await applySmartNoiseFilter(supabase, symbol, sig);
+            if (!filterResult.allowed) {
+                console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} rejected by Noise Filter: ${filterResult.reason}`);
+                return;
+            }
 
-            // COMBO 3: 🪤 BẪY GIÁ - SĂN THANH KHOẢN (Level Break + PinBar Rejection + High Vol)
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '15m' : '1h';
-                const { pinBar } = tf.priceAction;
-                const highVol = tf.volRatio > 2.0;
-                if (highVol && (pinBar === 'BULLISH' || pinBar === 'BEARISH')) {
-                    final_signals.push({ type: pinBar === 'BULLISH' ? 'LONG' : 'SHORT', tf: tfName, ref: tf, name: `🪤 BẪY GIÁ - SĂN THANH KHOẢN (${tfName})` });
-                }
-            });
+            // XỬ LÝ ĐẢO CHIỀU CHO CÁC LỆNH ĐANG PENDING (SOLUTION 1: TRAILING STOP / CUT LOSS)
+            if (filterResult.action === 'REVERSAL' && filterResult.oppositeTrades) {
+                for (const oldTrade of filterResult.oppositeTrades) {
+                    let isProfit = false;
+                    if (oldTrade.signal === 'LONG' && sig.ref.close > oldTrade.price_at_signal) isProfit = true;
+                    if (oldTrade.signal === 'SHORT' && sig.ref.close < oldTrade.price_at_signal) isProfit = true;
 
-            // COMBO 4: 💣 QUẢ BOM ĐỘNG LƯỢNG (EMA Squeeze + Marubozu + Vol Explosion)
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '15m' : '1h';
-                const resp = responses.find(r => r.cfg.interval === tfName);
-                if (!resp || !resp.data) return;
-                const last = resp.data[resp.data.length - 1];
-                const marubozu = detectMarubozu(parseFloat(last[1]), parseFloat(last[2]), parseFloat(last[3]), parseFloat(last[4]));
-                if (marubozu && tf.volRatio > 3.0) {
-                    final_signals.push({ type: parseFloat(last[4]) > parseFloat(last[1]) ? 'LONG' : 'SHORT', tf: tfName, ref: tf, name: `💣 QUẢ BOM ĐỘNG LƯỢNG (${tfName})` });
-                }
-            });
+                    if (isProfit) {
+                        // 1. Lệnh đang LÃI -> Dời SL lên điểm Mở lệnh (Hòa vốn)
+                        const autoReason = `🛡️ Dời SL Hòa Vốn: Áp lực đảo chiều từ ${sig.name}`;
+                        await supabase.from('trading_history').update({
+                            stop_loss: oldTrade.price_at_signal,
+                            pnl_reason: autoReason
+                        }).eq('id', oldTrade.id);
 
-            // COMBO 5: 🔔 CHỈ BÁO THOÁT CHANDELIER (Chandelier Exit Crossover - Heikin Ashi RMA)
-            [tf15m, tf1h].forEach((tf, idx) => {
-                if (!tf) return;
-                const tfName = idx === 0 ? '15m' : '1h';
-                const resp = responses.find(r => r.cfg.interval === tfName);
-                if (!resp || !resp.data || !Array.isArray(resp.data)) return;
-
-                const ceOpens = resp.data.map((x: any) => parseFloat(x[1]));
-                const ceHighs = resp.data.map((x: any) => parseFloat(x[2]));
-                const ceLows = resp.data.map((x: any) => parseFloat(x[3]));
-                const ceCloses = resp.data.map((x: any) => parseFloat(x[4]));
-
-                // Using period=22, multiplier=3.0 as standard Crypto Config instead of oversensitive 1/1.85
-                const ce = calculateChandelierExitHeikinAshi(ceOpens, ceHighs, ceLows, ceCloses, 22, 3.0);
-                if (!ce) return;
-
-                // BUY: Direction changed to Bullish + RSI not overbought + Confirm with Volume > 1.5x
-                if (ce.buySignal && tf.rsi < 75 && tf.volRatio > 1.5) {
-                    final_signals.push({ type: 'LONG', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
-                }
-                // SELL: Direction changed to Bearish + RSI not oversold + Confirm with Volume > 1.5x
-                if (ce.sellSignal && tf.rsi > 25 && tf.volRatio > 1.5) {
-                    final_signals.push({ type: 'SHORT', tf: tfName, ref: tf, name: `🔔 CHỈ BÁO THOÁT CHANDELIER (${tfName})` });
-                }
-            });
-
-            // COMBO 6: 🏦 ICT KILLZONES + PIVOTS (Sweep Asia High/Low + Rejection)
-            (() => {
-                const now = new Date();
-                const killzone = getICTKillzone(now.getUTCHours(), now.getUTCMinutes());
-
-                // Only generate signals during London or NY AM killzones
-                if (!killzone.canTrade) return;
-
-                // Use 15m data to find Asia session pivots and detect sweep
-                const resp15m = responses.find(r => r.cfg.interval === '15m');
-                if (!resp15m || !resp15m.data || !Array.isArray(resp15m.data)) return;
-                if (!tf15m) return;
-
-                const pivots = getAsiaSessionPivots(resp15m.data);
-                if (!pivots.found) return;
-
-                const signal = detectICTSignal(pivots, resp15m.data, tf15m.rsi, tf15m.volRatio);
-                if (signal) {
-                    final_signals.push({
-                        type: signal.type,
-                        tf: '15m',
-                        ref: tf15m,
-                        name: `🏦 ICT KILLZONES - ${signal.reason} [${killzone.emoji} ${killzone.name}]`
-                    });
-                }
-            })();
-
-
-            for (const sig of final_signals) {
-                if (!allowedTimeframes.includes(sig.tf)) {
-                    console.log(`[CHECK TRADES] ${symbol}: Skipping signal ${sig.name} - Timeframe ${sig.tf} not allowed`);
-                    continue;
-                }
-
-                const filterResult: any = await applySmartNoiseFilter(supabase, symbol, sig);
-                if (!filterResult.allowed) {
-                    console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} rejected by Noise Filter: ${filterResult.reason}`);
-                    continue;
-                }
-
-                if (filterResult.allowed) {
-                    // XỬ LÝ ĐẢO CHIỀU CHO CÁC LỆNH ĐANG PENDING (SOLUTION 1: TRAILING STOP / CUT LOSS)
-                    if (filterResult.action === 'REVERSAL' && filterResult.oppositeTrades) {
-                        for (const oldTrade of filterResult.oppositeTrades) {
-                            let isProfit = false;
-                            if (oldTrade.signal === 'LONG' && sig.ref.close > oldTrade.price_at_signal) isProfit = true;
-                            if (oldTrade.signal === 'SHORT' && sig.ref.close < oldTrade.price_at_signal) isProfit = true;
-
-                            if (isProfit) {
-                                // 1. Lệnh đang LÃI -> Dời SL lên điểm Mở lệnh (Hòa vốn)
-                                const autoReason = `🛡️ Dời SL Hòa Vốn: Áp lực đảo chiều từ ${sig.name}`;
-                                await supabase.from('trading_history').update({
-                                    stop_loss: oldTrade.price_at_signal,
-                                    pnl_reason: autoReason
-                                }).eq('id', oldTrade.id);
-
-                                const msg = `🛡️ <b>DỜI SL HÒA VỐN: ${symbol}</b>\n` +
-                                            `Lệnh cũ: <b>${oldTrade.signal}</b> (#${oldTrade.strategy_name})\n` +
-                                            `Lý do: Phát hiện áp lực chiều ngược lại từ <b>${sig.name}</b>\n` +
-                                            `SL mới: $${oldTrade.price_at_signal} (Bảo toàn vốn)`;
-                                await sendTelegram(msg, oldTrade.telegram_message_id, subscriberIds);
-                                console.log(`[REVERSAL] ${symbol}: Moved SL to breakeven for trade ID ${oldTrade.id}`);
-                            } else {
-                                // 2. Lệnh đang LỖ -> BỎ TÍNH NĂNG CẮT SỚM VÌ DỄ BỊ QUÉT RÂU 2 ĐẦU
-                                // Giữ lệnh cho đến khi chạm tới SL tĩnh.
-                                console.log(`[REVERSAL] ${symbol}: Trade ID ${oldTrade.id} is in loss. Ignoring reversal signal to prevent premature whipsaw losses.`);
-                            }
-                        }
-                    }
-
-                    const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
-                    const icon = sig.type === 'LONG' ? '🟢' : '🔴';
-
-                    const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
-                    const timestampStr = `${vnNow.getUTCHours().toString().padStart(2, '0')}:${vnNow.getUTCMinutes().toString().padStart(2, '0')} ${vnNow.getUTCDate().toString().padStart(2, '0')}/${(vnNow.getUTCMonth() + 1).toString().padStart(2, '0')}`;
-
-                    const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-                    const tradeId = `${symbol.replace('USDT', '')}-${shortId}`;
-
-                    const formatPrice = (p: number) => {
-                        if (p < 1) return p.toFixed(6);
-                        if (p < 10) return p.toFixed(4);
-                        return p.toFixed(2);
-                    };
-
-                    const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
-                        `ID: <b>#${tradeId}</b>\n` +
-                        `Trường phái: <b>${sig.name}</b>\n` +
-                        `Type: <b>${sig.type}</b>\n` +
-                        `Entry: $${formatPrice(sig.ref.close)}\n` +
-                        `Target: $${formatPrice(target)}\n` +
-                        `StopLoss: $${formatPrice(stopLoss)}\n` +
-                        `Volume: <b>${sig.ref.volRatio.toFixed(2)}x</b>\n` +
-                        `RSI: ${sig.ref.rsi.toFixed(1)}\n` +
-                        `Time: ${timestampStr}`;
-
-                    const signalData: any = {
-                        symbol, timeframe: sig.tf, signal: sig.type,
-                        price_at_signal: sig.ref.close,
-                        target_price: target, stop_loss: stopLoss,
-                        initial_stop_loss: stopLoss, // Store the original SL
-                        status: 'PENDING',
-                        telegram_message_id: null,
-                        rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
-                        strategy_name: sig.name,
-                        trade_id: tradeId
-                    };
-
-                    const { data: inserted, error: insertError } = await supabase.from('trading_history').insert(signalData).select('id').single();
-
-                    if (insertError) {
-                        console.error(`[CHECK TRADES] DB Insert Error for ${symbol}:`, insertError.message);
-                        if (insertError.message.includes('column') && insertError.message.includes('not exist')) {
-                            delete signalData.strategy_name;
-                            delete signalData.trade_id;
-                            await supabase.from('trading_history').insert(signalData);
-                        }
-                    }
-
-                    if (!insertError || (inserted && inserted.id)) {
-                        const teleRes = await sendTelegram(msg, undefined, subscriberIds);
-                        if (teleRes && teleRes.ok) {
-                            await supabase.from('trading_history').update({ telegram_message_id: teleRes.result.message_id }).eq('trade_id', tradeId);
-                        }
-                        newSignals.push({ symbol, signal: sig.type });
+                        const msgReversal = `🛡️ <b>DỜI SL HÒA VỐN: ${symbol}</b>\n` +
+                                    `Lệnh cũ: <b>${oldTrade.signal}</b> (#${oldTrade.strategy_name})\n` +
+                                    `Lý do: Phát hiện áp lực chiều ngược lại từ <b>${sig.name}</b>\n` +
+                                    `SL mới: $${oldTrade.price_at_signal} (Bảo toàn vốn)`;
+                        await sendTelegram(msgReversal, oldTrade.telegram_message_id, subscriberIds);
+                        console.log(`[REVERSAL] ${symbol}: Moved SL to breakeven for trade ID ${oldTrade.id}`);
                     } else {
-                        console.error(`[CHECK TRADES] Skipping Telegram for ${symbol} due to DB error.`);
+                        // 2. Lệnh đang LỖ -> BỎ TÍNH NĂNG CẮT SỚM VÌ DỄ BỊ QUÉT RÂU 2 ĐẦU
+                        console.log(`[REVERSAL] ${symbol}: Trade ID ${oldTrade.id} is in loss. Ignoring reversal signal.`);
                     }
                 }
             }
 
+            const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
+            const icon = sig.type === 'LONG' ? '🟢' : '🔴';
+
+            const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
+            const timestampStr = `${vnNow.getUTCHours().toString().padStart(2, '0')}:${vnNow.getUTCMinutes().toString().padStart(2, '0')} ${vnNow.getUTCDate().toString().padStart(2, '0')}/${(vnNow.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+
+            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const tradeId = `${symbol.replace('USDT', '')}-${shortId}`;
+
+            const formatPrice = (p: number) => {
+                if (p < 1) return p.toFixed(6);
+                if (p < 10) return p.toFixed(4);
+                return p.toFixed(2);
+            };
+
+            const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
+                `ID: <b>#${tradeId}</b>\n` +
+                `Trường phái: <b>${sig.name}</b>\n` +
+                `Type: <b>${sig.type}</b>\n` +
+                `Entry: $${formatPrice(sig.ref.close)}\n` +
+                `Target: $${formatPrice(target)}\n` +
+                `StopLoss: $${formatPrice(stopLoss)}\n` +
+                `Volume: <b>${sig.ref.volRatio.toFixed(2)}x</b>\n` +
+                `RSI: ${sig.ref.rsi.toFixed(1)}\n` +
+                `Time: ${timestampStr}`;
+
+            const signalData: any = {
+                symbol, timeframe: sig.tf, signal: sig.type,
+                price_at_signal: sig.ref.close,
+                target_price: target, stop_loss: stopLoss,
+                initial_stop_loss: stopLoss,
+                status: 'PENDING',
+                telegram_message_id: null,
+                rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
+                strategy_name: sig.name,
+                trade_id: tradeId
+            };
+
+            const { data: inserted, error: insertError } = await supabase.from('trading_history').insert(signalData).select('id').single();
+
+            if (!insertError || (inserted && inserted.id)) {
+                const teleRes = await sendTelegram(msg, undefined, subscriberIds);
+                if (teleRes && teleRes.ok) {
+                    await supabase.from('trading_history').update({ telegram_message_id: teleRes.result.message_id }).eq('trade_id', tradeId);
+                }
+                newSignals.push({ symbol, signal: sig.type });
+            } else {
+                console.error(`[CHECK TRADES] DB Insert Error or Missing ID for ${symbol}:`, insertError?.message);
+            }
         }));
 
         return new Response(JSON.stringify({
