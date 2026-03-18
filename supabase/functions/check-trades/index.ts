@@ -1193,8 +1193,8 @@ Deno.serve(async (req) => {
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         const supabase = createClient(supabaseUrl, supabaseKey)
 
-        // HEARTBEAT: Update last_scan_at to prove bot is active
-        const { data: existingHeartbeat, error: fetchError } = await supabase.from('bot_settings').select('id').eq('key', 'last_scan_at').single();
+        // HEARTBEAT: Update pa_bot_last_scan_at to prove bot is active
+        const { data: existingHeartbeat, error: fetchError } = await supabase.from('bot_settings').select('id').eq('key', 'pa_bot_last_scan_at').single();
         if (fetchError) console.error('Heartbeat fetch error:', fetchError);
 
         if (existingHeartbeat) {
@@ -1203,12 +1203,12 @@ Deno.serve(async (req) => {
             if (updateError) console.error('Heartbeat update error:', updateError);
         } else {
             console.log('Inserting new heartbeat');
-            const { error: insertError } = await supabase.from('bot_settings').insert({ key: 'last_scan_at', value: new Date().toISOString() });
+            const { error: insertError } = await supabase.from('bot_settings').insert({ key: 'pa_bot_last_scan_at', value: new Date().toISOString() });
             if (insertError) console.error('Heartbeat insert error:', insertError);
         }
 
         // Cleanup duplicates (just in case)
-        await supabase.from('bot_settings').delete().eq('key', 'last_scan_at').neq('id', existingHeartbeat?.id || 0);
+        await supabase.from('bot_settings').delete().eq('key', 'pa_bot_last_scan_at').neq('id', existingHeartbeat?.id || 0);
 
         /* =========================================
            PART -1: GLOBAL RETENTION POLICY (90 DAYS)

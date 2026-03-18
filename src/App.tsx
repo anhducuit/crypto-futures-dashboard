@@ -34,6 +34,7 @@ import { ChandelierExitPanel } from './components/ChandelierExitPanel';
 import { MobileHeader } from './components/MobileHeader';
 import { BottomNav, type TabType } from './components/BottomNav';
 import { GoldenHourAnalysis } from './components/GoldenHourAnalysis';
+import { DexTrendingPanel } from './components/DexTrendingPanel';
 import { useTradeAnalytics } from './hooks/useTradeAnalytics';
 import { AnalysisGlobalControls } from './components/AnalysisGlobalControls';
 import { useTranslation, type Language } from './utils/translations';
@@ -47,7 +48,7 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTimeframe, setActiveTimeframe] = useState('15'); // 15, 1, 60, 240
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [desktopActiveTab, setDesktopActiveTab] = useState<'overview' | 'analysis' | 'bot'>('overview');
+  const [desktopActiveTab, setDesktopActiveTab] = useState<'overview' | 'analysis' | 'bot' | 'dex'>('overview');
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 800);
   const [language, setLanguage] = useState<Language>('vi');
   const t = useTranslation(language);
@@ -236,6 +237,12 @@ function App() {
           </div>
         )}
 
+        {activeTab === 'dex' && (
+          <div className="space-y-4 px-3 pb-6 mt-2">
+            <DexTrendingPanel language={language} />
+          </div>
+        )}
+
       </main>
 
         <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
@@ -354,6 +361,18 @@ function App() {
               <span className="hidden lg:block text-xs font-black tracking-widest">{t('bot_trade')}</span>
             </button>
 
+            <button
+              onClick={() => setDesktopActiveTab('dex')}
+              className={`flex items-center gap-4 px-4 py-4 rounded-[2px] transition-all duration-300 group ${
+                desktopActiveTab === 'dex' 
+                ? 'bg-[var(--color-flare)] text-black font-black' 
+                : 'text-[var(--color-silver)] hover:bg-[var(--color-bg-tertiary)] hover:text-white'
+              }`}
+            >
+              <Activity size={20} className={desktopActiveTab === 'dex' ? '' : 'group-hover:scale-110 transition-transform'} />
+              <span className="hidden lg:block text-xs font-black tracking-widest">DEX Pulse</span>
+            </button>
+
             <div className="mt-auto pt-6 border-t border-[var(--color-border)] px-2">
                <div className="flex flex-col gap-1 hidden lg:block">
                   <p className="text-[9px] font-black text-[var(--color-flare)] tracking-tighter uppercase italic">{t('institutional_access')}</p>
@@ -451,6 +470,12 @@ function App() {
                   <div className="lg:col-span-4 space-y-10">
                     <TradeAnalytics language={language} />
                   </div>
+                </div>
+              )}
+
+              {desktopActiveTab === 'dex' && (
+                <div className="reveal">
+                  <DexTrendingPanel language={language} />
                 </div>
               )}
 
