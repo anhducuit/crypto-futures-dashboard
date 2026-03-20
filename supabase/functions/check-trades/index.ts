@@ -4,10 +4,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const DEFAULT_SYMBOLS = ['XAUUSDT', 'XAGUSDT', 'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT', 'ADAUSDT', 'AVAXUSDT', 'NEARUSDT', 'TIAUSDT'];
 const BACKFILL_START_TIME = new Date('2026-01-18T17:00:00Z').getTime(); // 00:00 Jan 19 VN
 const TF_CONFIG = [
-    { interval: '5m', limit: 300 },
-    { interval: '15m', limit: 100 },
-    { interval: '1h', limit: 100 },
-    { interval: '4h', limit: 300 }
+    { interval: '1m', limit: 500 },
+    { interval: '15m', limit: 500 },
+    { interval: '1h', limit: 500 },
+    { interval: '4h', limit: 500 }
 ];
 
 const corsHeaders = {
@@ -207,6 +207,53 @@ function calculateADX(highs: number[], lows: number[], closes: number[], period:
     return adx;
 }
 
+function calculateFibonacciLevels(high: number, low: number, direction: 'LONG' | 'SHORT'): Record<string, number> {
+    const fibRatios = [0, 0.1, 0.382, 0.5, 0.559, 0.619, 0.667, 0.786, 0.882, 1];
+    const range = high - low;
+
+    const result: Record<string, number> = {};
+    fibRatios.forEach(ratio => {
+        const price = direction === 'LONG' 
+            ? high - (range * ratio)
+            : low + (range * ratio);
+        result[ratio.toFixed(3)] = price;
+    });
+    return result;
+}
+
+function calculateTrendForTF(tf: string, ohlcv: OHLCV): 'LONG' | 'SHORT' {
+    const { c: closes } = ohlcv;
+    if (tf === '4h') {
+        const sma50 = calculateSMA(closes, 50);
+        const sma200 = calculateSMA(closes, 200);
+        return sma50 > sma200 ? 'LONG' : 'SHORT';
+    }
+    if (tf === '1h') {
+        const sma20 = calculateSMA(closes, 20);
+        const sma50 = calculateSMA(closes, 50);
+        return sma20 > sma50 ? 'LONG' : 'SHORT';
+    }
+    if (tf === '15m') {
+        const sma12 = calculateSMA(closes, 12);
+        const sma26 = calculateSMA(closes, 26);
+        return sma12 > sma26 ? 'LONG' : 'SHORT';
+    }
+    // 1m
+    const sma20 = calculateSMA(closes, 20);
+    const currentPrice = closes[closes.length - 1];
+    const gap = ((currentPrice - sma20) / sma20) * 100;
+    return gap >= 0 ? 'LONG' : 'SHORT';
+}
+
+function detectRecentSwing(highs: number[], lows: number[], period: number = 100) {
+    const sliceH = highs.slice(-period);
+    const sliceL = lows.slice(-period);
+    return {
+        high: Math.max(...sliceH),
+        low: Math.min(...sliceL)
+    };
+}
+
 function calculateBollingerBands(closes: number[], period: number = 20, stdDev: number = 2) {
     if (closes.length < period) return { middle: 0, upper: 0, lower: 0, width: 0 };
     
@@ -326,23 +373,32 @@ interface ComboSignal {
     risk: number;
     rr: number;
     reason: string;
+    score: number; // 0-100 suitability score
+}
+
+interface OHLCV {
+    o: number[];
+    h: number[];
+    l: number[];
+    c: number[];
+    v: number[];
 }
 
 interface SymbolData {
     symbol: string;
-    m5: { o: number[], h: number[], l: number[], c: number[], v: number[] };
-    m15: { o: number[], h: number[], l: number[], c: number[], v: number[] };
-    h1: { o: number[], h: number[], l: number[], c: number[], v: number[] };
-    h4: { o: number[], h: number[], l: number[], c: number[], v: number[] };
+    m1: OHLCV;
+    m15: OHLCV;
+    h1: OHLCV;
+    h4: OHLCV;
     regime: string;
     utcHour: number;
     utcMinute: number;
 }
 
 // COMBO 1: REVERSAL (Bắt Đỉnh Đáy)
-function checkCombo1(data: SymbolData): ComboSignal | null {
-    if (data.regime !== "SIDEWAY_NORMAL") return null;
-    const { c, h, l, o, v } = data.h1;
+function checkCombo1(ohlcv: OHLCV, regime: string): ComboSignal | null {
+    if (regime !== "SIDEWAY_NORMAL") return null;
+    const { c, h, l, o, v } = ohlcv;
     const rsi = calculateRSI(c);
     const vol = v[v.length - 1];
     const volMA = calculateSMA(v, 20);
@@ -350,52 +406,78 @@ function checkCombo1(data: SymbolData): ComboSignal | null {
     const rsis = c.map((_, idx) => calculateRSI(c.slice(0, idx + 1)));
     const div = detectRSIDivergence(c, rsis);
 
-    // Support / Resistance Check
-    const isAtKeyLevel = checkKeySRLevels(c[c.length - 1], h, l);
-    if (!isAtKeyLevel) return null;
+    let score = 0;
+    let direction: 'LONG' | 'SHORT' | null = null;
 
-    if (rsi < 30 && div === 'BULLISH' && pa.pinBar === 'BULLISH' && vol > volMA * 1.8) {
-        return { combo: 1, direction: 'LONG', risk: 0.01, rr: 2, reason: 'C1: Reversal Bullish + SR' };
+    // LONG Criteria
+    if (rsi < 40) {
+        score += rsi < 30 ? 40 : 20;
+        if (div === 'BULLISH') score += 30;
+        if (pa.pinBar === 'BULLISH') score += 20;
+        if (vol > volMA * 1.5) score += 10;
+        direction = 'LONG';
+    } 
+    // SHORT Criteria
+    else if (rsi > 60) {
+        score += rsi > 70 ? 40 : 20;
+        if (div === 'BEARISH') score += 30;
+        if (pa.pinBar === 'BEARISH') score += 20;
+        if (vol > volMA * 1.5) score += 10;
+        direction = 'SHORT';
     }
-    if (rsi > 70 && div === 'BEARISH' && pa.pinBar === 'BEARISH' && vol > volMA * 1.8) {
-        return { combo: 1, direction: 'SHORT', risk: 0.01, rr: 2, reason: 'C1: Reversal Bearish + SR' };
+
+    if (score >= 30 && direction) {
+        return { combo: 1, direction, risk: 0.01, rr: 2, reason: `C1: Reversal ${direction} (Score: ${score})`, score };
     }
     return null;
 }
 
 // COMBO 2: TREND (Đi Theo Xu Hướng)
-function checkCombo2(data: SymbolData): ComboSignal | null {
-    if (!data.regime.startsWith("TREND")) return null;
-    const { c: c1, h: h1, l: l1, o: o1, v: v1 } = data.h1;
-    const { h: h4, l: h4l } = data.h4;
+function checkCombo2(ohlcv: OHLCV, higherOHLCV: OHLCV, regime: string): ComboSignal | null {
+    if (!regime.startsWith("TREND")) return null;
+    const { c: c1, h: h1, l: l1 } = ohlcv;
+    const { h: h4, l: h4l } = higherOHLCV;
 
     const adx = calculateADX(h1, l1, c1);
-    if (adx < 25) return null;
-
     const ichiH1 = calculateIchimoku(h1, l1);
     const ichiH4 = calculateIchimoku(h4, h4l);
     const ema9 = calculateEMA(c1, 9);
     const ema21 = calculateEMA(c1, 21);
-    const vol = v1[v1.length - 1];
-    const volMA = calculateSMA(v1, 20);
-
     const price = c1[c1.length - 1];
-    const aboveCloud = price > ichiH1.spanA && price > ichiH1.spanB && price > ichiH4.spanA && price > ichiH4.spanB;
-    const belowCloud = price < ichiH1.spanA && price < ichiH1.spanB && price < ichiH4.spanA && price < ichiH4.spanB;
 
-    if (aboveCloud && ema9 > ema21 && vol > volMA * 1.5) {
-        return { combo: 2, direction: 'LONG', risk: 0.03, rr: 3, reason: 'C2: Trend Long (Ichi + Cross)' };
+    let score = 0;
+    let direction: 'LONG' | 'SHORT' | null = null;
+
+    const aboveCloud1 = price > ichiH1.spanA && price > ichiH1.spanB;
+    const aboveCloud4 = price > ichiH4.spanA && price > ichiH4.spanB;
+    const belowCloud1 = price < ichiH1.spanA && price < ichiH1.spanB;
+    const belowCloud4 = price < ichiH4.spanA && price < ichiH4.spanB;
+
+    if (ema9 > ema21 && adx > 20) {
+        score += adx > 30 ? 40 : 20;
+        if (aboveCloud1) score += 20;
+        if (aboveCloud4) score += 20;
+        if (ema9 > ema21 * 1.002) score += 10;
+        direction = 'LONG';
+    } 
+    else if (ema9 < ema21 && adx > 20) {
+        score += adx > 30 ? 40 : 20;
+        if (belowCloud1) score += 20;
+        if (belowCloud4) score += 20;
+        if (ema9 < ema21 * 0.998) score += 10;
+        direction = 'SHORT';
     }
-    if (belowCloud && ema9 < ema21 && vol > volMA * 1.5) {
-        return { combo: 2, direction: 'SHORT', risk: 0.03, rr: 3, reason: 'C2: Trend Short (Ichi + Cross)' };
+
+    if (score >= 30 && direction) {
+        return { combo: 2, direction, risk: 0.03, rr: 3, reason: `C2: Trend ${direction} (Score: ${score})`, score };
     }
     return null;
 }
 
 // COMBO 3: FAKEOUT (Phá Vỡ Giả)
-function checkCombo3(data: SymbolData): ComboSignal | null {
-    if (data.regime !== "SIDEWAY_NORMAL") return null;
-    const { c, h, l, o, v } = data.m15;
+function checkCombo3(ohlcv: OHLCV, regime: string): ComboSignal | null {
+    if (regime !== "SIDEWAY_NORMAL") return null;
+    const { c, h, l, o, v } = ohlcv;
     
     const vol = v[v.length - 1];
     const volMA = calculateSMA(v, 20);
@@ -406,42 +488,60 @@ function checkCombo3(data: SymbolData): ComboSignal | null {
     const price = c[c.length - 1];
     const pa = detectPriceAction(o, h, l, c);
 
-    const isStrongVol = vol > volMA * 2.5;
-    const risk = isStrongVol ? 0.01 : 0.005; // 1% if strong, 0.5% if normal
+    let score = 0;
+    let direction: 'LONG' | 'SHORT' | null = null;
 
-    if (prevHigh > recentHigh && price < recentHigh && pa.pinBar === 'BEARISH' && vol > volMA * 1.8) {
-        return { combo: 3, direction: 'SHORT', risk, rr: 1.5, reason: `C3: Fakeout High (${isStrongVol ? 'Strong' : 'Light'})` };
+    // SHORT Fakeout: price broke high then returned below
+    if (prevHigh > recentHigh && price < recentHigh) {
+        score += 40; // Base fakeout
+        if (pa.pinBar === 'BEARISH') score += 30;
+        if (vol > volMA * 1.5) score += 30;
+        direction = 'SHORT';
+    } 
+    // LONG Fakeout: price broke low then returned above
+    else if (prevLow < recentLow && price > recentLow) {
+        score += 40; // Base fakeout
+        if (pa.pinBar === 'BULLISH') score += 30;
+        if (vol > volMA * 1.5) score += 30;
+        direction = 'LONG';
     }
-    if (prevLow < recentLow && price > recentLow && pa.pinBar === 'BULLISH' && vol > volMA * 1.8) {
-        return { combo: 3, direction: 'LONG', risk, rr: 1.5, reason: `C3: Fakeout Low (${isStrongVol ? 'Strong' : 'Light'})` };
+
+    if (score >= 30 && direction) {
+        return { combo: 3, direction, risk: 0.01, rr: 1.5, reason: `C3: Fakeout ${direction} (Score: ${score})`, score };
     }
     return null;
 }
 
 // COMBO 4: MOMENTUM (Nổ Lệnh)
-function checkCombo4(data: SymbolData): ComboSignal | null {
-    if (data.regime !== "SIDEWAY_SQUEEZE") return null;
-    const { c, h, l, o, v } = data.m15;
+function checkCombo4(ohlcv: OHLCV, regime: string): ComboSignal | null {
+    if (regime !== "SIDEWAY_SQUEEZE") return null;
+    const { c, h, l, o, v } = ohlcv;
 
     const bb = calculateBollingerBands(c);
-    if (bb.width > 0.2) return null;
-
     const ema9 = calculateEMA(c, 9);
     const ema21 = calculateEMA(c, 21);
     const ema50 = calculateEMA(c, 50);
     const price = c[c.length - 1];
     const spread = Math.max(ema9, ema21, ema50) - Math.min(ema9, ema21, ema50);
-    if (spread / price > 0.01) return null;
-
+    
     const vol = v[v.length - 1];
     const volMA = calculateSMA(v, 20);
-    const isMarubozu = detectMarubozu(o[o.length-1], h[h.length-1], l[l.length-1], c[c.length-1]);
+    const isMarubozu = detectMarubozu(o[o.length - 1], h[h.length - 1], l[l.length - 1], c[c.length - 1]);
 
-    if (isMarubozu && price > o[o.length - 1] && vol > volMA * 3.0) {
-        return { combo: 4, direction: 'LONG', risk: 0.02, rr: 2, reason: 'C4: Momentum Breakout Up' };
+    let score = 0;
+    let direction: 'LONG' | 'SHORT' | null = null;
+
+    if (isMarubozu && vol > volMA * 1.5) {
+        score += 40; // Base momentum
+        if (vol > volMA * 2.5) score += 30;
+        if (spread / price < 0.005) score += 20; // Tight squeeze
+        if (bb.width < 0.1) score += 10;
+        
+        direction = price > o[o.length - 1] ? 'LONG' : 'SHORT';
     }
-    if (isMarubozu && price < o[o.length - 1] && vol > volMA * 3.0) {
-        return { combo: 4, direction: 'SHORT', risk: 0.02, rr: 2, reason: 'C4: Momentum Breakout Down' };
+
+    if (score >= 30 && direction) {
+        return { combo: 4, direction, risk: 0.02, rr: 2, reason: `C4: Momentum ${direction} (Score: ${score})`, score };
     }
     return null;
 }
@@ -454,59 +554,69 @@ function getCombo5TrailingLevel(o: number[], h: number[], l: number[], c: number
 }
 
 // COMBO 6: ICT (Quét Thanh Khoản Á)
-function checkCombo6(data: SymbolData): ComboSignal | null {
-    const killzone = getICTKillzone(data.utcHour, data.utcMinute);
+function checkCombo6(ohlcv: OHLCV, sourceData: SymbolData): ComboSignal | null {
+    const killzone = getICTKillzone(sourceData.utcHour, sourceData.utcMinute);
     if (!killzone.isActive) return null;
 
-    const { c, h, l, o, v } = data.m5;
-    const pivots = getAsiaSessionPivots(data.m15.c.map((val, idx) => [0, data.m15.o[idx], data.m15.h[idx], data.m15.l[idx], val]));
+    const { c, h, l, o } = ohlcv;
+    // Asia session pivots are normally judged on M15 regardless of entry TF
+    const pivots = getAsiaSessionPivots(sourceData.m15.c.map((val, idx) => [0, sourceData.m15.o[idx], sourceData.m15.h[idx], sourceData.m15.l[idx], val]));
 
     const price = c[c.length - 1];
     const ob = detectICTOrderBlock(h, l, c, o);
 
-    if (killzone.name === 'NY AM' && price < pivots.asiaLow * 0.999 && ob === 'BULLISH') {
-        return { combo: 6, direction: 'LONG', risk: 0.01, rr: 2, reason: 'C6: NY Sweep Asia Low + OB' };
+    let score = 0;
+    let direction: 'LONG' | 'SHORT' | null = null;
+
+    if (price < pivots.asiaLow) {
+        score += 40; // Sweep asia low
+        if (ob === 'BULLISH') score += 40;
+        if (killzone.name === 'NY AM' || killzone.name === 'London') score += 20;
+        direction = 'LONG';
+    } 
+    else if (price > pivots.asiaHigh) {
+        score += 40; // Sweep asia high
+        if (ob === 'BEARISH') score += 40;
+        if (killzone.name === 'NY AM' || killzone.name === 'London') score += 20;
+        direction = 'SHORT';
     }
-    if (killzone.name === 'London' && price > pivots.asiaHigh * 1.001 && ob === 'BEARISH') {
-        return { combo: 6, direction: 'SHORT', risk: 0.01, rr: 2, reason: 'C6: London Sweep Asia High + OB' };
+
+    if (score >= 30 && direction) {
+        return { combo: 6, direction, risk: 0.01, rr: 2, reason: `C6: ICT ${direction} Sweep (Score: ${score})`, score };
     }
     return null;
 }
 
-function resolveSignalConflict(signals: ComboSignal[]): ComboSignal | null {
+function evaluateFiboFiringLogic(signals: ComboSignal[]): ComboSignal | null {
     if (signals.length === 0) return null;
     
-    const scores: Record<number, number> = { 2: 100, 4: 90, 1: 80, 3: 75, 6: 70 };
-    const sorted = [...signals].sort((a, b) => scores[b.combo] - scores[a.combo]);
-    
-    const best = sorted[0];
-    
-    // IF C2 (100 pts) present -> King of Trend -> Discard others
-    if (best.combo === 2) return best;
+    // Sort signals by score descending
+    const sorted = [...signals].sort((a, b) => b.score - a.score);
+    const n = sorted.length;
+    const scores = sorted.map(s => s.score);
+    const sum = scores.reduce((a, b) => a + b, 0);
 
-    // IF C4 (90 pts) present
-    if (best.combo === 4) {
-        const c2 = signals.find(s => s.combo === 2);
-        // User rule: If C2 also present (conflict), comparison handled by score above, 
-        // but if we want to handle "Merge/Increase Size" logic:
-        if (c2) {
-            if (c2.direction === best.direction) {
-                best.risk = Math.min(0.05, best.risk + 0.015); // Merge: increase exposure
-                best.reason += " (Merged with C2)";
-                return best;
-            } else {
-                return c2; // If opposite, prioritize C2 (King)
-            }
-        }
+    // RULE 1: 1 Combo >= 70
+    if (n >= 1 && scores[0] >= 70) return sorted[0];
+
+    // RULE 2: 2 Combos, both >= 40, sum >= 80
+    if (n >= 2 && scores[0] >= 40 && scores[1] >= 40 && (scores[0] + scores[1]) >= 80) {
+        const best = sorted[0];
+        best.reason = `N=2 Alignment: ${sorted[0].reason} + ${sorted[1].reason} (Total: ${scores[0] + scores[1]})`;
         return best;
     }
 
-    // C1 (80 pts): Reversal needs validation (already handled in checkCombo1 via SR check)
-    // C3 (75 pts): Fakeout handled in checkCombo3 via Volume sizing
-    // C6 (70 pts): Low priority, taken if alone.
+    // RULE 3: 3 Combos, all >= 30, sum >= 90
+    if (n >= 3 && scores[0] >= 30 && scores[1] >= 30 && scores[2] >= 30 && sum >= 90) {
+        const best = sorted[0];
+        best.reason = `N=3 Alignment: ${sorted[0].reason} + ${sorted[1].reason} + ${sorted[2].reason} (Total: ${sum})`;
+        return best;
+    }
 
-    return best;
+    // N >= 4: Ignored/Blocked as per user request to avoid noise
+    return null;
 }
+
 
 function checkKeySRLevels(price: number, high: number[], low: number[]) {
     // Basic pivot check from last 50 candles
@@ -791,44 +901,49 @@ function calculateDynamicTPSL(
         }
     }
 
+    const rrMap: Record<string, number> = {
+        '1m': 1.5,
+        '15m': 2.0,
+        '1h': 2.5,
+        '4h': 3.0
+    };
+    const targetRR = rrMap[timeframe] || 2.0;
+
     let target, stopLoss;
     // ATR Multiplier optimized by Timeframe - Widened for H1/H4 per user request
     const atrMultiplier = timeframe === '4h' ? 5.0 : (timeframe === '1h' ? 4.2 : 3.0);
     const volatilityBuffer = atr > 0 ? (atr * atrMultiplier) : (range * 0.5);
 
     if (signal === 'LONG') {
-        // Target at Fib 0.618 of range or entry + buffer
-        target = entryPrice + Math.max(range * 0.618, volatilityBuffer * 1.5);
-        // Stoploss at entry - buffer (ATR based or 38.2% Fib)
         stopLoss = entryPrice - volatilityBuffer;
+        const riskDist = entryPrice - stopLoss;
+        target = entryPrice + (riskDist * targetRR);
 
-        // Hard limits for safety and minimum R:R
-        const minRR = 1.5; 
-        const maxSL = 0.06; // Increased from 3.5% to 6% for higher TFs
-        const minSL = timeframe === '4h' ? 0.035 : (timeframe === '1h' ? 0.022 : (timeframe === '15m' ? 0.012 : 0.012)); 
+        // Hard limits for safety
+        const maxSL = 0.06; 
+        const minSL = timeframe === '4h' ? 0.035 : (timeframe === '1h' ? 0.022 : 0.015); 
 
         const currentSLPercent = Math.abs(entryPrice - stopLoss) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 - minSL);
         if (currentSLPercent > maxSL) stopLoss = entryPrice * (1 - maxSL);
 
-        const currentTPPercent = Math.abs(target - entryPrice) / entryPrice;
-        const requiredTP = (Math.abs(entryPrice - stopLoss) / entryPrice) * minRR;
-        if (currentTPPercent < requiredTP) target = entryPrice * (1 + requiredTP);
+        // Re-calculate target based on actual SL to maintain R:R
+        const finalRiskDist = entryPrice - stopLoss;
+        target = entryPrice + (finalRiskDist * targetRR);
     } else {
-        target = entryPrice - Math.max(range * 0.618, volatilityBuffer * 1.5);
         stopLoss = entryPrice + volatilityBuffer;
+        const riskDist = stopLoss - entryPrice;
+        target = entryPrice - (riskDist * targetRR);
 
-        const minRR = 1.5;
         const maxSL = 0.06;
-        const minSL = timeframe === '4h' ? 0.035 : (timeframe === '1h' ? 0.022 : (timeframe === '15m' ? 0.012 : 0.012));
+        const minSL = timeframe === '4h' ? 0.035 : (timeframe === '1h' ? 0.022 : 0.015);
 
         const currentSLPercent = Math.abs(stopLoss - entryPrice) / entryPrice;
         if (currentSLPercent < minSL) stopLoss = entryPrice * (1 + minSL);
         if (currentSLPercent > maxSL) stopLoss = entryPrice * (1 + maxSL);
 
-        const currentTPPercent = Math.abs(entryPrice - target) / entryPrice;
-        const requiredTP = (Math.abs(stopLoss - entryPrice) / entryPrice) * minRR;
-        if (currentTPPercent < requiredTP) target = entryPrice * (1 - requiredTP);
+        const finalRiskDist = stopLoss - entryPrice;
+        target = entryPrice - (finalRiskDist * targetRR);
     }
 
     // DYNAMIC ROUNDING based on price
@@ -1037,6 +1152,35 @@ Deno.serve(async (req) => {
             });
         }
 
+        if (action === 'cleanup-m5') {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+            const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            const supabase = createClient(supabaseUrl, supabaseKey)
+
+            const { count: hBefore } = await supabase.from('trading_history').select('*', { count: 'exact', head: true }).eq('timeframe', '5m');
+            const { count: aBefore } = await supabase.from('market_anomalies').select('*', { count: 'exact', head: true }).eq('timeframe', '5m');
+
+            const { error: hErr } = await supabase.from('trading_history').delete().eq('timeframe', '5m');
+            const { error: aErr } = await supabase.from('market_anomalies').delete().eq('timeframe', '5m');
+
+            if (hErr || aErr) {
+                return new Response(JSON.stringify({ success: false, error: hErr?.message || aErr?.message }), {
+                    status: 500,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            return new Response(JSON.stringify({
+                success: true,
+                message: "All 5-minute data has been cleared.",
+                details: {
+                    trading_history: { deleted: hBefore },
+                    market_anomalies: { deleted: aBefore }
+                }
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
         if (action === 'test') {
             const results: any[] = [];
             const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
@@ -1207,7 +1351,6 @@ Deno.serve(async (req) => {
             if (insertError) console.error('Heartbeat insert error:', insertError);
         }
 
-        // Cleanup duplicates (just in case)
         await supabase.from('bot_settings').delete().eq('key', 'pa_bot_last_scan_at').neq('id', existingHeartbeat?.id || 0);
 
         /* =========================================
@@ -1401,45 +1544,59 @@ Deno.serve(async (req) => {
                         continue;
                     }
 
-                    const isBreakeven = Math.abs(trade.price_at_signal - trade.stop_loss) < 0.0001;
+                    const getStatusOnSL = (entry: number, sl: number, signal: string) => {
+                        const isP = signal === 'LONG'
+                            ? (sl > entry + 0.00000001)
+                            : (sl < entry - 0.00000001);
+                        if (isP) return 'SUCCESS';
+                        
+                        const isB = Math.abs(sl - entry) <= 0.00001;
+                        if (isB) return 'PROTECTED';
+                        
+                        return 'FAILED';
+                    };
 
                     if (trade.signal === 'LONG') {
                         if (currentPrice >= trade.target_price) newStatus = 'SUCCESS';
                         else if (currentPrice <= trade.stop_loss) {
-                            newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
+                            newStatus = getStatusOnSL(trade.price_at_signal, trade.stop_loss, trade.signal);
                         }
                     } else {
                         if (currentPrice <= trade.target_price) newStatus = 'SUCCESS';
                         else if (currentPrice >= trade.stop_loss) {
-                            newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
+                            newStatus = getStatusOnSL(trade.price_at_signal, trade.stop_loss, trade.signal);
                         }
                     }
 
                     // --- COMBO 5: TRAILING STOP PROTECTION ---
-                    if (newStatus === 'PENDING' || newStatus === 'PROTECTED') {
-                        const m15 = candles;
-                        const trailingSL = getCombo5TrailingLevel(
-                            m15.map(c => c.o),
-                            m15.map(c => c.h), 
-                            m15.map(c => c.l), 
-                            m15.map(c => c.c), 
-                            trade.signal as 'LONG' | 'SHORT'
-                        );
-                        
-                        if (trailingSL) {
-                            let shouldUpdate = false;
-                            if (trade.signal === 'LONG' && trailingSL > trade.stop_loss) shouldUpdate = true;
-                            if (trade.signal === 'SHORT' && trailingSL < trade.stop_loss) shouldUpdate = true;
+                        // DYNAMIC ACTIVATION: Only start trailing once price has reached 30% of target distance
+                        const tpDist = Math.abs(trade.target_price - trade.price_at_signal);
+                        const progress = Math.abs(currentPrice - trade.price_at_signal) / tpDist;
 
-                            if (shouldUpdate) {
-                                console.log(`[TRAILING SL] ${trade.symbol} update to ${trailingSL.toFixed(5)}`);
-                                await supabase.from('trading_history')
-                                    .update({ stop_loss: trailingSL })
-                                    .eq('id', trade.id);
-                                trade.stop_loss = trailingSL; // Sync for further checks in this loop
+                        if (progress >= 0.3 && (newStatus === 'PENDING' || newStatus === 'PROTECTED')) {
+                            const m15 = candles;
+                            const trailingSL = getCombo5TrailingLevel(
+                                m15.map(c => c.o),
+                                m15.map(c => c.h), 
+                                m15.map(c => c.l), 
+                                m15.map(c => c.c), 
+                                trade.signal as 'LONG' | 'SHORT'
+                            );
+                            
+                            if (trailingSL) {
+                                let shouldUpdate = false;
+                                if (trade.signal === 'LONG' && trailingSL > trade.stop_loss) shouldUpdate = true;
+                                if (trade.signal === 'SHORT' && trailingSL < trade.stop_loss) shouldUpdate = true;
+
+                                if (shouldUpdate) {
+                                    console.log(`[TRAILING SL ACTIVATED] ${trade.symbol} update to ${trailingSL.toFixed(5)} (Progress: ${(progress*100).toFixed(1)}%)`);
+                                    await supabase.from('trading_history')
+                                        .update({ stop_loss: trailingSL })
+                                        .eq('id', trade.id);
+                                    trade.stop_loss = trailingSL;
+                                }
                             }
                         }
-                    }
 
                     if (newStatus === 'PENDING') {
                         const tradeTime = new Date(trade.created_at).getTime();
@@ -1452,18 +1609,20 @@ Deno.serve(async (req) => {
                             : trade.price_at_signal - (tpDistance * 0.5);
 
                         for (const c of relevant) {
-                            // Check for Milestones
+                            // Milestone Tracking (simplified logic for the scan)
                             if (trade.signal === 'LONG') {
                                 if (c.h >= milestone50) hitMilestone = true;
 
                                 if (c.h >= trade.target_price) {
                                     newStatus = 'SUCCESS';
                                     break;
-                                } else if (c.l <= trade.stop_loss) {
-                                    newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
-                                    break;
                                 } else if (hitMilestone && c.l <= trade.price_at_signal) {
-                                    newStatus = 'PROTECTED'; // Break-even hit after 50% TP
+                                    // Profitable exit (at least entry)
+                                    newStatus = 'PROTECTED';
+                                    break;
+                                } else if (c.l <= trade.stop_loss) {
+                                    // Standard loss or tracked SL hit
+                                    newStatus = getStatusOnSL(trade.price_at_signal, trade.stop_loss, trade.signal);
                                     break;
                                 }
                             } else {
@@ -1472,11 +1631,11 @@ Deno.serve(async (req) => {
                                 if (c.l <= trade.target_price) {
                                     newStatus = 'SUCCESS';
                                     break;
-                                } else if (c.h >= trade.stop_loss) {
-                                    newStatus = isBreakeven ? 'PROTECTED' : 'FAILED';
-                                    break;
                                 } else if (hitMilestone && c.h >= trade.price_at_signal) {
                                     newStatus = 'PROTECTED';
+                                    break;
+                                } else if (c.h >= trade.stop_loss) {
+                                    newStatus = getStatusOnSL(trade.price_at_signal, trade.stop_loss, trade.signal);
                                     break;
                                 }
                             }
@@ -1498,19 +1657,17 @@ Deno.serve(async (req) => {
                         // Generate dynamic reason
                         let autoReason = '';
                         if (newStatus === 'SUCCESS') {
-                            const isBreakEven = hitMilestone && (
-                                (trade.signal === 'LONG' && currentPrice < trade.target_price) ||
-                                (trade.signal === 'SHORT' && currentPrice > trade.target_price)
-                            );
+                            const currentIsProfit = trade.signal === 'LONG'
+                                ? (trade.stop_loss > trade.price_at_signal + 0.00000001)
+                                : (trade.stop_loss < trade.price_at_signal - 0.00000001);
 
-                            if (isBreakEven) {
-                                autoReason = `🛡️ Thắng bảo vệ: Đã chốt lời 50% và đóng hòa vốn phần còn lại. Chiến lược: ${trade.strategy_name}.`;
-                                newStatus = 'PROTECTED'; // Change status to PROTECTED for break-even outcomes
+                            if (currentIsProfit) {
+                                autoReason = `💰 Thắng lệnh (Trailing SL): Đã bảo toàn lợi nhuận khi giá quay đầu. Chiến lược: ${trade.strategy_name}.`;
                             } else {
                                 autoReason = `✅ Thắng lệnh (Full Target) do: ${trade.strategy_name}. RSI: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x.`;
                             }
                         } else if (newStatus === 'PROTECTED') {
-                            autoReason = `🛡️ Bảo vệ hòa vốn: Hệ thống tự động đóng lệnh để bảo toàn vốn khi phát hiện áp lực đảo chiều. Chiến lược: ${trade.strategy_name}.`;
+                            autoReason = `🛡️ Bảo vệ hòa vốn: Hệ thống tự động đóng lệnh tại Entry để bảo toàn vốn. Chiến lược: ${trade.strategy_name}.`;
                         } else {
                             autoReason = `❌ Thua lệnh: Giá đi ngược dự đoán (Stoploss). RSI vào lệnh: ${trade.rsi?.toFixed(1) || 'N/A'}, Vol: ${trade.volume_ratio?.toFixed(2) || 'N/A'}x. Thị trường đảo chiều mạnh.`;
                         }
@@ -1635,7 +1792,7 @@ Deno.serve(async (req) => {
 
             const symbolData: SymbolData = {
                 symbol,
-                m5: dataMap['5m'], 
+                m1: dataMap['1m'], 
                 m15: dataMap['15m'],
                 h1: dataMap['1h'],
                 h4: dataMap['4h'],
@@ -1644,130 +1801,133 @@ Deno.serve(async (req) => {
                 utcMinute: now.getUTCMinutes()
             };
 
-            // --- 6-COMBO ORCHESTRATOR ---
-            const possibleSignals: ComboSignal[] = [];
-            
-            const c1 = checkCombo1(symbolData); if (c1) possibleSignals.push(c1);
-            const c2 = checkCombo2(symbolData); if (c2) possibleSignals.push(c2);
-            const c3 = checkCombo3(symbolData); if (c3) possibleSignals.push(c3);
-            const c4 = checkCombo4(symbolData); if (c4) possibleSignals.push(c4);
-            const c6 = checkCombo6(symbolData); if (c6) possibleSignals.push(c6);
+            // --- MULTI-TIMEFRAME FIBONACCI SCAN ---
+            const currentPrice = symbolData.m15.c[symbolData.m15.c.length - 1];
+            const tolerance = currentPrice * 0.0015; // 0.15%
 
-            const bestSignal = resolveSignalConflict(possibleSignals);
-            
-            // --- Legacy Anomaly Detection (Keeping as a secondary info layer) ---
-            const m15 = symbolData.m15;
-            const change15m = ((m15.c[m15.c.length-1] - m15.o[m15.o.length-1]) / m15.o[m15.o.length-1]) * 100;
-            if (Math.abs(change15m) > 1.5) {
-                const anomalyType = change15m > 0 ? 'PUMP' : 'DUMP';
-                console.log(`[ANOMALY] ${symbol} 15m ${anomalyType} ${change15m.toFixed(2)}%`);
-                // (Anomaly DB logging could be added back here if needed, but keeping it simple for now)
-            }
+            const tfChecklist = [
+                { name: '4h', data: symbolData.h4 },
+                { name: '1h', data: symbolData.h1 },
+                { name: '15m', data: symbolData.m15 },
+                { name: '1m', data: symbolData.m1 }
+            ];
 
-            if (!bestSignal) return;
-
-            // Prepare sig object for position management logic
-            const sig = {
-                type: bestSignal.direction,
-                tf: bestSignal.combo === 6 ? '5m' : (bestSignal.combo === 1 || bestSignal.combo === 2 ? '1h' : '15m'),
-                name: bestSignal.reason,
-                ref: {
-                    close: m15.c[m15.c.length - 1],
-                    swingHigh: Math.max(...m15.h.slice(-20)),
-                    swingLow: Math.min(...m15.l.slice(-20)),
-                    atr: calculateATR(m15.h, m15.l, m15.c, 14),
-                    rsi: calculateRSI(m15.c),
-                    volRatio: m15.v[m15.v.length - 1] / calculateSMA(m15.v, 20)
+            for (const tf of tfChecklist) {
+                const trend = calculateTrendForTF(tf.name, tf.data);
+                const swing = detectRecentSwing(tf.data.h, tf.data.l, 500); 
+                const fibs = calculateFibonacciLevels(swing.high, swing.low, trend);
+                
+                let tfActiveFib = null;
+                for (const [ratio, price] of Object.entries(fibs)) {
+                    if (Math.abs(currentPrice - price) <= tolerance) {
+                        tfActiveFib = { ratio, price, tf: tf.name, swingH: swing.high, swingL: swing.low };
+                        break;
+                    }
                 }
-            };
-            if (!allowedTimeframes.includes(sig.tf)) {
-                console.log(`[CHECK TRADES] ${symbol}: Skipping signal ${sig.name} - Timeframe ${sig.tf} not allowed`);
-                return;
-            }
 
-            const filterResult: any = await applySmartNoiseFilter(supabase, symbol, sig);
-            if (!filterResult.allowed) {
-                console.log(`[CHECK TRADES] ${symbol}: Signal ${sig.name} rejected by Noise Filter: ${filterResult.reason}`);
-                return;
-            }
+                if (tfActiveFib) {
+                    console.log(`[CHECK TRADES] ${symbol}: PRICE AT FIB ${tfActiveFib.ratio} ($${tfActiveFib.price.toFixed(2)}) on ${tfActiveFib.tf}. Analyzing combos...`);
 
-            // XỬ LÝ ĐẢO CHIỀU CHO CÁC LỆNH ĐANG PENDING (SOLUTION 1: TRAILING STOP / CUT LOSS)
-            if (filterResult.action === 'REVERSAL' && filterResult.oppositeTrades) {
-                for (const oldTrade of filterResult.oppositeTrades) {
-                    let isProfit = false;
-                    if (oldTrade.signal === 'LONG' && sig.ref.close > oldTrade.price_at_signal) isProfit = true;
-                    if (oldTrade.signal === 'SHORT' && sig.ref.close < oldTrade.price_at_signal) isProfit = true;
+                    const tfKeyMap: Record<string, { current: keyof SymbolData, higher: keyof SymbolData }> = {
+                        '4h': { current: 'h4', higher: 'h4' },
+                        '1h': { current: 'h1', higher: 'h4' },
+                        '15m': { current: 'm15', higher: 'h1' },
+                        '1m': { current: 'm1', higher: 'm15' }
+                    };
 
-                    if (isProfit) {
-                        // 1. Lệnh đang LÃI -> Dời SL lên điểm Mở lệnh (Hòa vốn)
-                        const autoReason = `🛡️ Dời SL Hòa Vốn: Áp lực đảo chiều từ ${sig.name}`;
-                        await supabase.from('trading_history').update({
-                            stop_loss: oldTrade.price_at_signal,
-                            pnl_reason: autoReason
-                        }).eq('id', oldTrade.id);
+                    const mapping = tfKeyMap[tfActiveFib.tf];
+                    const currentOHLCV = symbolData[mapping.current] as OHLCV;
+                    const higherOHLCV = symbolData[mapping.higher] as OHLCV;
 
-                        const msgReversal = `🛡️ <b>DỜI SL HÒA VỐN: ${symbol}</b>\n` +
-                                    `Lệnh cũ: <b>${oldTrade.signal}</b> (#${oldTrade.strategy_name})\n` +
-                                    `Lý do: Phát hiện áp lực chiều ngược lại từ <b>${sig.name}</b>\n` +
-                                    `SL mới: $${oldTrade.price_at_signal} (Bảo toàn vốn)`;
-                        await sendTelegram(msgReversal, oldTrade.telegram_message_id, subscriberIds);
-                        console.log(`[REVERSAL] ${symbol}: Moved SL to breakeven for trade ID ${oldTrade.id}`);
-                    } else {
-                        // 2. Lệnh đang LỖ -> BỎ TÍNH NĂNG CẮT SỚM VÌ DỄ BỊ QUÉT RÂU 2 ĐẦU
-                        console.log(`[REVERSAL] ${symbol}: Trade ID ${oldTrade.id} is in loss. Ignoring reversal signal.`);
+                    const c1 = checkCombo1(currentOHLCV, symbolData.regime);
+                    const c2 = checkCombo2(currentOHLCV, higherOHLCV, symbolData.regime);
+                    const c3 = checkCombo3(currentOHLCV, symbolData.regime);
+                    const c4 = checkCombo4(currentOHLCV, symbolData.regime);
+                    const c6 = checkCombo6(currentOHLCV, symbolData);
+
+                    const possibleSignalsForTF = [c1, c2, c3, c4, c6]
+                        .filter((s): s is ComboSignal => s !== null)
+                        .filter(sig => {
+                            const ratio = parseFloat(tfActiveFib.ratio);
+                            if (ratio <= 0.382 && sig.direction === 'LONG') return false;
+                            if (ratio >= 0.618 && sig.direction === 'SHORT') return false;
+                            return true;
+                        });
+
+                    const bestSignal = evaluateFiboFiringLogic(possibleSignalsForTF);
+                    if (bestSignal) {
+                        bestSignal.reason += ` (Hit ${tfActiveFib.tf} Fib ${tfActiveFib.ratio})`;
+                        console.log(`[CHECK TRADES] ${symbol}: SIGNAL DETECTED on ${tfActiveFib.tf}: ${bestSignal.reason}`);
+
+                        const sig = {
+                            type: bestSignal.direction,
+                            tf: tfActiveFib.tf, 
+                            name: bestSignal.reason,
+                            ref: {
+                                close: currentPrice,
+                                swingHigh: tfActiveFib.swingH,
+                                swingLow: tfActiveFib.swingL,
+                                atr: calculateATR(tf.data.h, tf.data.l, tf.data.c, 14),
+                                rsi: calculateRSI(tf.data.c),
+                                volRatio: tf.data.v[tf.data.v.length - 1] / calculateSMA(tf.data.v, 20)
+                            }
+                        };
+
+                        console.log(`[DEBUG SCAN] ${symbol}: Signal detected on ${sig.tf}. sig.tf should be ${tf.name}. Storing...`);
+
+                        if (!allowedTimeframes.includes(sig.tf)) continue;
+
+                        const filterResult: any = await applySmartNoiseFilter(supabase, symbol, sig);
+                        if (!filterResult.allowed) continue;
+
+                        // Reversal logic
+                        if (filterResult.action === 'REVERSAL' && filterResult.oppositeTrades) {
+                            for (const oldTrade of filterResult.oppositeTrades) {
+                                let isProfit = (oldTrade.signal === 'LONG' && sig.ref.close > oldTrade.price_at_signal) ||
+                                              (oldTrade.signal === 'SHORT' && sig.ref.close < oldTrade.price_at_signal);
+
+                                if (isProfit) {
+                                    await supabase.from('trading_history').update({
+                                        stop_loss: oldTrade.price_at_signal,
+                                        pnl_reason: `🛡️ Reversal pressure from ${sig.name}`
+                                    }).eq('id', oldTrade.id);
+                                    await sendTelegram(`🛡️ <b>DỜI SL HÒA VỐN: ${symbol}</b>\nLý do: ${sig.name}`, oldTrade.telegram_message_id, subscriberIds);
+                                }
+                            }
+                        }
+
+                        const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
+                        const icon = sig.type === 'LONG' ? '🟢' : '🔴';
+                        const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
+                        const timestampStr = `${vnNow.getUTCHours().toString().padStart(2, '0')}:${vnNow.getUTCMinutes().toString().padStart(2, '0')} ${vnNow.getUTCDate().toString().padStart(2, '0')}/${(vnNow.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+                        const tradeId = `${symbol.replace('USDT', '')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+                        const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
+                            `ID: <b>#${tradeId}</b>\n` +
+                            `Strategy: <b>${sig.name}</b>\n` +
+                            `Type: <b>${sig.type}</b>\n` +
+                            `Entry: $${sig.ref.close.toFixed(2)}\n` +
+                            `Target: $${target.toFixed(2)}\n` +
+                            `StopLoss: $${stopLoss.toFixed(2)}\n` +
+                            `Time: ${timestampStr}`;
+
+                        const { data: inserted, error: insertError } = await supabase.from('trading_history').insert({
+                            symbol, timeframe: sig.tf, signal: sig.type,
+                            price_at_signal: sig.ref.close, target_price: target, stop_loss: stopLoss,
+                            initial_stop_loss: stopLoss, status: 'PENDING',
+                            rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
+                            strategy_name: sig.name, trade_id: tradeId
+                        }).select('id').single();
+
+                        if (!insertError && inserted) {
+                            const teleRes = await sendTelegram(msg, undefined, subscriberIds);
+                            if (teleRes?.ok) await supabase.from('trading_history').update({ telegram_message_id: teleRes.result.message_id }).eq('id', inserted.id);
+                            newSignals.push({ symbol, signal: sig.type, tf: sig.tf });
+                        }
                     }
                 }
             }
 
-            const { target, stopLoss } = calculateDynamicTPSL(sig.ref.close, sig.type, sig.ref.swingHigh, sig.ref.swingLow, sig.ref.atr, sig.tf);
-            const icon = sig.type === 'LONG' ? '🟢' : '🔴';
-
-            const vnNow = new Date(new Date().getTime() + (7 * 60 * 60 * 1000));
-            const timestampStr = `${vnNow.getUTCHours().toString().padStart(2, '0')}:${vnNow.getUTCMinutes().toString().padStart(2, '0')} ${vnNow.getUTCDate().toString().padStart(2, '0')}/${(vnNow.getUTCMonth() + 1).toString().padStart(2, '0')}`;
-
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
-            const tradeId = `${symbol.replace('USDT', '')}-${shortId}`;
-
-            const formatPrice = (p: number) => {
-                if (p < 1) return p.toFixed(6);
-                if (p < 10) return p.toFixed(4);
-                return p.toFixed(2);
-            };
-
-            const msg = `${icon} <b>NEW SIGNAL (${sig.tf}): ${symbol}</b>\n` +
-                `ID: <b>#${tradeId}</b>\n` +
-                `Trường phái: <b>${sig.name}</b>\n` +
-                `Type: <b>${sig.type}</b>\n` +
-                `Entry: $${formatPrice(sig.ref.close)}\n` +
-                `Target: $${formatPrice(target)}\n` +
-                `StopLoss: $${formatPrice(stopLoss)}\n` +
-                `Volume: <b>${sig.ref.volRatio.toFixed(2)}x</b>\n` +
-                `RSI: ${sig.ref.rsi.toFixed(1)}\n` +
-                `Time: ${timestampStr}`;
-
-            const signalData: any = {
-                symbol, timeframe: sig.tf, signal: sig.type,
-                price_at_signal: sig.ref.close,
-                target_price: target, stop_loss: stopLoss,
-                initial_stop_loss: stopLoss,
-                status: 'PENDING',
-                telegram_message_id: null,
-                rsi: sig.ref.rsi, volume_ratio: sig.ref.volRatio,
-                strategy_name: sig.name,
-                trade_id: tradeId
-            };
-
-            const { data: inserted, error: insertError } = await supabase.from('trading_history').insert(signalData).select('id').single();
-
-            if (!insertError || (inserted && inserted.id)) {
-                const teleRes = await sendTelegram(msg, undefined, subscriberIds);
-                if (teleRes && teleRes.ok) {
-                    await supabase.from('trading_history').update({ telegram_message_id: teleRes.result.message_id }).eq('trade_id', tradeId);
-                }
-                newSignals.push({ symbol, signal: sig.type });
-            } else {
-                console.error(`[CHECK TRADES] DB Insert Error or Missing ID for ${symbol}:`, insertError?.message);
-            }
         }));
 
         return new Response(JSON.stringify({
